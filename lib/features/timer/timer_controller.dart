@@ -61,6 +61,7 @@ class TimerController extends Notifier<TimerSnapshot> {
     state = snapshot;
     await _repo.persist(snapshot);
     _scheduleCompletion();
+    await _maybeStartAmbient();
   }
 
   Future<void> pause() async {
@@ -111,6 +112,7 @@ class TimerController extends Notifier<TimerSnapshot> {
     );
     await _repo.clear();
     state = const TimerSnapshot.idle();
+    await ref.read(soundServiceProvider).stopAmbient();
     if (completed) {
       await NotificationService.show(
         title: '${s.type.label} complete',
@@ -134,6 +136,15 @@ class TimerController extends Notifier<TimerSnapshot> {
               : SoundCue.breakComplete,
           volume: volume,
         );
+  }
+
+  /// Starts the chosen ambient soundscape if the user enabled auto-play.
+  Future<void> _maybeStartAmbient() async {
+    final settings = ref.read(settingsRepositoryProvider);
+    if (!await settings.getAmbientAutostart()) return;
+    final sound = AmbientSound.fromName(await settings.getAmbientSound());
+    final volume = await settings.getAmbientVolume();
+    await ref.read(soundServiceProvider).startAmbient(sound, volume: volume);
   }
 
   void _scheduleCompletion() {

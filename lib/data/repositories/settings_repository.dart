@@ -18,6 +18,9 @@ class SettingsRepository {
   static const _kLongBreak = 'longBreakMinutes';
   static const _kSoundEnabled = 'soundEnabled';
   static const _kSoundVolume = 'soundVolume';
+  static const _kAmbientSound = 'ambientSound';
+  static const _kAmbientVolume = 'ambientVolume';
+  static const _kAmbientAutostart = 'ambientAutostart';
 
   Future<void> _set(String key, String value) {
     return _db.into(_db.settings).insertOnConflictUpdate(
@@ -77,6 +80,29 @@ class SettingsRepository {
       double.tryParse(await readValue(_kSoundVolume) ?? '') ??
       AppConstants.defaultSoundVolume;
 
+  // --- Ambient focus soundscape -------------------------------------------
+
+  /// Stored as the [AmbientSound] enum name (e.g. 'rain'). Defaults to rain.
+  Stream<String> watchAmbientSound() =>
+      _watch(_kAmbientSound).map((v) => v ?? 'rain');
+  Future<void> setAmbientSound(String name) => _set(_kAmbientSound, name);
+  Future<String> getAmbientSound() async =>
+      (await readValue(_kAmbientSound)) ?? 'rain';
+
+  Stream<double> watchAmbientVolume() => _watch(_kAmbientVolume).map(
+      (v) => double.tryParse(v ?? '') ?? AppConstants.defaultAmbientVolume);
+  Future<void> setAmbientVolume(double v) => _set(_kAmbientVolume, '$v');
+  Future<double> getAmbientVolume() async =>
+      double.tryParse(await readValue(_kAmbientVolume) ?? '') ??
+      AppConstants.defaultAmbientVolume;
+
+  /// Whether the chosen soundscape auto-plays when a session starts.
+  Stream<bool> watchAmbientAutostart() =>
+      _watch(_kAmbientAutostart).map((v) => v == 'true'); // default off
+  Future<void> setAmbientAutostart(bool v) => _set(_kAmbientAutostart, '$v');
+  Future<bool> getAmbientAutostart() async =>
+      (await readValue(_kAmbientAutostart)) == 'true';
+
   static ThemeMode _parseTheme(String? v) => switch (v) {
         'light' => ThemeMode.light,
         'system' => ThemeMode.system,
@@ -110,4 +136,16 @@ final soundEnabledProvider = StreamProvider<bool>((ref) {
 
 final soundVolumeProvider = StreamProvider<double>((ref) {
   return ref.watch(settingsRepositoryProvider).watchSoundVolume();
+});
+
+final ambientSoundProvider = StreamProvider<String>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchAmbientSound();
+});
+
+final ambientVolumeProvider = StreamProvider<double>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchAmbientVolume();
+});
+
+final ambientAutostartProvider = StreamProvider<bool>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchAmbientAutostart();
 });
