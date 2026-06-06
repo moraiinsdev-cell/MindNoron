@@ -20,6 +20,17 @@ class DailyLogRepository {
         .watchSingleOrNull();
   }
 
+  /// Recent days that have an energy reading (oldest first) — backs the trend.
+  Stream<List<DailyLog>> watchEnergyHistory(int days) {
+    final since = AppDateUtils.startOfDay(DateTime.now())
+        .subtract(Duration(days: days - 1));
+    return (_db.select(_db.dailyLogs)
+          ..where((t) =>
+              t.date.isBiggerOrEqualValue(since) & t.energyLevel.isNotNull())
+          ..orderBy([(t) => OrderingTerm.asc(t.date)]))
+        .watch();
+  }
+
   Future<void> setEnergy(int level) async {
     final day = AppDateUtils.startOfDay(DateTime.now());
     final existing = await (_db.select(_db.dailyLogs)
@@ -52,4 +63,8 @@ final dailyLogRepositoryProvider = Provider<DailyLogRepository>((ref) {
 
 final todayLogProvider = StreamProvider<DailyLog?>((ref) {
   return ref.watch(dailyLogRepositoryProvider).watchToday();
+});
+
+final energyHistoryProvider = StreamProvider<List<DailyLog>>((ref) {
+  return ref.watch(dailyLogRepositoryProvider).watchEnergyHistory(14);
 });

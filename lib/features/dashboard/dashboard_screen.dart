@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -110,26 +111,118 @@ class _EnergyCheckIn extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final current = ref.watch(todayLogProvider).valueOrNull?.energyLevel ?? 0;
+    final history =
+        ref.watch(energyHistoryProvider).valueOrNull ?? const <DailyLog>[];
+    final spots = <FlSpot>[
+      for (var i = 0; i < history.length; i++)
+        FlSpot(i.toDouble(), (history[i].energyLevel ?? 0).toDouble()),
+    ];
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Expanded(child: Text("Today's energy")),
-            for (var i = 1; i <= 5; i++)
-              IconButton(
-                tooltip: '$i',
-                onPressed: () =>
-                    ref.read(dailyLogRepositoryProvider).setEnergy(i),
-                icon: Icon(
-                  i <= current ? Icons.bolt : Icons.bolt_outlined,
-                  color: i <= current ? cs.primary : cs.outline,
-                ),
+            Row(
+              children: [
+                const Expanded(child: Text("Today's energy")),
+                for (var i = 1; i <= 5; i++)
+                  IconButton(
+                    tooltip: '$i',
+                    onPressed: () =>
+                        ref.read(dailyLogRepositoryProvider).setEnergy(i),
+                    icon: Icon(
+                      i <= current ? Icons.bolt : Icons.bolt_outlined,
+                      color: i <= current ? cs.primary : cs.outline,
+                    ),
+                  ),
+              ],
+            ),
+            if (spots.length >= 2) ...[
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  SizedBox(
+                    height: 34,
+                    width: 130,
+                    child: _EnergySparkline(spots: spots, color: cs.primary),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(child: _trend(theme, spots)),
+                ],
               ),
+              const SizedBox(height: 6),
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _trend(ThemeData theme, List<FlSpot> spots) {
+    final last = spots.last.y;
+    final priors = spots.sublist(0, spots.length - 1);
+    final avg = priors.map((s) => s.y).reduce((a, b) => a + b) / priors.length;
+    final (IconData icon, String label, Color color) = last > avg + 0.3
+        ? (Icons.trending_up, 'Trending up', const Color(0xFF22C55E))
+        : last < avg - 0.3
+            ? (Icons.trending_down, 'Easing down', const Color(0xFFF59E0B))
+            : (
+                Icons.trending_flat,
+                'Holding steady',
+                theme.colorScheme.onSurfaceVariant
+              );
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            '$label · last ${spots.length} check-ins',
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EnergySparkline extends StatelessWidget {
+  const _EnergySparkline({required this.spots, required this.color});
+
+  final List<FlSpot> spots;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return LineChart(
+      LineChartData(
+        minY: 1,
+        maxY: 5,
+        minX: spots.first.x,
+        maxX: spots.last.x,
+        gridData: const FlGridData(show: false),
+        titlesData: const FlTitlesData(show: false),
+        borderData: FlBorderData(show: false),
+        lineTouchData: const LineTouchData(enabled: false),
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            curveSmoothness: 0.3,
+            color: color,
+            barWidth: 2,
+            dotData: const FlDotData(show: false),
+            belowBarData:
+                BarAreaData(show: true, color: color.withValues(alpha: 0.12)),
+          ),
+        ],
       ),
     );
   }

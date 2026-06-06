@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/enums.dart';
 import '../../data/database/app_database.dart';
+import '../../data/repositories/daily_log_repository.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../../data/repositories/task_repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
+import 'focus_suggestion.dart';
 import 'timer_controller.dart';
 import 'timer_engine.dart';
 
@@ -60,6 +62,8 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
         AppConstants.defaultShortBreakMinutes;
     final longB = ref.watch(longBreakMinutesProvider).valueOrNull ??
         AppConstants.defaultLongBreakMinutes;
+    final energy = ref.watch(todayLogProvider).valueOrNull?.energyLevel ?? 0;
+    final suggested = suggestFocusMinutes(energy, work);
 
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 420),
@@ -83,6 +87,17 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
             onChanged: (v) => setState(() => _linkedTaskId = v),
           ),
           const SizedBox(height: 24),
+          if (energy > 0 && suggested != work) ...[
+            OutlinedButton.icon(
+              onPressed: () => controller.start(
+                duration: Duration(minutes: suggested),
+                linkedTaskId: _linkedTaskId,
+              ),
+              icon: const Icon(Icons.auto_awesome, size: 18),
+              label: Text('${focusSuggestionHint(energy)} · $suggested min'),
+            ),
+            const SizedBox(height: 12),
+          ],
           FilledButton.icon(
             onPressed: () => controller.start(
               duration: Duration(minutes: work),
