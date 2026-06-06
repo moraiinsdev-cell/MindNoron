@@ -3,17 +3,55 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/repositories/settings_repository.dart';
 import '../../presentation/navigation/app_router.dart';
+import '../settings/user_name_dialog.dart';
 import 'quotes.dart';
 
 /// Full-screen motivational splash shown every time the app opens.
-class WelcomeScreen extends ConsumerWidget {
+class WelcomeScreen extends ConsumerStatefulWidget {
   const WelcomeScreen({super.key});
 
   static const _gold = Color(0xFFC9A227);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WelcomeScreen> createState() => _WelcomeScreenState();
+}
+
+class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
+  bool _namePromptChecked = false;
+  bool _nameDialogOpen = false;
+
+  Future<void> _promptForNameIfNeeded() async {
+    if (!mounted || _nameDialogOpen) return;
+
+    final settings = ref.read(settingsRepositoryProvider);
+    final alreadyPrompted = await settings.hasPromptedForUserName();
+    final userName = await settings.getUserName();
+    if (!mounted || alreadyPrompted || userName != null) return;
+
+    setState(() => _nameDialogOpen = true);
+    try {
+      final name = await showUserNameDialog(context, firstRun: true);
+      if (name != null) {
+        await settings.setUserName(name);
+      }
+      await settings.markUserNamePrompted();
+    } finally {
+      if (mounted) setState(() => _nameDialogOpen = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final userName = ref.watch(userNameProvider);
+    if (!_namePromptChecked && userName.hasValue) {
+      _namePromptChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _promptForNameIfNeeded();
+      });
+    }
+
     final deck = ref.watch(quoteDeckProvider);
     final deckState = deck.valueOrNull;
     final quote = deckState?.quote;
@@ -37,6 +75,7 @@ class WelcomeScreen extends ConsumerWidget {
       body: Focus(
         autofocus: true,
         onKeyEvent: (_, event) {
+          if (_nameDialogOpen) return KeyEventResult.ignored;
           if (event is! KeyDownEvent) return KeyEventResult.ignored;
           if (event.logicalKey == LogicalKeyboardKey.space) {
             enter();
@@ -75,7 +114,8 @@ class WelcomeScreen extends ConsumerWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(width: 48, height: 3, color: _gold),
+                          Container(
+                              width: 48, height: 3, color: WelcomeScreen._gold),
                           const SizedBox(height: 40),
                           AnimatedSwitcher(
                             duration: const Duration(milliseconds: 560),
@@ -138,7 +178,8 @@ class WelcomeScreen extends ConsumerWidget {
                               style: TextStyle(
                                 fontSize: 10,
                                 letterSpacing: 2,
-                                color: _gold.withValues(alpha: 0.7),
+                                color:
+                                    WelcomeScreen._gold.withValues(alpha: 0.7),
                               ),
                             ),
                           ],

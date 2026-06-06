@@ -22,6 +22,8 @@ class SettingsRepository {
   static const _kAmbientVolume = 'ambientVolume';
   static const _kAmbientAutostart = 'ambientAutostart';
   static const _kNeuronBackdrop = 'neuronBackdrop';
+  static const _kUserName = 'userName';
+  static const _kUserNamePrompted = 'userNamePrompted';
 
   Future<void> _set(String key, String value) {
     return _db.into(_db.settings).insertOnConflictUpdate(
@@ -50,6 +52,16 @@ class SettingsRepository {
 
   Stream<ThemeMode> watchThemeMode() => _watch(_kThemeMode).map(_parseTheme);
   Future<void> setThemeMode(ThemeMode mode) => _set(_kThemeMode, mode.name);
+
+  Stream<String?> watchUserName() => _watch(_kUserName).map(_cleanName);
+  Future<String?> getUserName() async =>
+      _cleanName(await readValue(_kUserName));
+  Future<void> setUserName(String name) =>
+      _set(_kUserName, _cleanName(name) ?? '');
+
+  Future<bool> hasPromptedForUserName() async =>
+      (await readValue(_kUserNamePrompted)) == 'true';
+  Future<void> markUserNamePrompted() => _set(_kUserNamePrompted, 'true');
 
   Stream<int> watchWorkMinutes() => _watch(_kWorkMinutes)
       .map((v) => int.tryParse(v ?? '') ?? AppConstants.defaultWorkMinutes);
@@ -115,6 +127,12 @@ class SettingsRepository {
         'system' => ThemeMode.system,
         _ => ThemeMode.dark, // dark-first default
       };
+
+  static String? _cleanName(String? raw) {
+    final name = raw?.trim();
+    if (name == null || name.isEmpty) return null;
+    return name.length <= 40 ? name : name.substring(0, 40).trim();
+  }
 }
 
 final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
@@ -123,6 +141,10 @@ final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
 
 final themeModeProvider = StreamProvider<ThemeMode>((ref) {
   return ref.watch(settingsRepositoryProvider).watchThemeMode();
+});
+
+final userNameProvider = StreamProvider<String?>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchUserName();
 });
 
 final workMinutesProvider = StreamProvider<int>((ref) {

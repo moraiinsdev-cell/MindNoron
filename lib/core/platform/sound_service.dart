@@ -17,7 +17,7 @@ enum SoundCue {
 /// All beds are bundled offline and loop seamlessly (gaplessly) forever.
 enum AmbientSound {
   none('', 'Off'),
-  rain('assets/sounds/ambient_rain.wav', 'Rain'),
+  rain('assets/sounds/ambient_rain.wav', 'Soft rain'),
   forest('assets/sounds/ambient_forest.wav', 'Forest wind'),
   brown('assets/sounds/ambient_brown.wav', 'Brown noise'),
   warm('assets/sounds/ambient_warm.wav', 'Warm drone'),
@@ -87,8 +87,8 @@ class SoundService {
       await _stopAmbientHandle();
       final src = await _source(sound.asset);
       _ambient = sound;
-      _ambientHandle =
-          await _soloud.play(src, volume: volume.clamp(0.0, 1.0), looping: true);
+      _ambientHandle = await _soloud.play(src,
+          volume: volume.clamp(0.0, 1.0), looping: true);
     } catch (e) {
       debugPrint('SoundService.startAmbient failed: $e');
     }

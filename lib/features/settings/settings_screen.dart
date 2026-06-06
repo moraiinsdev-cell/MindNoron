@@ -9,6 +9,7 @@ import '../../data/backup/backup_service.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
+import 'user_name_dialog.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -18,6 +19,20 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  Future<void> _editName(String? currentName) async {
+    final settings = ref.read(settingsRepositoryProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    final name = await showUserNameDialog(context, currentName: currentName);
+    if (name == null) return;
+    await settings.setUserName(name);
+    await settings.markUserNamePrompted();
+    if (!mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+          content: Text(name.trim().isEmpty ? 'Name cleared' : 'Name saved')),
+    );
+  }
+
   Future<void> _backupNow() async {
     final messenger = ScaffoldMessenger.of(context);
     final file = await ref.read(backupServiceProvider).backupNow();
@@ -88,11 +103,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         AppConstants.defaultShortBreakMinutes;
     final longBreak = ref.watch(longBreakMinutesProvider).valueOrNull ??
         AppConstants.defaultLongBreakMinutes;
+    final userName = ref.watch(userNameProvider).valueOrNull;
 
     return SectionScaffold(
       title: l10n.navSettings,
       child: ListView(
         children: [
+          _SectionCard(
+            title: 'Personalization',
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.badge_outlined),
+              title: const Text('Name'),
+              subtitle: Text(userName ?? 'Not set'),
+              trailing: FilledButton.tonalIcon(
+                onPressed: () => _editName(userName),
+                icon: const Icon(Icons.edit_outlined),
+                label: Text(userName == null ? 'Set' : 'Edit'),
+              ),
+            ),
+          ),
           _SectionCard(
             title: 'Appearance',
             child: SegmentedButton<ThemeMode>(
@@ -234,13 +264,13 @@ class _SoundSettingsState extends ConsumerState<_SoundSettings> {
               Expanded(
                 child: Slider(
                   value: soundVol,
-                  onChanged:
-                      soundOn ? (v) => settings.setSoundVolume(v) : null,
+                  onChanged: soundOn ? (v) => settings.setSoundVolume(v) : null,
                 ),
               ),
               TextButton.icon(
                 onPressed: soundOn
-                    ? () => svc.playCue(SoundCue.focusComplete, volume: soundVol)
+                    ? () =>
+                        svc.playCue(SoundCue.focusComplete, volume: soundVol)
                     : null,
                 icon: const Icon(Icons.play_arrow),
                 label: const Text('Test'),

@@ -53,7 +53,8 @@ List<double> _breakComplete() {
   final total = (sampleRate * 1.6).round();
   final buf = List<double>.filled(total, 0);
   _addBell(buf, 0, 659.25, decay: 0.7, gain: 0.5); // E5
-  _addBell(buf, (sampleRate * 0.28).round(), 440.0, decay: 0.95, gain: 0.55); // A4
+  _addBell(buf, (sampleRate * 0.28).round(), 440.0,
+      decay: 0.95, gain: 0.55); // A4
   _normalize(buf, 0.72);
   return buf;
 }
@@ -63,7 +64,8 @@ List<double> _taskComplete() {
   final total = (sampleRate * 0.6).round();
   final buf = List<double>.filled(total, 0);
   _addBell(buf, 0, 880.0, decay: 0.28, gain: 0.5); // A5
-  _addBell(buf, (sampleRate * 0.05).round(), 1318.5, decay: 0.22, gain: 0.3); // E6
+  _addBell(buf, (sampleRate * 0.05).round(), 1318.5,
+      decay: 0.22, gain: 0.3); // E6
   _normalize(buf, 0.7);
   return buf;
 }
@@ -76,9 +78,7 @@ void _addBell(List<double> buf, int onset, double freq,
   for (var i = onset; i < buf.length; i++) {
     final t = (i - onset) / sampleRate;
     if (t < 0) continue;
-    final env = t < attack
-        ? (t / attack)
-        : exp(-(t - attack) / decay);
+    final env = t < attack ? (t / attack) : exp(-(t - attack) / decay);
     final sample = sin(2 * pi * freq * t) +
         0.35 * sin(2 * pi * freq * 2 * t) +
         0.12 * sin(2 * pi * freq * 3 * t);
@@ -92,45 +92,80 @@ void _addBell(List<double> buf, int onset, double freq,
 
 const double _loopSeconds = 12.0;
 
-/// Rain bed — broadband "hiss" (high-passed noise) with randomly sprinkled
-/// droplet transients and a soft low rumble. Reads as steady rainfall.
+/// Soft rain bed: a dark wet-air layer, gentle curtain noise, and warm
+/// pitter-patter droplets. The goal is "rain on a window / wet pavement",
+/// not sharp white-noise hiss.
 List<double> _ambientRain() {
   final n = (sampleRate * _loopSeconds).round();
-  final fade = (sampleRate * 0.6).round();
+  final fade = (sampleRate * 0.9).round();
   final total = n + fade;
+  final out = List<double>.filled(total, 0);
 
-  // Steady rain hiss: high-passed white noise with slow amplitude shimmer.
-  final hiss = _whiteNoise(total, 7);
-  _highPass(hiss, 0.82);
+  // Damp, low "wet air" body. This gives the rain weight without rumbling.
+  final air = _brownNoise(total, step: 0.009, leak: 0.997);
+  _lowPass(air, 0.035);
   for (var i = 0; i < total; i++) {
     final t = i / sampleRate;
-    final shimmer = 0.85 + 0.15 * sin(2 * pi * 0.5 * t);
-    hiss[i] *= 0.5 * shimmer;
+    final swell = 0.76 +
+        0.16 * sin(2 * pi * (1 / _loopSeconds) * t + 0.7) +
+        0.08 * sin(2 * pi * (3 / _loopSeconds) * t + 2.4);
+    out[i] += 0.55 * swell * air[i];
   }
 
-  // Individual droplets: short resonant noise bursts at random times.
+  // A soft rain curtain: filtered away from the painful, icy top end.
+  final curtain = _whiteNoise(total, 17);
+  _highPass(curtain, 0.5);
+  _lowPass(curtain, 0.13);
+  for (var i = 0; i < total; i++) {
+    final t = i / sampleRate;
+    final shimmer = 0.70 +
+        0.12 * sin(2 * pi * (2 / _loopSeconds) * t + 1.3) +
+        0.08 * sin(2 * pi * (5 / _loopSeconds) * t);
+    out[i] += 0.18 * shimmer * curtain[i];
+  }
+
+  // Window/pavement droplets: sparse, rounded transients in the lower-mid
+  // range. These are the little "ti tach" details.
   final rng = Random(11);
   for (var i = 0; i < total; i++) {
-    if (rng.nextDouble() < 0.004) {
-      final freq = 1800 + rng.nextDouble() * 4200;
-      final amp = 0.08 + rng.nextDouble() * 0.12;
-      final len = (sampleRate * (0.004 + rng.nextDouble() * 0.012)).round();
-      for (var j = 0; j < len && i + j < total; j++) {
-        final env = exp(-j / (len * 0.4));
-        hiss[i + j] += amp * env * sin(2 * pi * freq * (j / sampleRate));
-      }
+    if (rng.nextDouble() >= 0.00042) continue;
+
+    final freq = 420 + rng.nextDouble() * 980;
+    final amp = 0.018 + rng.nextDouble() * 0.04;
+    final len = (sampleRate * (0.012 + rng.nextDouble() * 0.035)).round();
+    for (var j = 0; j < len && i + j < total; j++) {
+      final t = j / sampleRate;
+      final attack = min(1.0, j / (sampleRate * 0.002));
+      final env = attack * exp(-j / (len * 0.32));
+      final tone =
+          sin(2 * pi * freq * t) + 0.24 * sin(2 * pi * freq * 1.7 * t + 1.2);
+      out[i + j] += amp * env * tone;
     }
   }
 
-  // Low rumble underneath for body.
-  final rumble = _whiteNoise(total, 23);
-  _lowPass(rumble, 0.02);
+  // Tiny leaf/roof ticks, kept very quiet so they sparkle without piercing.
   for (var i = 0; i < total; i++) {
-    hiss[i] += 1.6 * rumble[i];
+    if (rng.nextDouble() >= 0.00016) continue;
+
+    final freq = 1100 + rng.nextDouble() * 1300;
+    final amp = 0.006 + rng.nextDouble() * 0.014;
+    final len = (sampleRate * (0.004 + rng.nextDouble() * 0.011)).round();
+    for (var j = 0; j < len && i + j < total; j++) {
+      final t = j / sampleRate;
+      final env = exp(-j / (len * 0.28));
+      out[i + j] += amp * env * sin(2 * pi * freq * t);
+    }
   }
 
-  final loop = _crossfadeLoop(hiss, n, fade);
-  _normalize(loop, 0.72);
+  // A little distant room tone so the loop feels like weather, not static.
+  final room = _brownNoise(total, step: 0.006, leak: 0.998);
+  _lowPass(room, 0.018);
+  for (var i = 0; i < total; i++) {
+    out[i] += 0.35 * room[i];
+  }
+
+  final loop = _crossfadeLoop(out, n, fade);
+  _normalize(loop, 0.42);
   return loop;
 }
 
@@ -158,9 +193,8 @@ List<double> _ambientForest() {
   _highPass(rustle, 0.7);
   for (var i = 0; i < total; i++) {
     final t = i / sampleRate;
-    final flutter =
-        (0.5 + 0.5 * sin(2 * pi * (7 / _loopSeconds) * t)) *
-            (0.5 + 0.5 * sin(2 * pi * (13 / _loopSeconds) * t + 2.1));
+    final flutter = (0.5 + 0.5 * sin(2 * pi * (7 / _loopSeconds) * t)) *
+        (0.5 + 0.5 * sin(2 * pi * (13 / _loopSeconds) * t + 2.1));
     wind[i] += 0.18 * flutter * rustle[i];
   }
 
@@ -172,7 +206,8 @@ List<double> _ambientForest() {
 /// Brown-noise bed — like distant rain / airflow. Good for deep focus.
 List<double> _ambientBrown() {
   final n = (sampleRate * _loopSeconds).round();
-  final raw = _brownNoise(n + (sampleRate * 0.5).round(), step: 0.02, leak: 0.997);
+  final raw =
+      _brownNoise(n + (sampleRate * 0.5).round(), step: 0.02, leak: 0.997);
   final loop = _crossfadeLoop(raw, n, (sampleRate * 0.5).round());
   _normalize(loop, 0.5);
   return loop;
@@ -187,7 +222,8 @@ List<double> _ambientWarm() {
     _Partial(164.5, 0.10), // ~E3 (987 cycles)
     _Partial(55.0, 0.12), // A1 (330 cycles)
   ]);
-  final raw = _brownNoise(n + (sampleRate * 0.5).round(), step: 0.012, leak: 0.996);
+  final raw =
+      _brownNoise(n + (sampleRate * 0.5).round(), step: 0.012, leak: 0.996);
   final noise = _crossfadeLoop(raw, n, (sampleRate * 0.5).round());
   final out = List<double>.generate(n, (i) => drone[i] + 0.35 * noise[i]);
   _normalize(out, 0.6);

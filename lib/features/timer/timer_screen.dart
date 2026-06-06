@@ -4,13 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/enums.dart';
 import '../../data/database/app_database.dart';
-import '../../data/repositories/daily_log_repository.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../../data/repositories/task_repository.dart';
+import '../../data/repositories/timer_repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
 import 'ambient_control.dart';
-import 'focus_suggestion.dart';
 import 'noron_backdrop.dart';
 import 'thinking_space.dart';
 import 'timer_controller.dart';
@@ -25,6 +24,7 @@ class TimerScreen extends ConsumerStatefulWidget {
 
 class _TimerScreenState extends ConsumerState<TimerScreen> {
   String? _linkedTaskId;
+  int? _customFocusMinutes;
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +58,8 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
               );
             },
             child: snapshot.isActive
-                ? _ActiveTimer(key: const ValueKey('active'), snapshot: snapshot)
+                ? _ActiveTimer(
+                    key: const ValueKey('active'), snapshot: snapshot)
                 : KeyedSubtree(
                     key: const ValueKey('setup'), child: _setup(context)),
           ),
@@ -106,8 +107,13 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
         AppConstants.defaultShortBreakMinutes;
     final longB = ref.watch(longBreakMinutesProvider).valueOrNull ??
         AppConstants.defaultLongBreakMinutes;
-    final energy = ref.watch(todayLogProvider).valueOrNull?.energyLevel ?? 0;
-    final suggested = suggestFocusMinutes(energy, work);
+    final focusToday = ref.watch(focusMinutesTodayProvider).valueOrNull ?? 0;
+    final focusEnergy = (focusToday ~/ 60).clamp(0, 5);
+    final focusMinutes = (_customFocusMinutes ?? work).clamp(5, 120);
+
+    void setFocusMinutes(int minutes) {
+      setState(() => _customFocusMinutes = minutes.clamp(5, 120));
+    }
 
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 420),
@@ -131,24 +137,27 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
             onChanged: (v) => setState(() => _linkedTaskId = v),
           ),
           const SizedBox(height: 24),
-          if (energy > 0 && suggested != work) ...[
-            OutlinedButton.icon(
-              onPressed: () => controller.start(
-                duration: Duration(minutes: suggested),
-                linkedTaskId: _linkedTaskId,
+          if (focusToday > 0) ...[
+            InputChip(
+              avatar: const Icon(Icons.bolt, size: 18),
+              label: Text(
+                'Today: $focusEnergy/5 energy - $focusToday focused min',
               ),
-              icon: const Icon(Icons.auto_awesome, size: 18),
-              label: Text('${focusSuggestionHint(energy)} · $suggested min'),
             ),
             const SizedBox(height: 12),
           ],
+          _FocusDurationControl(
+            minutes: focusMinutes,
+            onChanged: setFocusMinutes,
+          ),
+          const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: () => controller.start(
-              duration: Duration(minutes: work),
+              duration: Duration(minutes: focusMinutes),
               linkedTaskId: _linkedTaskId,
             ),
             icon: const Icon(Icons.play_arrow),
-            label: Text('Start $work min focus'),
+            label: const Text('Start focus'),
           ),
           const SizedBox(height: 12),
           Row(
@@ -177,6 +186,64 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
   }
 }
 
+class _FocusDurationControl extends StatelessWidget {
+  const _FocusDurationControl({
+    required this.minutes,
+    required this.onChanged,
+  });
+
+  final int minutes;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: cs.outlineVariant),
+        borderRadius: BorderRadius.circular(12),
+        color: cs.surface.withValues(alpha: 0.72),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            const Icon(Icons.timer_outlined, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Focus duration', style: theme.textTheme.labelLarge),
+                  Text(
+                    '$minutes min',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton.outlined(
+              tooltip: 'Shorter',
+              onPressed: minutes <= 5 ? null : () => onChanged(minutes - 5),
+              icon: const Icon(Icons.remove),
+            ),
+            const SizedBox(width: 8),
+            IconButton.outlined(
+              tooltip: 'Longer',
+              onPressed: minutes >= 120 ? null : () => onChanged(minutes + 5),
+              icon: const Icon(Icons.add),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ActiveTimer extends ConsumerStatefulWidget {
   const _ActiveTimer({super.key, required this.snapshot});
 
@@ -198,6 +265,37 @@ class _ActiveTimerState extends ConsumerState<_ActiveTimer>
   void dispose() {
     _breath.dispose();
     super.dispose();
+  }
+
+  Future<void> _confirmStop(TimerSnapshot snapshot) async {
+    final controller = ref.read(timerControllerProvider.notifier);
+    final isBreak = snapshot.type != SessionType.work;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: Icon(isBreak ? Icons.self_improvement : Icons.lock_outline),
+        title: Text(isBreak ? 'End break early?' : 'End focus counter?'),
+        content: Text(
+          isBreak
+              ? 'Are you sure you want to stop now? You should rest the full break so your mind can recover for the next block. Cutting it short may make the next focus weaker.'
+              : 'Are you sure you want to stop now? Do not quit the block just because resistance got loud. If this is not truly necessary, stay locked in and finish the counter.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(isBreak ? 'Keep resting' : 'Keep focusing'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(isBreak ? 'Stop break' : 'Stop focus'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await controller.stop();
+    }
   }
 
   @override
@@ -252,9 +350,10 @@ class _ActiveTimerState extends ConsumerState<_ActiveTimer>
         const SizedBox(height: 14),
         Text(
           isBreak
-              ? 'Breathe — let your mind wander.'
+              ? 'Breathe - let your mind wander.'
               : 'Stay with the one thing.',
-          style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          style:
+              theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
         ),
         const SizedBox(height: 20),
         Row(
@@ -274,9 +373,9 @@ class _ActiveTimerState extends ConsumerState<_ActiveTimer>
               ),
             const SizedBox(width: 12),
             OutlinedButton.icon(
-              onPressed: controller.stop,
+              onPressed: () => _confirmStop(snapshot),
               icon: const Icon(Icons.stop),
-              label: const Text('End'),
+              label: const Text('Stop'),
             ),
           ],
         ),

@@ -11,6 +11,7 @@ import 'core/platform/single_instance.dart';
 import 'core/platform/tray_service.dart';
 import 'core/platform/window_service.dart';
 import 'data/backup/backup_service.dart';
+import 'data/repositories/settings_repository.dart';
 import 'data/repositories/task_repository.dart';
 import 'features/capture/capture_dialog.dart';
 import 'features/tasks/task_urgency.dart';
@@ -63,12 +64,21 @@ Future<void> _remindStaleTasksOnLaunch() async {
     if (stale.isEmpty) return;
     final top = stale.first;
     final others = stale.length - 1;
+    final userName =
+        await _container.read(settingsRepositoryProvider).getUserName();
+    final namePrefix = userName == null ? '' : '$userName, ';
+    final wrapUp = userName == null
+        ? 'Time to wrap them up.'
+        : 'Time to wrap them up, $userName.';
+    final wrapOne = userName == null
+        ? 'Time to wrap it up.'
+        : 'Time to wrap it up, $userName.';
     await NotificationService.show(
       title:
-          '${stale.length} task${stale.length == 1 ? '' : 's'} need attention',
+          '$namePrefix${stale.length} task${stale.length == 1 ? '' : 's'} need attention',
       body: others > 0
-          ? "'${top.title}' + $others more have been waiting. Time to wrap them up."
-          : "'${top.title}' has been waiting a while. Time to wrap it up.",
+          ? "'${top.title}' + $others more have been waiting. $wrapUp"
+          : "'${top.title}' has been waiting a while. $wrapOne",
     );
   } catch (_) {}
 }

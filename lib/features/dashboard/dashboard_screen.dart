@@ -1,14 +1,15 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/enums.dart';
 import '../../core/utils/greeting.dart';
 import '../../data/database/app_database.dart';
-import '../../data/repositories/daily_log_repository.dart';
+import '../../data/repositories/settings_repository.dart';
 import '../../data/repositories/task_repository.dart';
 import '../../data/repositories/timer_repository.dart';
 import '../../l10n/app_localizations.dart';
+import '../../presentation/navigation/app_router.dart';
 import '../../presentation/widgets/common/copy_button.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
 import '../capture/capture_dialog.dart';
@@ -23,6 +24,7 @@ class DashboardScreen extends ConsumerWidget {
     final now = DateTime.now();
     final focus = ref.watch(focusMinutesTodayProvider).valueOrNull ?? 0;
     final doneToday = ref.watch(completedTodayCountProvider).valueOrNull ?? 0;
+    final userName = ref.watch(userNameProvider).valueOrNull;
     final List<Task> topTasks =
         (ref.watch(openTasksProvider).valueOrNull ?? const <Task>[])
             .take(5)
@@ -30,7 +32,7 @@ class DashboardScreen extends ConsumerWidget {
     final quote = ref.watch(randomQuoteProvider);
 
     return SectionScaffold(
-      title: greetingFor(l10n, now),
+      title: personalizedGreetingFor(l10n, now: now, userName: userName),
       subtitle: '${now.month}/${now.day}/${now.year}',
       actions: [
         FilledButton.icon(
@@ -71,7 +73,7 @@ class DashboardScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 24),
-          const _EnergyCheckIn(),
+          _FocusEnergyCard(focusMinutes: focus),
           const SizedBox(height: 28),
           Text(l10n.topPriorities,
               style: Theme.of(context).textTheme.titleMedium),
@@ -106,123 +108,145 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-class _EnergyCheckIn extends ConsumerWidget {
-  const _EnergyCheckIn();
+class _FocusEnergyCard extends StatelessWidget {
+  const _FocusEnergyCard({required this.focusMinutes});
+
+  static const _unitMinutes = 60;
+  static const _dailyGoalMinutes = 5 * _unitMinutes;
+
+  final int focusMinutes;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final current = ref.watch(todayLogProvider).valueOrNull?.energyLevel ?? 0;
-    final history =
-        ref.watch(energyHistoryProvider).valueOrNull ?? const <DailyLog>[];
-    final spots = <FlSpot>[
-      for (var i = 0; i < history.length; i++)
-        FlSpot(i.toDouble(), (history[i].energyLevel ?? 0).toDouble()),
-    ];
+    final energy = (focusMinutes ~/ _unitMinutes).clamp(0, 5);
+    final minutesToNext =
+        energy >= 5 ? 0 : _unitMinutes - (focusMinutes % _unitMinutes);
+    final status = energy >= 5
+        ? 'Daily focus goal complete'
+        : '$minutesToNext min to next energy';
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Expanded(child: Text("Today's energy")),
-                for (var i = 1; i <= 5; i++)
-                  IconButton(
-                    tooltip: '$i',
-                    onPressed: () =>
-                        ref.read(dailyLogRepositoryProvider).setEnergy(i),
-                    icon: Icon(
-                      i <= current ? Icons.bolt : Icons.bolt_outlined,
-                      color: i <= current ? cs.primary : cs.outline,
-                    ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Today's focus energy",
+                          style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 4),
+                      Text(
+                        '1 energy = 60 focused minutes. 5 energy = a complete focus day.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+                const SizedBox(width: 12),
+                FilledButton.tonalIcon(
+                  onPressed: () => context.go(Routes.timer),
+                  icon: const Icon(Icons.timer_outlined),
+                  label: const Text('Focus'),
+                ),
               ],
             ),
-            if (spots.length >= 2) ...[
-              const SizedBox(height: 2),
-              Row(
-                children: [
-                  SizedBox(
-                    height: 34,
-                    width: 130,
-                    child: _EnergySparkline(spots: spots, color: cs.primary),
+            const SizedBox(height: 18),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '$energy/5',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(child: _trend(theme, spots)),
+                ),
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Text(
+                    'energy charged',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                for (var i = 0; i < 5; i++) ...[
+                  Expanded(
+                    child: _EnergySegment(
+                      value:
+                          ((focusMinutes - (i * _unitMinutes)) / _unitMinutes)
+                              .clamp(0.0, 1.0),
+                    ),
+                  ),
+                  if (i < 4) const SizedBox(width: 6),
                 ],
-              ),
-              const SizedBox(height: 6),
-            ],
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.bolt, size: 18, color: cs.primary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '$focusMinutes / $_dailyGoalMinutes focused minutes - $status',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
     );
   }
-
-  Widget _trend(ThemeData theme, List<FlSpot> spots) {
-    final last = spots.last.y;
-    final priors = spots.sublist(0, spots.length - 1);
-    final avg = priors.map((s) => s.y).reduce((a, b) => a + b) / priors.length;
-    final (IconData icon, String label, Color color) = last > avg + 0.3
-        ? (Icons.trending_up, 'Trending up', const Color(0xFF22C55E))
-        : last < avg - 0.3
-            ? (Icons.trending_down, 'Easing down', const Color(0xFFF59E0B))
-            : (
-                Icons.trending_flat,
-                'Holding steady',
-                theme.colorScheme.onSurfaceVariant
-              );
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text(
-            '$label · last ${spots.length} check-ins',
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
 }
 
-class _EnergySparkline extends StatelessWidget {
-  const _EnergySparkline({required this.spots, required this.color});
+class _EnergySegment extends StatelessWidget {
+  const _EnergySegment({required this.value});
 
-  final List<FlSpot> spots;
-  final Color color;
+  final double value;
 
   @override
   Widget build(BuildContext context) {
-    return LineChart(
-      LineChartData(
-        minY: 1,
-        maxY: 5,
-        minX: spots.first.x,
-        maxX: spots.last.x,
-        gridData: const FlGridData(show: false),
-        titlesData: const FlTitlesData(show: false),
-        borderData: FlBorderData(show: false),
-        lineTouchData: const LineTouchData(enabled: false),
-        lineBarsData: [
-          LineChartBarData(
-            spots: spots,
-            isCurved: true,
-            curveSmoothness: 0.3,
-            color: color,
-            barWidth: 2,
-            dotData: const FlDotData(show: false),
-            belowBarData:
-                BarAreaData(show: true, color: color.withValues(alpha: 0.12)),
-          ),
-        ],
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 10,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(999),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: cs.surfaceContainerHighest),
+              ),
+            ),
+            FractionallySizedBox(
+              widthFactor: value,
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: cs.primary),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/repositories/inbox_repository.dart';
+import '../../data/repositories/task_repository.dart';
 import '../../features/capture/capture_dialog.dart';
 import '../../features/command_palette/command_palette.dart';
 import '../../l10n/app_localizations.dart';
@@ -9,7 +12,7 @@ import '../navigation/app_router.dart';
 
 /// Persistent desktop shell: a left navigation rail + the active screen.
 /// Ctrl+K opens the command palette from anywhere in the app.
-class AppShell extends StatelessWidget {
+class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.child});
 
   final Widget child;
@@ -31,9 +34,17 @@ class AppShell extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final location = GoRouterState.of(context).matchedLocation;
+    final openTaskCount = ref.watch(openTasksProvider).maybeWhen(
+          data: (tasks) => tasks.length,
+          orElse: () => 0,
+        );
+    final inboxUnreadCount = ref.watch(unprocessedInboxProvider).maybeWhen(
+          data: (items) => items.length,
+          orElse: () => 0,
+        );
 
     return CallbackShortcuts(
       bindings: {
@@ -67,8 +78,16 @@ class AppShell extends StatelessWidget {
                     label: Text(l10n.navDashboard),
                   ),
                   NavigationRailDestination(
-                    icon: const Icon(Icons.check_circle_outline),
-                    selectedIcon: const Icon(Icons.check_circle),
+                    icon: _BadgedRailIcon(
+                      icon: Icons.check_circle_outline,
+                      count: openTaskCount,
+                      tooltip: '$openTaskCount open tasks',
+                    ),
+                    selectedIcon: _BadgedRailIcon(
+                      icon: Icons.check_circle,
+                      count: openTaskCount,
+                      tooltip: '$openTaskCount open tasks',
+                    ),
                     label: Text(l10n.navTasks),
                   ),
                   NavigationRailDestination(
@@ -77,8 +96,16 @@ class AppShell extends StatelessWidget {
                     label: Text(l10n.navTimer),
                   ),
                   NavigationRailDestination(
-                    icon: const Icon(Icons.inbox_outlined),
-                    selectedIcon: const Icon(Icons.inbox),
+                    icon: _BadgedRailIcon(
+                      icon: Icons.inbox_outlined,
+                      count: inboxUnreadCount,
+                      tooltip: '$inboxUnreadCount unread inbox items',
+                    ),
+                    selectedIcon: _BadgedRailIcon(
+                      icon: Icons.inbox,
+                      count: inboxUnreadCount,
+                      tooltip: '$inboxUnreadCount unread inbox items',
+                    ),
                     label: Text(l10n.navInbox),
                   ),
                   NavigationRailDestination(
@@ -107,6 +134,73 @@ class AppShell extends StatelessWidget {
               Expanded(child: child),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BadgedRailIcon extends StatelessWidget {
+  const _BadgedRailIcon({
+    required this.icon,
+    required this.count,
+    required this.tooltip,
+  });
+
+  final IconData icon;
+  final int count;
+  final String tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final badgeLabel = count > 99 ? '99+' : '$count';
+
+    return Tooltip(
+      message: tooltip,
+      child: SizedBox(
+        width: 36,
+        height: 32,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            Icon(icon),
+            Positioned(
+              top: 0,
+              right: 0,
+              child: AnimatedScale(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                scale: count > 0 ? 1 : 0,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.error,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: theme.colorScheme.surface,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 1,
+                    ),
+                    child: Text(
+                      badgeLabel,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onError,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

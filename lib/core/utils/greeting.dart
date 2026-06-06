@@ -8,3 +8,14 @@ String greetingFor(AppLocalizations l10n, [DateTime? now]) {
   if (hour >= 18 && hour < 23) return l10n.greetingEvening;
   return l10n.greetingNight;
 }
+
+String personalizedGreetingFor(
+  AppLocalizations l10n, {
+  DateTime? now,
+  String? userName,
+}) {
+  final greeting = greetingFor(l10n, now);
+  final name = userName?.trim();
+  if (name == null || name.isEmpty) return greeting;
+  return '$greeting, $name';
+}

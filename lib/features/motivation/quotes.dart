@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/settings_repository.dart';
 
+part 'quote_library.g.dart';
+
 /// A motivational line shown on the welcome splash and the dashboard.
 class Quote {
   const Quote(this.text, this.author);
@@ -43,10 +45,18 @@ class _StoredQuoteDeck {
   final int? lastQuoteIndex;
 }
 
-/// Original, app-safe motivation lines. Order does not matter; the daily deck
+/// Full motivation pool. Verified source-backed quotes are loaded first, then
+/// the large raw generated library, then the small legacy inline set.
+const List<Quote> motivationQuotes = <Quote>[
+  ..._verifiedContentMotivationQuotes,
+  ..._rawGeneratedMotivationQuotes,
+  ..._legacyInlineMotivationQuotes,
+];
+
+/// Original, app-safe legacy motivation lines. Order does not matter; the daily deck
 /// shuffles indexes and persists progress so viewed lines are not repeated
 /// during the same day unless the full pool has already been exhausted.
-const List<Quote> motivationQuotes = <Quote>[
+const List<Quote> _legacyInlineMotivationQuotes = <Quote>[
   Quote("Lock in before the day starts bargaining with you.", "MindNoron"),
   Quote(
       "The first clean minute of focus can rescue the whole day.", "MindNoron"),
