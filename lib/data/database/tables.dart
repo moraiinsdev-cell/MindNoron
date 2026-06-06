@@ -116,6 +116,18 @@ class Notes extends Table with SyncBase {
   Set<Column> get primaryKey => {id};
 }
 
+/// Stream-of-consciousness notes captured during (or outside) a focus/break
+/// session — the "thinking flow" of the noron space.
+class Thoughts extends Table with SyncBase {
+  TextColumn get content => text()();
+  TextColumn get sessionType => text()
+      .withDefault(const Constant('none'))(); // work|short_break|long_break|none
+  TextColumn get linkedTaskId => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// Simple key/value store for [AppSettings] (timer durations, theme, hotkey...).
 class Settings extends Table {
   TextColumn get key => text()();

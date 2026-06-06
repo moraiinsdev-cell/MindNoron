@@ -10,6 +10,7 @@ import '../../data/repositories/task_repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
 import 'focus_suggestion.dart';
+import 'thinking_space.dart';
 import 'timer_controller.dart';
 import 'timer_engine.dart';
 
@@ -28,27 +29,54 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
     final l10n = AppLocalizations.of(context);
     final snapshot = ref.watch(timerControllerProvider);
 
+    final timerArea = Center(
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 360),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.985, end: 1).animate(animation),
+              child: child,
+            ),
+          );
+        },
+        child: snapshot.isActive
+            ? _ActiveTimer(key: const ValueKey('active'), snapshot: snapshot)
+            : KeyedSubtree(
+                key: const ValueKey('setup'), child: _setup(context)),
+      ),
+    );
+
     return SectionScaffold(
       title: l10n.navTimer,
-      child: Center(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 360),
-          switchInCurve: Curves.easeOutCubic,
-          switchOutCurve: Curves.easeInCubic,
-          transitionBuilder: (child, animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(
-                scale: Tween<double>(begin: 0.985, end: 1).animate(animation),
-                child: child,
-              ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final thinking = ThinkingSpace(
+            sessionType: snapshot.isActive ? snapshot.type : null,
+            linkedTaskId:
+                snapshot.isActive ? snapshot.linkedTaskId : _linkedTaskId,
+          );
+          if (constraints.maxWidth >= 760) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: timerArea),
+                const SizedBox(width: 20),
+                SizedBox(width: 360, child: thinking),
+              ],
             );
-          },
-          child: snapshot.isActive
-              ? _ActiveTimer(key: const ValueKey('active'), snapshot: snapshot)
-              : KeyedSubtree(
-                  key: const ValueKey('setup'), child: _setup(context)),
-        ),
+          }
+          return Column(
+            children: [
+              SizedBox(height: 300, child: timerArea),
+              const SizedBox(height: 16),
+              Expanded(child: thinking),
+            ],
+          );
+        },
       ),
     );
   }

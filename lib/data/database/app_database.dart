@@ -20,6 +20,7 @@ part 'app_database.g.dart';
     Notes,
     Habits,
     HabitCompletions,
+    Thoughts,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -29,7 +30,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -49,6 +50,10 @@ class AppDatabase extends _$AppDatabase {
           // v4: subtasks — a task can point to a parent task.
           if (from < 4) {
             await m.addColumn(tasks, tasks.parentTaskId);
+          }
+          // v5: thoughts — the noron-space thinking flow.
+          if (from < 5) {
+            await m.createTable(thoughts);
           }
         },
         beforeOpen: (details) async {
