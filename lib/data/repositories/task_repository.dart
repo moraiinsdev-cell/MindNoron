@@ -122,6 +122,26 @@ class TaskRepository {
         .watch();
   }
 
+  /// Tasks completed on/after [since] — backs the weekly recap archive.
+  Stream<List<Task>> watchCompletedSince(DateTime since) {
+    return (_db.select(_db.tasks)
+          ..where((t) =>
+              t.deletedAt.isNull() &
+              t.completedAt.isBiggerOrEqualValue(since))
+          ..orderBy([(t) => OrderingTerm.desc(t.completedAt)]))
+        .watch();
+  }
+
+  /// One-shot fetch of top-level open tasks (for the launch reminder).
+  Future<List<Task>> getOpen() {
+    return (_db.select(_db.tasks)
+          ..where((t) =>
+              t.deletedAt.isNull() &
+              t.status.isNotIn(_openStatuses) &
+              t.parentTaskId.isNull()))
+        .get();
+  }
+
   /// Open tasks due today or overdue.
   Stream<List<Task>> watchToday() {
     final end = AppDateUtils.endOfDay(DateTime.now());
@@ -176,4 +196,10 @@ final completedTodayCountProvider = StreamProvider<int>((ref) {
 final subtasksProvider =
     StreamProvider.family<List<Task>, String>((ref, parentId) {
   return ref.watch(taskRepositoryProvider).watchSubtasks(parentId);
+});
+
+/// Tasks completed in the last 7 days (weekly recap archive).
+final recentlyCompletedProvider = StreamProvider<List<Task>>((ref) {
+  final since = DateTime.now().subtract(const Duration(days: 7));
+  return ref.watch(taskRepositoryProvider).watchCompletedSince(since);
 });

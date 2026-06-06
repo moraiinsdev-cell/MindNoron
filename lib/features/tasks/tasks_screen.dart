@@ -12,6 +12,8 @@ import '../../presentation/widgets/common/celebration_checkbox.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
 import 'task_urgency.dart';
 
+enum _TaskView { open, today, done }
+
 class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
 
@@ -21,7 +23,7 @@ class TasksScreen extends ConsumerStatefulWidget {
 
 class _TasksScreenState extends ConsumerState<TasksScreen> {
   final _addController = TextEditingController();
-  bool _todayOnly = false;
+  _TaskView _view = _TaskView.open;
 
   @override
   void dispose() {
@@ -39,71 +41,77 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final tasksAsync =
-        _todayOnly ? ref.watch(todayTasksProvider) : ref.watch(openTasksProvider);
 
     return SectionScaffold(
       title: l10n.navTasks,
       actions: [
-        SegmentedButton<bool>(
+        SegmentedButton<_TaskView>(
           segments: const [
-            ButtonSegment(value: false, label: Text('Open')),
-            ButtonSegment(value: true, label: Text('Today')),
+            ButtonSegment(value: _TaskView.open, label: Text('Open')),
+            ButtonSegment(value: _TaskView.today, label: Text('Today')),
+            ButtonSegment(value: _TaskView.done, label: Text('Done')),
           ],
-          selected: {_todayOnly},
-          onSelectionChanged: (s) => setState(() => _todayOnly = s.first),
+          selected: {_view},
+          onSelectionChanged: (s) => setState(() => _view = s.first),
         ),
       ],
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _addController,
-                  onSubmitted: (_) => _add(),
-                  decoration: const InputDecoration(
-                    hintText: 'Add a task... (Enter to save)',
-                    prefixIcon: Icon(Icons.add),
-                  ),
+      child: _view == _TaskView.done
+          ? const _CompletedArchive()
+          : Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _addController,
+                        onSubmitted: (_) => _add(),
+                        decoration: const InputDecoration(
+                          hintText: 'Add a task... (Enter to save)',
+                          prefixIcon: Icon(Icons.add),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    FilledButton(onPressed: _add, child: const Text('Add')),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 12),
-              FilledButton(onPressed: _add, child: const Text('Add')),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: tasksAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Could not load tasks: $e')),
-              data: (tasks) {
-                if (tasks.isEmpty) {
-                  return const ComingSoon(label: 'No tasks yet');
-                }
-                final now = DateTime.now();
-                // Long-neglected tasks bubble to the top, then priority/due.
-                final sorted = [...tasks]..sort((a, b) {
-                    final ua = taskUrgency(a, now);
-                    final ub = taskUrgency(b, now);
-                    if (ua != ub) return ub - ua;
-                    if (a.priority != b.priority) return a.priority - b.priority;
-                    final ad = a.dueDate, bd = b.dueDate;
-                    if (ad != null && bd != null) return ad.compareTo(bd);
-                    if (ad != null) return -1;
-                    if (bd != null) return 1;
-                    return a.createdAt.compareTo(b.createdAt);
-                  });
-                return ListView.separated(
-                  itemCount: sorted.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (_, i) => _TaskTile(task: sorted[i]),
-                );
-              },
+                const SizedBox(height: 16),
+                Expanded(child: _buildOpenList()),
+              ],
             ),
-          ),
-        ],
-      ),
+    );
+  }
+
+  Widget _buildOpenList() {
+    final tasksAsync = _view == _TaskView.today
+        ? ref.watch(todayTasksProvider)
+        : ref.watch(openTasksProvider);
+    return tasksAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Could not load tasks: $e')),
+      data: (tasks) {
+        if (tasks.isEmpty) {
+          return const ComingSoon(label: 'No tasks yet');
+        }
+        final now = DateTime.now();
+        // Long-neglected tasks bubble to the top, then priority/due.
+        final sorted = [...tasks]..sort((a, b) {
+            final ua = taskUrgency(a, now);
+            final ub = taskUrgency(b, now);
+            if (ua != ub) return ub - ua;
+            if (a.priority != b.priority) return a.priority - b.priority;
+            final ad = a.dueDate, bd = b.dueDate;
+            if (ad != null && bd != null) return ad.compareTo(bd);
+            if (ad != null) return -1;
+            if (bd != null) return 1;
+            return a.createdAt.compareTo(b.createdAt);
+          });
+        return ListView.separated(
+          itemCount: sorted.length,
+          separatorBuilder: (_, __) => const Divider(height: 1),
+          itemBuilder: (_, i) => _TaskTile(task: sorted[i]),
+        );
+      },
     );
   }
 }
@@ -342,6 +350,97 @@ class _SubtaskRow extends StatelessWidget {
           onPressed: onDelete,
         ),
       ],
+    );
+  }
+}
+
+/// Weekly recap: tasks completed in the last 7 days, grouped by day. Each can
+/// be unchecked to send it back to the to-do list (e.g. if checked by mistake).
+class _CompletedArchive extends ConsumerWidget {
+  const _CompletedArchive();
+
+  static const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  String _dayLabel(DateTime day, DateTime now) {
+    final today = DateTime(now.year, now.month, now.day);
+    final diff = today.difference(day).inDays;
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+    return '${_weekdays[day.weekday - 1]} ${day.month}/${day.day}';
+  }
+
+  String _time(DateTime t) {
+    final h = t.hour % 12 == 0 ? 12 : t.hour % 12;
+    final m = t.minute.toString().padLeft(2, '0');
+    return '$h:$m ${t.hour < 12 ? 'AM' : 'PM'}';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final async = ref.watch(recentlyCompletedProvider);
+
+    return async.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Could not load archive: $e')),
+      data: (tasks) {
+        if (tasks.isEmpty) {
+          return const ComingSoon(
+              label: 'Nothing completed in the last 7 days yet');
+        }
+        final now = DateTime.now();
+        final groups = <DateTime, List<Task>>{};
+        for (final t in tasks) {
+          final c = t.completedAt;
+          if (c == null) continue;
+          (groups[DateTime(c.year, c.month, c.day)] ??= []).add(t);
+        }
+        final days = groups.keys.toList()..sort((a, b) => b.compareTo(a));
+        final repo = ref.read(taskRepositoryProvider);
+
+        return ListView(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 6),
+              child: Text('${tasks.length} completed in the last 7 days',
+                  style: theme.textTheme.titleMedium),
+            ),
+            Text(
+              'Uncheck anything finished by mistake to send it back to your to-do list.',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: cs.onSurfaceVariant),
+            ),
+            for (final day in days) ...[
+              Padding(
+                padding: const EdgeInsets.only(top: 16, bottom: 2),
+                child: Text(_dayLabel(day, now),
+                    style: theme.textTheme.labelLarge
+                        ?.copyWith(color: cs.primary)),
+              ),
+              for (final t in groups[day]!)
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                  leading: CelebrationCheckbox(
+                    value: true,
+                    color: cs.primary,
+                    onChanged: (_) => repo.toggleDone(t),
+                  ),
+                  title: Text(
+                    t.title,
+                    style: TextStyle(
+                      decoration: TextDecoration.lineThrough,
+                      color: cs.outline,
+                    ),
+                  ),
+                  trailing: Text(_time(t.completedAt!),
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant)),
+                ),
+            ],
+          ],
+        );
+      },
     );
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
@@ -9,7 +11,9 @@ import 'core/platform/single_instance.dart';
 import 'core/platform/tray_service.dart';
 import 'core/platform/window_service.dart';
 import 'data/backup/backup_service.dart';
+import 'data/repositories/task_repository.dart';
 import 'features/capture/capture_dialog.dart';
+import 'features/tasks/task_urgency.dart';
 import 'presentation/navigation/app_router.dart';
 
 late final ProviderContainer _container;
@@ -41,6 +45,32 @@ Future<void> main() async {
       child: const MindNoronApp(),
     ),
   );
+
+  // Nudge about long-neglected tasks shortly after the window is up.
+  unawaited(_remindStaleTasksOnLaunch());
+}
+
+/// On launch, surface a desktop reminder if open tasks have been sitting too
+/// long (urgency >= 2). Best-effort: never blocks or crashes startup.
+Future<void> _remindStaleTasksOnLaunch() async {
+  try {
+    final repo = _container.read(taskRepositoryProvider);
+    final now = DateTime.now();
+    final stale = (await repo.getOpen())
+        .where((t) => taskUrgency(t, now) >= 2)
+        .toList()
+      ..sort((a, b) => taskUrgency(b, now).compareTo(taskUrgency(a, now)));
+    if (stale.isEmpty) return;
+    final top = stale.first;
+    final others = stale.length - 1;
+    await NotificationService.show(
+      title:
+          '${stale.length} task${stale.length == 1 ? '' : 's'} need attention',
+      body: others > 0
+          ? "'${top.title}' + $others more have been waiting. Time to wrap them up."
+          : "'${top.title}' has been waiting a while. Time to wrap it up.",
+    );
+  } catch (_) {}
 }
 
 /// Summon the window and open Quick Capture (from the global hotkey or tray).
