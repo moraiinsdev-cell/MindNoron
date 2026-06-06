@@ -10,6 +10,7 @@ import '../../data/repositories/task_repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
 import 'focus_suggestion.dart';
+import 'noron_backdrop.dart';
 import 'thinking_space.dart';
 import 'timer_controller.dart';
 import 'timer_engine.dart';
@@ -28,26 +29,40 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final snapshot = ref.watch(timerControllerProvider);
+    final cs = Theme.of(context).colorScheme;
+    final backdropOn = ref.watch(neuronBackdropProvider).valueOrNull ?? true;
+    final isBreak = snapshot.isActive && snapshot.type != SessionType.work;
 
-    final timerArea = Center(
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 360),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) {
-          return FadeTransition(
-            opacity: animation,
-            child: ScaleTransition(
-              scale: Tween<double>(begin: 0.985, end: 1).animate(animation),
-              child: child,
+    final timerArea = Stack(
+      children: [
+        if (backdropOn)
+          Positioned.fill(
+            child: NoronBackdrop(
+              color: isBreak ? cs.secondary : cs.primary,
+              intensity: snapshot.isActive ? 1.0 : 0.55,
             ),
-          );
-        },
-        child: snapshot.isActive
-            ? _ActiveTimer(key: const ValueKey('active'), snapshot: snapshot)
-            : KeyedSubtree(
-                key: const ValueKey('setup'), child: _setup(context)),
-      ),
+          ),
+        Center(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 360),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.985, end: 1).animate(animation),
+                  child: child,
+                ),
+              );
+            },
+            child: snapshot.isActive
+                ? _ActiveTimer(key: const ValueKey('active'), snapshot: snapshot)
+                : KeyedSubtree(
+                    key: const ValueKey('setup'), child: _setup(context)),
+          ),
+        ),
+      ],
     );
 
     return SectionScaffold(

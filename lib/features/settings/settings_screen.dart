@@ -214,6 +214,7 @@ class _SoundSettingsState extends ConsumerState<_SoundSettings> {
     final ambientVol = ref.watch(ambientVolumeProvider).valueOrNull ??
         AppConstants.defaultAmbientVolume;
     final autostart = ref.watch(ambientAutostartProvider).valueOrNull ?? false;
+    final backdrop = ref.watch(neuronBackdropProvider).valueOrNull ?? true;
 
     return _SectionCard(
       title: 'Sound & focus space',
@@ -305,6 +306,15 @@ class _SoundSettingsState extends ConsumerState<_SoundSettings> {
                 const Text('Start the soundscape when a focus/break begins'),
             value: autostart,
             onChanged: settings.setAmbientAutostart,
+          ),
+          const Divider(height: 28),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Noron-space backdrop'),
+            subtitle: const Text(
+                'Animated neuron field behind the focus timer (turn off to reduce motion)'),
+            value: backdrop,
+            onChanged: settings.setNeuronBackdrop,
           ),
         ],
       ),

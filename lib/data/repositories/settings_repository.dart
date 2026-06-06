@@ -21,6 +21,7 @@ class SettingsRepository {
   static const _kAmbientSound = 'ambientSound';
   static const _kAmbientVolume = 'ambientVolume';
   static const _kAmbientAutostart = 'ambientAutostart';
+  static const _kNeuronBackdrop = 'neuronBackdrop';
 
   Future<void> _set(String key, String value) {
     return _db.into(_db.settings).insertOnConflictUpdate(
@@ -103,6 +104,12 @@ class SettingsRepository {
   Future<bool> getAmbientAutostart() async =>
       (await readValue(_kAmbientAutostart)) == 'true';
 
+  // --- Noron-space animated backdrop --------------------------------------
+
+  Stream<bool> watchNeuronBackdrop() =>
+      _watch(_kNeuronBackdrop).map((v) => v != 'false'); // default on
+  Future<void> setNeuronBackdrop(bool v) => _set(_kNeuronBackdrop, '$v');
+
   static ThemeMode _parseTheme(String? v) => switch (v) {
         'light' => ThemeMode.light,
         'system' => ThemeMode.system,
@@ -148,4 +155,8 @@ final ambientVolumeProvider = StreamProvider<double>((ref) {
 
 final ambientAutostartProvider = StreamProvider<bool>((ref) {
   return ref.watch(settingsRepositoryProvider).watchAmbientAutostart();
+});
+
+final neuronBackdropProvider = StreamProvider<bool>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchNeuronBackdrop();
 });
