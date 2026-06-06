@@ -8,6 +8,7 @@ import '../../data/repositories/daily_log_repository.dart';
 import '../../data/repositories/task_repository.dart';
 import '../../data/repositories/timer_repository.dart';
 import '../../l10n/app_localizations.dart';
+import '../../presentation/widgets/common/copy_button.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
 import '../capture/capture_dialog.dart';
 import '../motivation/quotes.dart';
@@ -87,7 +88,13 @@ class DashboardScreen extends ConsumerWidget {
                           color: Priority.color(
                               t.priority, Theme.of(context).colorScheme)),
                       title: Text(t.title),
-                      trailing: Text(Priority.label(t.priority)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CopyIconButton(text: t.title),
+                          Text(Priority.label(t.priority)),
+                        ],
+                      ),
                     ),
                 ],
               ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database/app_database.dart';
@@ -133,6 +134,19 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
         );
   }
 
+  Future<void> _copyAll() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final text = '${_title.text}\n\n${_content.text}'.trim();
+    await Clipboard.setData(ClipboardData(text: text));
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('Note copied to clipboard'),
+        duration: Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -140,6 +154,14 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: _copyAll,
+              icon: const Icon(Icons.copy_outlined, size: 18),
+              label: const Text('Copy'),
+            ),
+          ),
           TextField(
             controller: _title,
             style: Theme.of(context).textTheme.titleLarge,

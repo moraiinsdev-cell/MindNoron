@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/inbox_repository.dart';
 import '../../data/repositories/task_repository.dart';
 import '../../l10n/app_localizations.dart';
+import '../../presentation/widgets/common/copy_button.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
 import '../capture/capture_dialog.dart';
 
@@ -50,6 +51,7 @@ class InboxScreen extends ConsumerWidget {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    CopyIconButton(text: item.content),
                     TextButton.icon(
                       icon: const Icon(Icons.check_circle_outline, size: 18),
                       label: const Text('Make task'),
