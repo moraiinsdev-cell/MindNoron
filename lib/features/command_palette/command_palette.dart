@@ -12,9 +12,27 @@ import '../timer/timer_controller.dart';
 
 /// Linear/Notion-style command palette. Summoned with Ctrl+K.
 Future<void> showCommandPalette(BuildContext context) {
-  return showDialog<void>(
+  return showGeneralDialog<void>(
     context: context,
-    builder: (_) => const CommandPalette(),
+    barrierDismissible: true,
+    barrierLabel: 'Close command palette',
+    barrierColor: Colors.black.withValues(alpha: 0.36),
+    transitionDuration: const Duration(milliseconds: 180),
+    pageBuilder: (_, __, ___) => const CommandPalette(),
+    transitionBuilder: (_, animation, __, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return FadeTransition(
+        opacity: curved,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.985, end: 1).animate(curved),
+          child: child,
+        ),
+      );
+    },
   );
 }
 

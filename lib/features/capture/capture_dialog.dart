@@ -9,10 +9,27 @@ import '../../l10n/app_localizations.dart';
 /// menu, and the in-app capture button.
 Future<void> showCaptureDialog(BuildContext context,
     {String source = 'manual'}) {
-  return showDialog<void>(
+  return showGeneralDialog<void>(
     context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Close quick capture',
     barrierColor: Colors.black.withValues(alpha: 0.4),
-    builder: (_) => CaptureDialog(source: source),
+    transitionDuration: const Duration(milliseconds: 180),
+    pageBuilder: (_, __, ___) => CaptureDialog(source: source),
+    transitionBuilder: (_, animation, __, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return FadeTransition(
+        opacity: curved,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.98, end: 1).animate(curved),
+          child: child,
+        ),
+      );
+    },
   );
 }
 
@@ -54,7 +71,6 @@ class _CaptureDialogState extends ConsumerState<CaptureDialog> {
             Navigator.of(context).maybePop(),
       },
       child: Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 560),
           child: Padding(

@@ -67,6 +67,16 @@ See [PLAN.md](PLAN.md) for the full product spec and roadmap.
 
 ## Run Locally
 
+The quickest way on Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tool\open_app.ps1
+```
+
+That script builds the debug Windows app if needed, then opens it.
+
+Manual run:
+
 ```powershell
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs

@@ -20,9 +20,12 @@ class SectionScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final width = MediaQuery.sizeOf(context).width;
+    final horizontalPadding = width < 720 ? 18.0 : 28.0;
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(28, 24, 28, 16),
+        padding:
+            EdgeInsets.fromLTRB(horizontalPadding, 24, horizontalPadding, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -46,7 +49,23 @@ class SectionScaffold extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-            Expanded(child: child),
+            Expanded(
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOutCubic,
+                builder: (_, t, content) {
+                  return Opacity(
+                    opacity: t,
+                    child: Transform.translate(
+                      offset: Offset(0, (1 - t) * 8),
+                      child: content,
+                    ),
+                  );
+                },
+                child: child,
+              ),
+            ),
           ],
         ),
       ),
@@ -65,16 +84,33 @@ class ComingSoon extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.auto_awesome_outlined,
-              size: 40, color: theme.colorScheme.outline),
-          const SizedBox(height: 12),
-          Text(label ?? l10n.emptyComingSoon,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+        builder: (_, t, child) => Opacity(
+          opacity: t,
+          child: Transform.scale(
+            scale: 0.98 + t * 0.02,
+            child: child,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.auto_awesome_outlined,
+              size: 40,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              label ?? l10n.emptyComingSoon,
               style: theme.textTheme.bodyLarge
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-        ],
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ],
+        ),
       ),
     );
   }

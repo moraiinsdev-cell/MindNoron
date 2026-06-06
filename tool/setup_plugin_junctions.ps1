@@ -19,10 +19,18 @@ if (-not (Test-Path $depsFile)) {
 $deps = Get-Content $depsFile -Raw | ConvertFrom-Json
 $symdir = Join-Path $root 'windows\flutter\ephemeral\.plugin_symlinks'
 New-Item -ItemType Directory -Force -Path $symdir | Out-Null
+$symdirFull = [System.IO.Path]::GetFullPath($symdir)
 foreach ($pl in $deps.plugins.windows) {
   $target = ($pl.path -replace '\\\\', '\').TrimEnd('\')
   $link = Join-Path $symdir $pl.name
-  if (Test-Path $link) { cmd /c "rmdir `"$link`"" | Out-Null }
+  $linkFull = [System.IO.Path]::GetFullPath($link)
+  if (-not $linkFull.StartsWith($symdirFull + [System.IO.Path]::DirectorySeparatorChar)) {
+    Write-Error "Refusing to touch path outside plugin junction dir: $linkFull"
+    exit 1
+  }
+  if (Test-Path -LiteralPath $link) {
+    Remove-Item -LiteralPath $link -Force -Recurse
+  }
   cmd /c "mklink /J `"$link`" `"$target`"" | Out-Null
   Write-Host "  junction: $($pl.name)"
 }
