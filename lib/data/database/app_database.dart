@@ -29,7 +29,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -45,6 +45,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 3) {
             await m.createTable(habits);
             await m.createTable(habitCompletions);
+          }
+          // v4: subtasks — a task can point to a parent task.
+          if (from < 4) {
+            await m.addColumn(tasks, tasks.parentTaskId);
           }
         },
         beforeOpen: (details) async {

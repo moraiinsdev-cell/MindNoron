@@ -700,6 +700,12 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
   late final GeneratedColumn<String> projectId = GeneratedColumn<String>(
       'project_id', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _parentTaskIdMeta =
+      const VerificationMeta('parentTaskId');
+  @override
+  late final GeneratedColumn<String> parentTaskId = GeneratedColumn<String>(
+      'parent_task_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _isRecurringMeta =
       const VerificationMeta('isRecurring');
   @override
@@ -740,6 +746,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         tags,
         context,
         projectId,
+        parentTaskId,
         isRecurring,
         recurrenceRule,
         completedAt
@@ -827,6 +834,12 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
       context.handle(_projectIdMeta,
           projectId.isAcceptableOrUnknown(data['project_id']!, _projectIdMeta));
     }
+    if (data.containsKey('parent_task_id')) {
+      context.handle(
+          _parentTaskIdMeta,
+          parentTaskId.isAcceptableOrUnknown(
+              data['parent_task_id']!, _parentTaskIdMeta));
+    }
     if (data.containsKey('is_recurring')) {
       context.handle(
           _isRecurringMeta,
@@ -886,6 +899,8 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
           .read(DriftSqlType.string, data['${effectivePrefix}context']),
       projectId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}project_id']),
+      parentTaskId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}parent_task_id']),
       isRecurring: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_recurring'])!,
       recurrenceRule: attachedDatabase.typeMapping
@@ -918,6 +933,7 @@ class Task extends DataClass implements Insertable<Task> {
   final String tags;
   final String? context;
   final String? projectId;
+  final String? parentTaskId;
   final bool isRecurring;
   final String? recurrenceRule;
   final DateTime? completedAt;
@@ -938,6 +954,7 @@ class Task extends DataClass implements Insertable<Task> {
       required this.tags,
       this.context,
       this.projectId,
+      this.parentTaskId,
       required this.isRecurring,
       this.recurrenceRule,
       this.completedAt});
@@ -973,6 +990,9 @@ class Task extends DataClass implements Insertable<Task> {
     }
     if (!nullToAbsent || projectId != null) {
       map['project_id'] = Variable<String>(projectId);
+    }
+    if (!nullToAbsent || parentTaskId != null) {
+      map['parent_task_id'] = Variable<String>(parentTaskId);
     }
     map['is_recurring'] = Variable<bool>(isRecurring);
     if (!nullToAbsent || recurrenceRule != null) {
@@ -1016,6 +1036,9 @@ class Task extends DataClass implements Insertable<Task> {
       projectId: projectId == null && nullToAbsent
           ? const Value.absent()
           : Value(projectId),
+      parentTaskId: parentTaskId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentTaskId),
       isRecurring: Value(isRecurring),
       recurrenceRule: recurrenceRule == null && nullToAbsent
           ? const Value.absent()
@@ -1046,6 +1069,7 @@ class Task extends DataClass implements Insertable<Task> {
       tags: serializer.fromJson<String>(json['tags']),
       context: serializer.fromJson<String?>(json['context']),
       projectId: serializer.fromJson<String?>(json['projectId']),
+      parentTaskId: serializer.fromJson<String?>(json['parentTaskId']),
       isRecurring: serializer.fromJson<bool>(json['isRecurring']),
       recurrenceRule: serializer.fromJson<String?>(json['recurrenceRule']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
@@ -1071,6 +1095,7 @@ class Task extends DataClass implements Insertable<Task> {
       'tags': serializer.toJson<String>(tags),
       'context': serializer.toJson<String?>(context),
       'projectId': serializer.toJson<String?>(projectId),
+      'parentTaskId': serializer.toJson<String?>(parentTaskId),
       'isRecurring': serializer.toJson<bool>(isRecurring),
       'recurrenceRule': serializer.toJson<String?>(recurrenceRule),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
@@ -1094,6 +1119,7 @@ class Task extends DataClass implements Insertable<Task> {
           String? tags,
           Value<String?> context = const Value.absent(),
           Value<String?> projectId = const Value.absent(),
+          Value<String?> parentTaskId = const Value.absent(),
           bool? isRecurring,
           Value<String?> recurrenceRule = const Value.absent(),
           Value<DateTime?> completedAt = const Value.absent()}) =>
@@ -1116,6 +1142,8 @@ class Task extends DataClass implements Insertable<Task> {
         tags: tags ?? this.tags,
         context: context.present ? context.value : this.context,
         projectId: projectId.present ? projectId.value : this.projectId,
+        parentTaskId:
+            parentTaskId.present ? parentTaskId.value : this.parentTaskId,
         isRecurring: isRecurring ?? this.isRecurring,
         recurrenceRule:
             recurrenceRule.present ? recurrenceRule.value : this.recurrenceRule,
@@ -1144,6 +1172,9 @@ class Task extends DataClass implements Insertable<Task> {
       tags: data.tags.present ? data.tags.value : this.tags,
       context: data.context.present ? data.context.value : this.context,
       projectId: data.projectId.present ? data.projectId.value : this.projectId,
+      parentTaskId: data.parentTaskId.present
+          ? data.parentTaskId.value
+          : this.parentTaskId,
       isRecurring:
           data.isRecurring.present ? data.isRecurring.value : this.isRecurring,
       recurrenceRule: data.recurrenceRule.present
@@ -1173,6 +1204,7 @@ class Task extends DataClass implements Insertable<Task> {
           ..write('tags: $tags, ')
           ..write('context: $context, ')
           ..write('projectId: $projectId, ')
+          ..write('parentTaskId: $parentTaskId, ')
           ..write('isRecurring: $isRecurring, ')
           ..write('recurrenceRule: $recurrenceRule, ')
           ..write('completedAt: $completedAt')
@@ -1198,6 +1230,7 @@ class Task extends DataClass implements Insertable<Task> {
       tags,
       context,
       projectId,
+      parentTaskId,
       isRecurring,
       recurrenceRule,
       completedAt);
@@ -1221,6 +1254,7 @@ class Task extends DataClass implements Insertable<Task> {
           other.tags == this.tags &&
           other.context == this.context &&
           other.projectId == this.projectId &&
+          other.parentTaskId == this.parentTaskId &&
           other.isRecurring == this.isRecurring &&
           other.recurrenceRule == this.recurrenceRule &&
           other.completedAt == this.completedAt);
@@ -1243,6 +1277,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<String> tags;
   final Value<String?> context;
   final Value<String?> projectId;
+  final Value<String?> parentTaskId;
   final Value<bool> isRecurring;
   final Value<String?> recurrenceRule;
   final Value<DateTime?> completedAt;
@@ -1264,6 +1299,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.tags = const Value.absent(),
     this.context = const Value.absent(),
     this.projectId = const Value.absent(),
+    this.parentTaskId = const Value.absent(),
     this.isRecurring = const Value.absent(),
     this.recurrenceRule = const Value.absent(),
     this.completedAt = const Value.absent(),
@@ -1286,6 +1322,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.tags = const Value.absent(),
     this.context = const Value.absent(),
     this.projectId = const Value.absent(),
+    this.parentTaskId = const Value.absent(),
     this.isRecurring = const Value.absent(),
     this.recurrenceRule = const Value.absent(),
     this.completedAt = const Value.absent(),
@@ -1309,6 +1346,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Expression<String>? tags,
     Expression<String>? context,
     Expression<String>? projectId,
+    Expression<String>? parentTaskId,
     Expression<bool>? isRecurring,
     Expression<String>? recurrenceRule,
     Expression<DateTime>? completedAt,
@@ -1331,6 +1369,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       if (tags != null) 'tags': tags,
       if (context != null) 'context': context,
       if (projectId != null) 'project_id': projectId,
+      if (parentTaskId != null) 'parent_task_id': parentTaskId,
       if (isRecurring != null) 'is_recurring': isRecurring,
       if (recurrenceRule != null) 'recurrence_rule': recurrenceRule,
       if (completedAt != null) 'completed_at': completedAt,
@@ -1355,6 +1394,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       Value<String>? tags,
       Value<String?>? context,
       Value<String?>? projectId,
+      Value<String?>? parentTaskId,
       Value<bool>? isRecurring,
       Value<String?>? recurrenceRule,
       Value<DateTime?>? completedAt,
@@ -1376,6 +1416,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       tags: tags ?? this.tags,
       context: context ?? this.context,
       projectId: projectId ?? this.projectId,
+      parentTaskId: parentTaskId ?? this.parentTaskId,
       isRecurring: isRecurring ?? this.isRecurring,
       recurrenceRule: recurrenceRule ?? this.recurrenceRule,
       completedAt: completedAt ?? this.completedAt,
@@ -1434,6 +1475,9 @@ class TasksCompanion extends UpdateCompanion<Task> {
     if (projectId.present) {
       map['project_id'] = Variable<String>(projectId.value);
     }
+    if (parentTaskId.present) {
+      map['parent_task_id'] = Variable<String>(parentTaskId.value);
+    }
     if (isRecurring.present) {
       map['is_recurring'] = Variable<bool>(isRecurring.value);
     }
@@ -1468,6 +1512,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
           ..write('tags: $tags, ')
           ..write('context: $context, ')
           ..write('projectId: $projectId, ')
+          ..write('parentTaskId: $parentTaskId, ')
           ..write('isRecurring: $isRecurring, ')
           ..write('recurrenceRule: $recurrenceRule, ')
           ..write('completedAt: $completedAt, ')
@@ -4894,6 +4939,7 @@ typedef $$TasksTableCreateCompanionBuilder = TasksCompanion Function({
   Value<String> tags,
   Value<String?> context,
   Value<String?> projectId,
+  Value<String?> parentTaskId,
   Value<bool> isRecurring,
   Value<String?> recurrenceRule,
   Value<DateTime?> completedAt,
@@ -4916,6 +4962,7 @@ typedef $$TasksTableUpdateCompanionBuilder = TasksCompanion Function({
   Value<String> tags,
   Value<String?> context,
   Value<String?> projectId,
+  Value<String?> parentTaskId,
   Value<bool> isRecurring,
   Value<String?> recurrenceRule,
   Value<DateTime?> completedAt,
@@ -4978,6 +5025,9 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<String> get projectId => $composableBuilder(
       column: $table.projectId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get parentTaskId => $composableBuilder(
+      column: $table.parentTaskId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<bool> get isRecurring => $composableBuilder(
       column: $table.isRecurring, builder: (column) => ColumnFilters(column));
@@ -5049,6 +5099,10 @@ class $$TasksTableOrderingComposer
   ColumnOrderings<String> get projectId => $composableBuilder(
       column: $table.projectId, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get parentTaskId => $composableBuilder(
+      column: $table.parentTaskId,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<bool> get isRecurring => $composableBuilder(
       column: $table.isRecurring, builder: (column) => ColumnOrderings(column));
 
@@ -5117,6 +5171,9 @@ class $$TasksTableAnnotationComposer
   GeneratedColumn<String> get projectId =>
       $composableBuilder(column: $table.projectId, builder: (column) => column);
 
+  GeneratedColumn<String> get parentTaskId => $composableBuilder(
+      column: $table.parentTaskId, builder: (column) => column);
+
   GeneratedColumn<bool> get isRecurring => $composableBuilder(
       column: $table.isRecurring, builder: (column) => column);
 
@@ -5166,6 +5223,7 @@ class $$TasksTableTableManager extends RootTableManager<
             Value<String> tags = const Value.absent(),
             Value<String?> context = const Value.absent(),
             Value<String?> projectId = const Value.absent(),
+            Value<String?> parentTaskId = const Value.absent(),
             Value<bool> isRecurring = const Value.absent(),
             Value<String?> recurrenceRule = const Value.absent(),
             Value<DateTime?> completedAt = const Value.absent(),
@@ -5188,6 +5246,7 @@ class $$TasksTableTableManager extends RootTableManager<
             tags: tags,
             context: context,
             projectId: projectId,
+            parentTaskId: parentTaskId,
             isRecurring: isRecurring,
             recurrenceRule: recurrenceRule,
             completedAt: completedAt,
@@ -5210,6 +5269,7 @@ class $$TasksTableTableManager extends RootTableManager<
             Value<String> tags = const Value.absent(),
             Value<String?> context = const Value.absent(),
             Value<String?> projectId = const Value.absent(),
+            Value<String?> parentTaskId = const Value.absent(),
             Value<bool> isRecurring = const Value.absent(),
             Value<String?> recurrenceRule = const Value.absent(),
             Value<DateTime?> completedAt = const Value.absent(),
@@ -5232,6 +5292,7 @@ class $$TasksTableTableManager extends RootTableManager<
             tags: tags,
             context: context,
             projectId: projectId,
+            parentTaskId: parentTaskId,
             isRecurring: isRecurring,
             recurrenceRule: recurrenceRule,
             completedAt: completedAt,

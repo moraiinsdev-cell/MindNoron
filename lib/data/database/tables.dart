@@ -44,6 +44,7 @@ class Tasks extends Table with SyncBase {
       const Constant('[]'))(); // JSON array (normalized in Phase 2)
   TextColumn get context => text().nullable()(); // @Home / @Office ...
   TextColumn get projectId => text().nullable()();
+  TextColumn get parentTaskId => text().nullable()(); // set => this is a subtask
   BoolColumn get isRecurring => boolean().withDefault(const Constant(false))();
   TextColumn get recurrenceRule => text().nullable()(); // RRULE-style string
   DateTimeColumn get completedAt => dateTime().nullable()();

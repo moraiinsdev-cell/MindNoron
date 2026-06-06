@@ -21,6 +21,7 @@ class TaskRepository {
     DateTime? dueDate,
     String? context,
     String? description,
+    String? parentTaskId,
   }) async {
     final id = _uuid.v4();
     await _db.into(_db.tasks).insert(
@@ -31,6 +32,7 @@ class TaskRepository {
             dueDate: Value(dueDate),
             context: Value(context),
             description: Value(description),
+            parentTaskId: Value(parentTaskId),
           ),
         );
     return id;
@@ -98,14 +100,25 @@ class TaskRepository {
 
   static final _openStatuses = [TaskStatus.done.db, TaskStatus.archived.db];
 
-  /// Open tasks, ordered by priority then due date.
+  /// Top-level open tasks (excludes subtasks), ordered by priority then due.
   Stream<List<Task>> watchOpen() {
     return (_db.select(_db.tasks)
-          ..where((t) => t.deletedAt.isNull() & t.status.isNotIn(_openStatuses))
+          ..where((t) =>
+              t.deletedAt.isNull() &
+              t.status.isNotIn(_openStatuses) &
+              t.parentTaskId.isNull())
           ..orderBy([
             (t) => OrderingTerm.asc(t.priority),
             (t) => OrderingTerm.asc(t.dueDate),
           ]))
+        .watch();
+  }
+
+  /// Subtasks of [parentId] (newest last), regardless of done state.
+  Stream<List<Task>> watchSubtasks(String parentId) {
+    return (_db.select(_db.tasks)
+          ..where((t) => t.deletedAt.isNull() & t.parentTaskId.equals(parentId))
+          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
         .watch();
   }
 
@@ -157,4 +170,10 @@ final todayTasksProvider = StreamProvider<List<Task>>((ref) {
 
 final completedTodayCountProvider = StreamProvider<int>((ref) {
   return ref.watch(taskRepositoryProvider).watchCompletedTodayCount();
+});
+
+/// Subtasks for a given parent task id.
+final subtasksProvider =
+    StreamProvider.family<List<Task>, String>((ref, parentId) {
+  return ref.watch(taskRepositoryProvider).watchSubtasks(parentId);
 });

@@ -4,7 +4,8 @@ import 'package:flutter_soloud/flutter_soloud.dart';
 /// One-shot session cues.
 enum SoundCue {
   focusComplete('assets/sounds/focus_complete.wav'),
-  breakComplete('assets/sounds/break_complete.wav');
+  breakComplete('assets/sounds/break_complete.wav'),
+  taskComplete('assets/sounds/task_complete.wav');
 
   const SoundCue(this.asset);
 

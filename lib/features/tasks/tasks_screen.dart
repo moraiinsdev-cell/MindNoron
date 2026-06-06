@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/enums.dart';
+import '../../core/platform/sound_service.dart';
+import '../../core/providers/app_providers.dart';
 import '../../data/database/app_database.dart';
+import '../../data/repositories/settings_repository.dart';
 import '../../data/repositories/task_repository.dart';
 import '../../l10n/app_localizations.dart';
+import '../../presentation/widgets/common/celebration_checkbox.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
+import 'task_urgency.dart';
 
 class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
@@ -34,9 +39,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final tasksAsync = _todayOnly
-        ? ref.watch(todayTasksProvider)
-        : ref.watch(openTasksProvider);
+    final tasksAsync =
+        _todayOnly ? ref.watch(todayTasksProvider) : ref.watch(openTasksProvider);
 
     return SectionScaffold(
       title: l10n.navTasks,
@@ -77,10 +81,23 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                 if (tasks.isEmpty) {
                   return const ComingSoon(label: 'No tasks yet');
                 }
+                final now = DateTime.now();
+                // Long-neglected tasks bubble to the top, then priority/due.
+                final sorted = [...tasks]..sort((a, b) {
+                    final ua = taskUrgency(a, now);
+                    final ub = taskUrgency(b, now);
+                    if (ua != ub) return ub - ua;
+                    if (a.priority != b.priority) return a.priority - b.priority;
+                    final ad = a.dueDate, bd = b.dueDate;
+                    if (ad != null && bd != null) return ad.compareTo(bd);
+                    if (ad != null) return -1;
+                    if (bd != null) return 1;
+                    return a.createdAt.compareTo(b.createdAt);
+                  });
                 return ListView.separated(
-                  itemCount: tasks.length,
+                  itemCount: sorted.length,
                   separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (_, i) => _TaskTile(task: tasks[i]),
+                  itemBuilder: (_, i) => _TaskTile(task: sorted[i]),
                 );
               },
             ),
@@ -91,67 +108,265 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   }
 }
 
-class _TaskTile extends ConsumerWidget {
+Color urgencyColor(int level, ColorScheme cs) => switch (level) {
+      3 => const Color(0xFFEF4444), // red
+      2 => const Color(0xFFF97316), // orange
+      1 => const Color(0xFFF59E0B), // amber
+      _ => cs.onSurfaceVariant,
+    };
+
+/// A top-level task with its checkable subtasks and an inline add-subtask
+/// affordance. Completing a task or subtask celebrates and plays a soft cue.
+class _TaskTile extends ConsumerStatefulWidget {
   const _TaskTile({required this.task});
 
   final Task task;
 
-  String _subtitle() {
-    final parts = <String>[];
-    final due = task.dueDate;
-    if (due != null) parts.add('Due ${due.month}/${due.day}');
-    if (task.actualMinutes > 0) parts.add('${task.actualMinutes} min');
-    if (task.context != null) parts.add(task.context!);
-    return parts.join(' | ');
+  @override
+  ConsumerState<_TaskTile> createState() => _TaskTileState();
+}
+
+class _TaskTileState extends ConsumerState<_TaskTile> {
+  final _subController = TextEditingController();
+  bool _adding = false;
+
+  @override
+  void dispose() {
+    _subController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _addSubtask() async {
+    final text = _subController.text.trim();
+    if (text.isEmpty) return;
+    await ref
+        .read(taskRepositoryProvider)
+        .create(title: text, parentTaskId: widget.task.id);
+    _subController.clear();
+  }
+
+  void _complete(Task task, bool nowDone) {
+    ref.read(taskRepositoryProvider).toggleDone(task);
+    if (nowDone) _celebrateSound();
+  }
+
+  Future<void> _celebrateSound() async {
+    final settings = ref.read(settingsRepositoryProvider);
+    if (!await settings.getSoundEnabled()) return;
+    final volume = await settings.getSoundVolume();
+    await ref
+        .read(soundServiceProvider)
+        .playCue(SoundCue.taskComplete, volume: volume);
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final task = widget.task;
     final repo = ref.read(taskRepositoryProvider);
     final done = TaskStatus.fromDb(task.status) == TaskStatus.done;
-    final subtitle = _subtitle();
+    final now = DateTime.now();
+    final urgency = done ? 0 : taskUrgency(task, now);
+    final ageColor = urgencyColor(urgency, cs);
 
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-      leading: Checkbox(
-        value: done,
-        onChanged: (_) => repo.toggleDone(task),
-      ),
-      title: Text(
-        task.title,
-        style: done
-            ? TextStyle(
-                decoration: TextDecoration.lineThrough,
-                color: cs.outline,
-              )
-            : null,
-      ),
-      subtitle: subtitle.isEmpty ? null : Text(subtitle),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: Priority.color(task.priority, cs).withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
+    final subs = ref.watch(subtasksProvider(task.id)).valueOrNull ??
+        const <Task>[];
+    final doneSubs = subs
+        .where((s) => TaskStatus.fromDb(s.status) == TaskStatus.done)
+        .length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+          leading: CelebrationCheckbox(
+            value: done,
+            color: cs.primary,
+            onChanged: (v) => _complete(task, v),
+          ),
+          title: Text(
+            task.title,
+            style: done
+                ? TextStyle(
+                    decoration: TextDecoration.lineThrough,
+                    color: cs.outline,
+                  )
+                : null,
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      urgency >= 2
+                          ? Icons.warning_amber_rounded
+                          : Icons.schedule,
+                      size: 13,
+                      color: ageColor,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      taskAgeLabel(task, now),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: ageColor,
+                        fontWeight:
+                            urgency >= 2 ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+                if (subs.isNotEmpty)
+                  Text(
+                    '$doneSubs/${subs.length} subtasks',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                if (task.actualMinutes > 0)
+                  Text('${task.actualMinutes} min',
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant)),
+                if (task.context != null)
+                  Text(task.context!,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant)),
+              ],
             ),
-            child: Text(
-              Priority.label(task.priority),
-              style: TextStyle(
-                color: Priority.color(task.priority, cs),
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _PriorityChip(priority: task.priority),
+              IconButton(
+                tooltip: 'Add subtask',
+                icon: const Icon(Icons.playlist_add),
+                onPressed: () => setState(() => _adding = !_adding),
               ),
+              IconButton(
+                tooltip: 'Delete',
+                icon: const Icon(Icons.delete_outline),
+                onPressed: () => repo.softDelete(task.id),
+              ),
+            ],
+          ),
+        ),
+        if (subs.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 44, right: 4),
+            child: Column(
+              children: [
+                for (final sub in subs)
+                  _SubtaskRow(
+                    sub: sub,
+                    onToggle: (v) => _complete(sub, v),
+                    onDelete: () => repo.softDelete(sub.id),
+                  ),
+              ],
             ),
           ),
-          IconButton(
-            tooltip: 'Delete',
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () => repo.softDelete(task.id),
+        if (_adding)
+          Padding(
+            padding: const EdgeInsets.only(left: 44, right: 4, bottom: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.subdirectory_arrow_right, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _subController,
+                    autofocus: true,
+                    onSubmitted: (_) => _addSubtask(),
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      hintText: 'Add a subtask... (Enter to save)',
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Done adding',
+                  icon: const Icon(Icons.check),
+                  onPressed: () => setState(() => _adding = false),
+                ),
+              ],
+            ),
           ),
-        ],
+      ],
+    );
+  }
+}
+
+class _SubtaskRow extends StatelessWidget {
+  const _SubtaskRow({
+    required this.sub,
+    required this.onToggle,
+    required this.onDelete,
+  });
+
+  final Task sub;
+  final ValueChanged<bool> onToggle;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final done = TaskStatus.fromDb(sub.status) == TaskStatus.done;
+    return Row(
+      children: [
+        CelebrationCheckbox(
+          value: done,
+          size: 20,
+          color: cs.secondary,
+          onChanged: onToggle,
+        ),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            sub.title,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  decoration: done ? TextDecoration.lineThrough : null,
+                  color: done ? cs.outline : null,
+                ),
+          ),
+        ),
+        IconButton(
+          tooltip: 'Delete subtask',
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.close, size: 16),
+          onPressed: onDelete,
+        ),
+      ],
+    );
+  }
+}
+
+class _PriorityChip extends StatelessWidget {
+  const _PriorityChip({required this.priority});
+
+  final int priority;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: Priority.color(priority, cs).withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        Priority.label(priority),
+        style: TextStyle(
+          color: Priority.color(priority, cs),
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+        ),
       ),
     );
   }

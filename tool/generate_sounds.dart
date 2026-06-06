@@ -20,13 +20,14 @@ void main() {
 
   _write('assets/sounds/focus_complete.wav', _focusComplete());
   _write('assets/sounds/break_complete.wav', _breakComplete());
+  _write('assets/sounds/task_complete.wav', _taskComplete());
   _write('assets/sounds/ambient_rain.wav', _ambientRain());
   _write('assets/sounds/ambient_forest.wav', _ambientForest());
   _write('assets/sounds/ambient_brown.wav', _ambientBrown());
   _write('assets/sounds/ambient_warm.wav', _ambientWarm());
   _write('assets/sounds/ambient_deep.wav', _ambientDeep());
 
-  stdout.writeln('Done. Generated 7 WAV files in assets/sounds/.');
+  stdout.writeln('Done. Generated 8 WAV files in assets/sounds/.');
 }
 
 // ---------------------------------------------------------------------------
@@ -54,6 +55,16 @@ List<double> _breakComplete() {
   _addBell(buf, 0, 659.25, decay: 0.7, gain: 0.5); // E5
   _addBell(buf, (sampleRate * 0.28).round(), 440.0, decay: 0.95, gain: 0.55); // A4
   _normalize(buf, 0.72);
+  return buf;
+}
+
+/// Short, bright "ding + sparkle" — a satisfying task-done flourish.
+List<double> _taskComplete() {
+  final total = (sampleRate * 0.6).round();
+  final buf = List<double>.filled(total, 0);
+  _addBell(buf, 0, 880.0, decay: 0.28, gain: 0.5); // A5
+  _addBell(buf, (sampleRate * 0.05).round(), 1318.5, decay: 0.22, gain: 0.3); // E6
+  _normalize(buf, 0.7);
   return buf;
 }
 
