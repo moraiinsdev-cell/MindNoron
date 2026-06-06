@@ -16,6 +16,8 @@ class SettingsRepository {
   static const _kWorkMinutes = 'workMinutes';
   static const _kShortBreak = 'shortBreakMinutes';
   static const _kLongBreak = 'longBreakMinutes';
+  static const _kSoundEnabled = 'soundEnabled';
+  static const _kSoundVolume = 'soundVolume';
 
   Future<void> _set(String key, String value) {
     return _db.into(_db.settings).insertOnConflictUpdate(
@@ -57,6 +59,24 @@ class SettingsRepository {
       (v) => int.tryParse(v ?? '') ?? AppConstants.defaultLongBreakMinutes);
   Future<void> setLongBreakMinutes(int m) => _set(_kLongBreak, '$m');
 
+  // --- Session-completion sound -------------------------------------------
+
+  Stream<bool> watchSoundEnabled() =>
+      _watch(_kSoundEnabled).map((v) => v != 'false'); // default on
+  Future<void> setSoundEnabled(bool v) => _set(_kSoundEnabled, '$v');
+
+  /// Synchronous read for the timer's completion path (avoids stream warm-up).
+  Future<bool> getSoundEnabled() async =>
+      (await readValue(_kSoundEnabled)) != 'false';
+
+  Stream<double> watchSoundVolume() => _watch(_kSoundVolume)
+      .map((v) => double.tryParse(v ?? '') ?? AppConstants.defaultSoundVolume);
+  Future<void> setSoundVolume(double v) => _set(_kSoundVolume, '$v');
+
+  Future<double> getSoundVolume() async =>
+      double.tryParse(await readValue(_kSoundVolume) ?? '') ??
+      AppConstants.defaultSoundVolume;
+
   static ThemeMode _parseTheme(String? v) => switch (v) {
         'light' => ThemeMode.light,
         'system' => ThemeMode.system,
@@ -82,4 +102,12 @@ final shortBreakMinutesProvider = StreamProvider<int>((ref) {
 
 final longBreakMinutesProvider = StreamProvider<int>((ref) {
   return ref.watch(settingsRepositoryProvider).watchLongBreakMinutes();
+});
+
+final soundEnabledProvider = StreamProvider<bool>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchSoundEnabled();
+});
+
+final soundVolumeProvider = StreamProvider<double>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchSoundVolume();
 });

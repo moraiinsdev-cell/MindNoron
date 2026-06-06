@@ -18,6 +18,12 @@ class AppConstants {
   /// Default task priority (1 = highest, 4 = lowest).
   static const int defaultPriority = 3;
 
+  /// Default volume (0..1) for the session-completion chime.
+  static const double defaultSoundVolume = 0.7;
+
+  /// Default volume (0..1) for ambient soundscapes during sessions.
+  static const double defaultAmbientVolume = 0.4;
+
   /// Seeded contexts for first run.
   static const List<String> defaultContexts = <String>[
     '@Home',

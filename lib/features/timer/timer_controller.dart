@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/enums.dart';
 import '../../core/platform/notification_service.dart';
+import '../../core/platform/sound_service.dart';
+import '../../core/providers/app_providers.dart';
+import '../../data/repositories/settings_repository.dart';
 import '../../data/repositories/timer_repository.dart';
 import 'timer_engine.dart';
 
@@ -115,7 +118,22 @@ class TimerController extends Notifier<TimerSnapshot> {
             ? 'Nice work. Take a clean break.'
             : 'Break complete. Time to focus again.',
       );
+      await _playCompletionCue(s.type);
     }
+  }
+
+  /// Plays the session-completion chime, honoring the user's sound settings.
+  /// Audio failures are swallowed by [SoundService] and never block finalize.
+  Future<void> _playCompletionCue(SessionType type) async {
+    final settings = ref.read(settingsRepositoryProvider);
+    if (!await settings.getSoundEnabled()) return;
+    final volume = await settings.getSoundVolume();
+    await ref.read(soundServiceProvider).playCue(
+          type == SessionType.work
+              ? SoundCue.focusComplete
+              : SoundCue.breakComplete,
+          volume: volume,
+        );
   }
 
   void _scheduleCompletion() {

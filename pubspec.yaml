@@ -38,6 +38,11 @@ dependencies:
   file_picker: ^8.1.6
   uuid: ^4.5.1
 
+  # Audio (session cues + looping ambient soundscapes). SoLoud uses a
+  # miniaudio/WASAPI backend (not Media Foundation), so it plays nicely with
+  # this app's STA COM init and gives gapless looping for the focus beds.
+  flutter_soloud: ^3.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -53,3 +58,4 @@ flutter:
   generate: true # enable flutter gen-l10n
   assets:
     - assets/images/
+    - assets/sounds/
