@@ -9,6 +9,7 @@ import '../../data/repositories/settings_repository.dart';
 import '../../data/repositories/task_repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
+import 'ambient_control.dart';
 import 'focus_suggestion.dart';
 import 'noron_backdrop.dart';
 import 'thinking_space.dart';
@@ -176,46 +177,86 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
   }
 }
 
-class _ActiveTimer extends ConsumerWidget {
+class _ActiveTimer extends ConsumerStatefulWidget {
   const _ActiveTimer({super.key, required this.snapshot});
 
   final TimerSnapshot snapshot;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ActiveTimer> createState() => _ActiveTimerState();
+}
+
+class _ActiveTimerState extends ConsumerState<_ActiveTimer>
+    with SingleTickerProviderStateMixin {
+  // Slow "breathing" pulse used on break sessions to invite a calmer pace.
+  late final AnimationController _breath = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 4),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _breath.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final snapshot = widget.snapshot;
     final controller = ref.read(timerControllerProvider.notifier);
     final now = ref.watch(nowTickerProvider).valueOrNull ?? DateTime.now();
     final remaining = snapshot.remaining(now);
     final progress = snapshot.progress(now);
+    final isBreak = snapshot.type != SessionType.work;
+    final accent = isBreak ? cs.secondary : cs.primary;
+
+    final ring = SizedBox(
+      width: 240,
+      height: 240,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          SizedBox.expand(
+            child: CircularProgressIndicator(
+              value: progress,
+              strokeWidth: 10,
+              valueColor: AlwaysStoppedAnimation(accent),
+              backgroundColor: cs.surfaceContainerHighest,
+            ),
+          ),
+          Text(formatTimer(remaining),
+              style: theme.textTheme.displayMedium?.copyWith(
+                  fontFeatures: const [FontFeature.tabularFigures()])),
+        ],
+      ),
+    );
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(snapshot.type.label.toUpperCase(),
             style: theme.textTheme.labelLarge
-                ?.copyWith(letterSpacing: 2, color: theme.colorScheme.primary)),
+                ?.copyWith(letterSpacing: 2, color: accent)),
         const SizedBox(height: 24),
-        SizedBox(
-          width: 240,
-          height: 240,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              SizedBox.expand(
-                child: CircularProgressIndicator(
-                  value: progress,
-                  strokeWidth: 10,
-                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                ),
-              ),
-              Text(formatTimer(remaining),
-                  style: theme.textTheme.displayMedium?.copyWith(
-                      fontFeatures: const [FontFeature.tabularFigures()])),
-            ],
+        // Breathing pulse on breaks; steady on focus.
+        AnimatedBuilder(
+          animation: _breath,
+          builder: (context, child) => Transform.scale(
+            scale: isBreak ? (0.97 + 0.03 * _breath.value) : 1.0,
+            child: child,
           ),
+          child: ring,
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 14),
+        Text(
+          isBreak
+              ? 'Breathe — let your mind wander.'
+              : 'Stay with the one thing.',
+          style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+        ),
+        const SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -239,6 +280,8 @@ class _ActiveTimer extends ConsumerWidget {
             ),
           ],
         ),
+        const SizedBox(height: 16),
+        const AmbientControl(),
       ],
     );
   }
