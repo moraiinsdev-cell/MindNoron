@@ -136,6 +136,12 @@ abstract class AppLocalizations {
   /// **'Habits'**
   String get navHabits;
 
+  /// No description provided for @navActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get navActivity;
+
   /// No description provided for @navSettings.
   ///
   /// In en, this message translates to:

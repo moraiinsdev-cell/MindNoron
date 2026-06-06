@@ -21,6 +21,7 @@ class AppShell extends StatelessWidget {
     Routes.inbox,
     Routes.notes,
     Routes.habits,
+    Routes.activity,
     Routes.settings,
   ];
 
@@ -89,6 +90,11 @@ class AppShell extends StatelessWidget {
                     icon: const Icon(Icons.local_fire_department_outlined),
                     selectedIcon: const Icon(Icons.local_fire_department),
                     label: Text(l10n.navHabits),
+                  ),
+                  NavigationRailDestination(
+                    icon: const Icon(Icons.insights_outlined),
+                    selectedIcon: const Icon(Icons.insights),
+                    label: Text(l10n.navActivity),
                   ),
                   NavigationRailDestination(
                     icon: const Icon(Icons.settings_outlined),

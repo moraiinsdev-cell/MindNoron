@@ -24,6 +24,25 @@ int computeStreak(Set<DateTime> days, DateTime today) {
   return streak;
 }
 
+/// Longest run of consecutive days present in [days]. Pure → unit-tested.
+int computeLongestStreak(Set<DateTime> days) {
+  if (days.isEmpty) return 0;
+  final sorted = days.map((d) => DateTime(d.year, d.month, d.day)).toList()
+    ..sort();
+  var longest = 1;
+  var run = 1;
+  for (var i = 1; i < sorted.length; i++) {
+    final gap = sorted[i].difference(sorted[i - 1]).inDays;
+    if (gap == 1) {
+      run++;
+    } else if (gap > 1) {
+      run = 1;
+    }
+    if (run > longest) longest = run;
+  }
+  return longest;
+}
+
 class HabitRepository {
   HabitRepository(this._db);
 
