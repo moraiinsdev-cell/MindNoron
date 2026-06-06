@@ -1,0 +1,26 @@
+{
+  "@@locale": "en",
+  "appName": "MindNoron",
+  "navDashboard": "Dashboard",
+  "navTasks": "Tasks",
+  "navTimer": "Focus",
+  "navInbox": "Inbox",
+  "navNotes": "Notes",
+  "navHabits": "Habits",
+  "navSettings": "Settings",
+  "quickCapture": "Quick capture",
+  "greetingMorning": "Good morning",
+  "greetingAfternoon": "Good afternoon",
+  "greetingEvening": "Good evening",
+  "greetingNight": "Working late",
+  "focusToday": "Focus today",
+  "tasksDoneToday": "Tasks done today",
+  "topPriorities": "Today's top priorities",
+  "emptyComingSoon": "Coming soon",
+  "minutesShort": "{count} min",
+  "@minutesShort": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  }
+}

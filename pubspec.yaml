@@ -1,0 +1,55 @@
+name: mind_noron
+description: "MindNoron - your single source of truth for a busy life."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+
+  # State management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Routing
+  go_router: ^14.6.2
+
+  # Local database (Drift / SQLite) - local-first source of truth
+  drift: ^2.21.0
+  drift_flutter: ^0.2.4
+  path_provider: ^2.1.5
+  path: ^1.9.0
+
+  # Desktop integration (Windows-first)
+  window_manager: ^0.4.3
+  tray_manager: ^0.3.2
+  hotkey_manager: ^0.2.3
+  local_notifier: ^0.1.6
+  launch_at_startup: ^0.3.1
+
+  # Charts, files, ids
+  fl_chart: ^0.69.2
+  file_picker: ^8.1.6
+  uuid: ^4.5.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  build_runner: ^2.4.13
+  drift_dev: ^2.21.0
+  riverpod_generator: ^2.6.1
+  riverpod_lint: ^2.6.1
+  custom_lint: ^0.7.0
+
+flutter:
+  uses-material-design: true
+  generate: true # enable flutter gen-l10n
+  assets:
+    - assets/images/
