@@ -7,6 +7,7 @@ import '../../data/repositories/habit_repository.dart'
 import '../../l10n/app_localizations.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
 import 'activity_heatmap.dart';
+import 'trends_section.dart';
 
 /// The activity board: a GitHub-style contribution heatmap you can flip between
 /// focus minutes, tasks done, and habits, with streak + total stats.
@@ -71,6 +72,10 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
             error: (e, _) => Text('Could not load activity: $e'),
             data: (values) => _Content(metric: _metric, year: _year, values: values),
           ),
+          const SizedBox(height: 24),
+          Text('Trends', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 12),
+          const TrendsSection(),
         ],
       ),
     );

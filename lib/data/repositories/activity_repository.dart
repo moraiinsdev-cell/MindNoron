@@ -67,6 +67,26 @@ class ActivityRepository {
     });
   }
 
+  /// Work-session minutes per day over the last [days] days (rolling window),
+  /// for the trends charts. Days with no focus are absent from the map.
+  Stream<Map<DateTime, int>> watchRecentFocus(int days) {
+    final start = AppDateUtils.startOfDay(DateTime.now())
+        .subtract(Duration(days: days - 1));
+    final q = _db.select(_db.pomodoroSessions)
+      ..where((t) =>
+          t.deletedAt.isNull() &
+          t.type.equals(SessionType.work.db) &
+          t.startTime.isBiggerOrEqualValue(start));
+    return q.watch().map((rows) {
+      final m = <DateTime, int>{};
+      for (final s in rows) {
+        final day = AppDateUtils.startOfDay(s.startTime);
+        m[day] = (m[day] ?? 0) + s.actualMinutes;
+      }
+      return m;
+    });
+  }
+
   /// Habit completions per day.
   Stream<Map<DateTime, int>> watchHabitCounts(int year) {
     final r = _yearRange(year);
@@ -87,6 +107,12 @@ class ActivityRepository {
 
 final activityRepositoryProvider = Provider<ActivityRepository>((ref) {
   return ActivityRepository(ref.watch(databaseProvider));
+});
+
+/// Focus minutes per day over the last 56 days (8 weeks) — backs the trends bar
+/// chart.
+final recentFocusProvider = StreamProvider<Map<DateTime, int>>((ref) {
+  return ref.watch(activityRepositoryProvider).watchRecentFocus(56);
 });
 
 typedef ActivityQuery = ({ActivityMetric metric, int year});
