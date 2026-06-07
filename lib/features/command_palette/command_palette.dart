@@ -81,6 +81,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
       _nav(Icons.timer_outlined, 'Focus', Routes.timer),
       _nav(Icons.inbox_outlined, 'Inbox', Routes.inbox),
       _nav(Icons.sticky_note_2_outlined, 'Notes', Routes.notes),
+      _nav(Icons.auto_stories_outlined, 'Journal', Routes.journal),
       _nav(Icons.settings_outlined, 'Settings', Routes.settings),
       _Command(Icons.add, 'Quick capture...', () {
         Navigator.of(context).pop();

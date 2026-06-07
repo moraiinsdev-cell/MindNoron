@@ -25,6 +25,7 @@ class AppShell extends ConsumerWidget {
     Routes.timer,
     Routes.inbox,
     Routes.notes,
+    Routes.journal,
     Routes.habits,
     Routes.activity,
     Routes.settings,
@@ -121,6 +122,11 @@ class AppShell extends ConsumerWidget {
                     icon: const Icon(Icons.sticky_note_2_outlined),
                     selectedIcon: const Icon(Icons.sticky_note_2),
                     label: Text(l10n.navNotes),
+                  ),
+                  const NavigationRailDestination(
+                    icon: Icon(Icons.auto_stories_outlined),
+                    selectedIcon: Icon(Icons.auto_stories),
+                    label: Text('Journal'),
                   ),
                   NavigationRailDestination(
                     icon: const Icon(Icons.local_fire_department_outlined),
