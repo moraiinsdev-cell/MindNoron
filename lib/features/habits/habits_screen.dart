@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/utils/app_date_utils.dart';
+import '../../data/database/app_database.dart';
 import '../../data/repositories/habit_repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
@@ -72,52 +73,162 @@ class _HabitsScreenState extends ConsumerState<HabitsScreen> {
                 if (habits.isEmpty) {
                   return const ComingSoon(label: 'No habits yet');
                 }
-                return ListView.separated(
+                return ListView.builder(
                   itemCount: habits.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (_, i) {
                     final h = habits[i];
                     final days = byHabit[h.id] ?? const <DateTime>{};
-                    final doneToday = days.contains(today);
-                    final streak = computeStreak(days, today);
-                    return ListTile(
-                      leading:
-                          Text(h.emoji, style: const TextStyle(fontSize: 22)),
-                      title: Text(h.name),
-                      subtitle: streak > 0 ? Text('$streak-day streak') : null,
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            tooltip: doneToday ? 'Done today' : 'Mark today',
-                            icon: Icon(
-                              doneToday
-                                  ? Icons.check_circle
-                                  : Icons.radio_button_unchecked,
-                              color: doneToday
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(context).colorScheme.outline,
-                            ),
-                            onPressed: () => ref
-                                .read(habitRepositoryProvider)
-                                .toggleToday(h.id),
-                          ),
-                          IconButton(
-                            tooltip: 'Delete',
-                            icon: const Icon(Icons.delete_outline),
-                            onPressed: () => ref
-                                .read(habitRepositoryProvider)
-                                .softDelete(h.id),
-                          ),
-                        ],
-                      ),
-                    );
+                    return _HabitTile(habit: h, days: days, today: today);
                   },
                 );
               },
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// One habit: name, a tappable last-7-days row, and streak/total stats.
+class _HabitTile extends ConsumerWidget {
+  const _HabitTile({
+    required this.habit,
+    required this.days,
+    required this.today,
+  });
+
+  final Habit habit;
+  final Set<DateTime> days;
+  final DateTime today;
+
+  static const _weekdayLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final repo = ref.read(habitRepositoryProvider);
+
+    final streak = computeStreak(days, today);
+    final longest = computeLongestStreak(days);
+    final total = days.length;
+    final last7 = [
+      for (var i = 6; i >= 0; i--) today.subtract(Duration(days: i)),
+    ];
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(habit.emoji, style: const TextStyle(fontSize: 22)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(habit.name, style: theme.textTheme.titleMedium),
+                ),
+                if (streak > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.local_fire_department,
+                            size: 16, color: Color(0xFFF97316)),
+                        const SizedBox(width: 2),
+                        Text('$streak', style: theme.textTheme.labelLarge),
+                      ],
+                    ),
+                  ),
+                IconButton(
+                  tooltip: 'Delete',
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () => repo.softDelete(habit.id),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                for (final day in last7) ...[
+                  Expanded(
+                    child: _DayDot(
+                      letter: _weekdayLetters[day.weekday - 1],
+                      label: '${day.month}/${day.day}',
+                      done: days.contains(day),
+                      isToday: day == today,
+                      onTap: () => repo.toggleDay(habit.id, day),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Best: $longest ${longest == 1 ? 'day' : 'days'}  ·  '
+              'Total: $total ${total == 1 ? 'day' : 'days'}',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DayDot extends StatelessWidget {
+  const _DayDot({
+    required this.letter,
+    required this.label,
+    required this.done,
+    required this.isToday,
+    required this.onTap,
+  });
+
+  final String letter;
+  final String label;
+  final bool done;
+  final bool isToday;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Tooltip(
+      message: label,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            children: [
+              Text(letter,
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: cs.onSurfaceVariant)),
+              const SizedBox(height: 4),
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: done ? cs.primary : cs.surfaceContainerHighest,
+                  border: isToday
+                      ? Border.all(color: cs.primary, width: 2)
+                      : null,
+                ),
+                child: done
+                    ? Icon(Icons.check, size: 16, color: cs.onPrimary)
+                    : null,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

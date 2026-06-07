@@ -84,10 +84,17 @@ class HabitRepository {
   }
 
   /// Toggle today's completion for a habit.
-  Future<void> toggleToday(String habitId) async {
-    final day = AppDateUtils.startOfDay(DateTime.now());
+  Future<void> toggleToday(String habitId) =>
+      toggleDay(habitId, DateTime.now());
+
+  /// Toggle a habit's completion for an arbitrary [day]. Future days are
+  /// ignored — you can only log what has already happened.
+  Future<void> toggleDay(String habitId, DateTime day) async {
+    final d = AppDateUtils.startOfDay(day);
+    final today = AppDateUtils.startOfDay(DateTime.now());
+    if (d.isAfter(today)) return;
     final existing = await (_db.select(_db.habitCompletions)
-          ..where((t) => t.habitId.equals(habitId) & t.date.equals(day)))
+          ..where((t) => t.habitId.equals(habitId) & t.date.equals(d)))
         .getSingleOrNull();
     if (existing != null) {
       await (_db.delete(_db.habitCompletions)
@@ -96,7 +103,7 @@ class HabitRepository {
     } else {
       await _db.into(_db.habitCompletions).insert(
             HabitCompletionsCompanion.insert(
-                id: _uuid.v4(), habitId: habitId, date: day),
+                id: _uuid.v4(), habitId: habitId, date: d),
           );
     }
   }
