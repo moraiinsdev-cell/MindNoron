@@ -30,6 +30,22 @@ const _recurrenceOptions = {
   'monthly': 'Every month',
 };
 
+/// One-tap time-of-day presets so a whole morning / afternoon / evening can be
+/// selected without fiddling with the start & end time pickers.
+class _DayPart {
+  const _DayPart(this.label, this.icon, this.startHour, this.endHour);
+  final String label;
+  final IconData icon;
+  final int startHour; // inclusive, on the start date
+  final int endHour; // exclusive boundary, same day
+}
+
+const _dayParts = <_DayPart>[
+  _DayPart('Morning', Icons.wb_twilight, 6, 12),
+  _DayPart('Noon & afternoon', Icons.wb_sunny_outlined, 12, 18),
+  _DayPart('Evening', Icons.nightlight_outlined, 18, 22),
+];
+
 const _reminderOptions = <int?, String>{
   null: 'No reminder',
   0: 'At time of event',
@@ -89,6 +105,29 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
   static DateTime _roundToNextHalfHour(DateTime t) {
     final m = t.minute < 30 ? 30 : 60;
     return DateTime(t.year, t.month, t.day, t.hour).add(Duration(minutes: m));
+  }
+
+  /// Apply a time-of-day preset to the (existing) start date, clearing all-day.
+  void _applyDayPart(_DayPart part) {
+    setState(() {
+      _allDay = false;
+      final d = _start;
+      _start = DateTime(d.year, d.month, d.day, part.startHour);
+      _end = DateTime(d.year, d.month, d.day, part.endHour);
+    });
+  }
+
+  /// Whether [part] exactly matches the current start/end on a single day.
+  bool _isDayPart(_DayPart part) {
+    if (_allDay) return false;
+    final sameDay = _start.year == _end.year &&
+        _start.month == _end.month &&
+        _start.day == _end.day;
+    return sameDay &&
+        _start.hour == part.startHour &&
+        _start.minute == 0 &&
+        _end.hour == part.endHour &&
+        _end.minute == 0;
   }
 
   @override
@@ -249,6 +288,25 @@ class _EventEditorState extends ConsumerState<_EventEditor> {
                     value: _allDay,
                     onChanged: (v) => setState(() => _allDay = v),
                   ),
+                  if (!_allDay) ...[
+                    const SizedBox(height: 4),
+                    Text('Quick range', style: theme.textTheme.labelLarge),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final part in _dayParts)
+                          ChoiceChip(
+                            avatar: Icon(part.icon, size: 18),
+                            label: Text(part.label),
+                            selected: _isDayPart(part),
+                            onSelected: (_) => _applyDayPart(part),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   _DateTimeRow(
                     label: 'Starts',
                     dateText: _dateLabel(_start),
