@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -25,25 +26,29 @@ class BackupService {
     return dir;
   }
 
+  Future<List<Map<String, dynamic>>> _dump<T extends Table, D>(
+      TableInfo<T, D> table) async {
+    final rows = await _db.select(table).get();
+    return rows
+        .map((e) => (e as dynamic).toJson() as Map<String, dynamic>)
+        .toList();
+  }
+
   Future<Map<String, dynamic>> _export() async {
     return {
       'schemaVersion': _db.schemaVersion,
       'exportedAt': DateTime.now().toIso8601String(),
       'tables': {
-        'inboxItems': (await _db.select(_db.inboxItems).get())
-            .map((e) => e.toJson())
-            .toList(),
-        'tasks':
-            (await _db.select(_db.tasks).get()).map((e) => e.toJson()).toList(),
-        'pomodoroSessions': (await _db.select(_db.pomodoroSessions).get())
-            .map((e) => e.toJson())
-            .toList(),
-        'dailyLogs': (await _db.select(_db.dailyLogs).get())
-            .map((e) => e.toJson())
-            .toList(),
-        'settings': (await _db.select(_db.settings).get())
-            .map((e) => e.toJson())
-            .toList(),
+        'inboxItems': await _dump(_db.inboxItems),
+        'tasks': await _dump(_db.tasks),
+        'pomodoroSessions': await _dump(_db.pomodoroSessions),
+        'dailyLogs': await _dump(_db.dailyLogs),
+        'notes': await _dump(_db.notes),
+        'habits': await _dump(_db.habits),
+        'habitCompletions': await _dump(_db.habitCompletions),
+        'calendarEvents': await _dump(_db.calendarEvents),
+        'thoughts': await _dump(_db.thoughts),
+        'settings': await _dump(_db.settings),
       },
     };
   }
@@ -81,15 +86,22 @@ class BackupService {
 
   /// Wipe all data (Settings → Clear all data).
   Future<void> clearAll() async {
-    await _db.transaction(() async {
-      await _db.delete(_db.inboxItems).go();
-      await _db.delete(_db.tasks).go();
-      await _db.delete(_db.pomodoroSessions).go();
-      await _db.delete(_db.dailyLogs).go();
-      await _db.delete(_db.settings).go();
-      await _db.delete(_db.notes).go();
-      await _db.delete(_db.timerStates).go();
-    });
+    await _db.transaction(_deleteAll);
+  }
+
+  /// Delete every persistent row. Must run inside a transaction.
+  Future<void> _deleteAll() async {
+    await _db.delete(_db.inboxItems).go();
+    await _db.delete(_db.tasks).go();
+    await _db.delete(_db.pomodoroSessions).go();
+    await _db.delete(_db.dailyLogs).go();
+    await _db.delete(_db.notes).go();
+    await _db.delete(_db.habits).go();
+    await _db.delete(_db.habitCompletions).go();
+    await _db.delete(_db.calendarEvents).go();
+    await _db.delete(_db.thoughts).go();
+    await _db.delete(_db.settings).go();
+    await _db.delete(_db.timerStates).go();
   }
 
   /// Restore from a backup file, replacing all current data.
@@ -101,11 +113,7 @@ class BackupService {
         ((tables[key] as List?) ?? const []).cast<Map<String, dynamic>>();
 
     await _db.transaction(() async {
-      await _db.delete(_db.inboxItems).go();
-      await _db.delete(_db.tasks).go();
-      await _db.delete(_db.pomodoroSessions).go();
-      await _db.delete(_db.dailyLogs).go();
-      await _db.delete(_db.settings).go();
+      await _deleteAll();
 
       for (final m in rows('inboxItems')) {
         await _db.into(_db.inboxItems).insert(InboxItem.fromJson(m));
@@ -120,6 +128,21 @@ class BackupService {
       }
       for (final m in rows('dailyLogs')) {
         await _db.into(_db.dailyLogs).insert(DailyLog.fromJson(m));
+      }
+      for (final m in rows('notes')) {
+        await _db.into(_db.notes).insert(Note.fromJson(m));
+      }
+      for (final m in rows('habits')) {
+        await _db.into(_db.habits).insert(Habit.fromJson(m));
+      }
+      for (final m in rows('habitCompletions')) {
+        await _db.into(_db.habitCompletions).insert(HabitCompletion.fromJson(m));
+      }
+      for (final m in rows('calendarEvents')) {
+        await _db.into(_db.calendarEvents).insert(CalendarEvent.fromJson(m));
+      }
+      for (final m in rows('thoughts')) {
+        await _db.into(_db.thoughts).insert(Thought.fromJson(m));
       }
       for (final m in rows('settings')) {
         await _db.into(_db.settings).insert(Setting.fromJson(m));
