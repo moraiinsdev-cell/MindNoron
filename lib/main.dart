@@ -38,7 +38,12 @@ Future<void> main() async {
     onExit: _onExit,
   );
   await _tray!.init();
-  await HotkeyService.init(onCapture: _onCaptureRequested);
+  final hotkey =
+      await _container.read(settingsRepositoryProvider).getCaptureHotkey();
+  await HotkeyService.init(
+    onCapture: _onCaptureRequested,
+    hotkey: hotkey,
+  );
 
   runApp(
     UncontrolledProviderScope(

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,6 +28,8 @@ class SettingsRepository {
   static const _kCustomTracks = 'customTracks';
   static const _kUserName = 'userName';
   static const _kUserNamePrompted = 'userNamePrompted';
+  static const _kContexts = 'contexts';
+  static const _kCaptureHotkey = 'captureHotkey';
 
   Future<void> _set(String key, String value) {
     return _db.into(_db.settings).insertOnConflictUpdate(
@@ -140,6 +144,51 @@ class SettingsRepository {
     );
   }
 
+  // --- Task contexts (@Home / @Office ...) --------------------------------
+
+  /// The list of contexts a task can be tagged with. Seeded from
+  /// [AppConstants.defaultContexts] on first run (PLAN.md §5.7).
+  Stream<List<String>> watchContexts() =>
+      _watch(_kContexts).map(_decodeContexts);
+  Future<List<String>> getContexts() async =>
+      _decodeContexts(await readValue(_kContexts));
+
+  Future<void> addContext(String name) async {
+    final value = name.trim();
+    if (value.isEmpty) return;
+    final list = await getContexts();
+    if (list.contains(value)) return;
+    await _set(_kContexts, jsonEncode([...list, value]));
+  }
+
+  Future<void> removeContext(String name) async {
+    final list = await getContexts();
+    await _set(
+        _kContexts, jsonEncode(list.where((c) => c != name).toList()));
+  }
+
+  static List<String> _decodeContexts(String? raw) {
+    if (raw == null || raw.isEmpty) return AppConstants.defaultContexts;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is List) return decoded.cast<String>();
+    } catch (_) {}
+    return AppConstants.defaultContexts;
+  }
+
+  // --- Global quick-capture hotkey ----------------------------------------
+
+  /// The hotkey that summons Quick Capture. Defaults to
+  /// [AppConstants.defaultCaptureHotkey].
+  Stream<String> watchCaptureHotkey() => _watch(_kCaptureHotkey)
+      .map((v) => (v == null || v.isEmpty)
+          ? AppConstants.defaultCaptureHotkey
+          : v);
+  Future<String> getCaptureHotkey() async =>
+      (await readValue(_kCaptureHotkey)) ?? AppConstants.defaultCaptureHotkey;
+  Future<void> setCaptureHotkey(String hotkey) =>
+      _set(_kCaptureHotkey, hotkey);
+
   // --- Noron-space animated backdrop --------------------------------------
 
   Stream<bool> watchNeuronBackdrop() =>
@@ -209,4 +258,12 @@ final neuronBackdropProvider = StreamProvider<bool>((ref) {
 
 final customTracksProvider = StreamProvider<List<CustomTrack>>((ref) {
   return ref.watch(settingsRepositoryProvider).watchCustomTracks();
+});
+
+final contextsProvider = StreamProvider<List<String>>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchContexts();
+});
+
+final captureHotkeyProvider = StreamProvider<String>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchCaptureHotkey();
 });

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart' show DateTimeRange;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,6 +25,9 @@ class TaskRepository {
     String? context,
     String? description,
     String? parentTaskId,
+    int? estimatedMinutes,
+    List<String> tags = const [],
+    String? recurrenceRule,
   }) async {
     final id = _uuid.v4();
     await _db.into(_db.tasks).insert(
@@ -34,9 +39,52 @@ class TaskRepository {
             context: Value(context),
             description: Value(description),
             parentTaskId: Value(parentTaskId),
+            estimatedMinutes: Value(estimatedMinutes),
+            tags: Value(jsonEncode(tags)),
+            isRecurring: Value(recurrenceRule != null),
+            recurrenceRule: Value(recurrenceRule),
           ),
         );
     return id;
+  }
+
+  /// Full save from the task editor — overwrites every editable field.
+  Future<void> updateDetails({
+    required String id,
+    required String title,
+    String? description,
+    required int priority,
+    DateTime? dueDate,
+    int? estimatedMinutes,
+    String? context,
+    List<String> tags = const [],
+    String? recurrenceRule,
+  }) {
+    final trimmed = title.trim();
+    return (_db.update(_db.tasks)..where((t) => t.id.equals(id))).write(
+      TasksCompanion(
+        title: trimmed.isEmpty ? const Value.absent() : Value(trimmed),
+        description: Value(description),
+        priority: Value(priority),
+        dueDate: Value(dueDate),
+        estimatedMinutes: Value(estimatedMinutes),
+        context: Value(context),
+        tags: Value(jsonEncode(tags)),
+        isRecurring: Value(recurrenceRule != null),
+        recurrenceRule: Value(recurrenceRule),
+        updatedAt: Value(DateTime.now()),
+        isDirty: const Value(true),
+      ),
+    );
+  }
+
+  /// Decode a task's JSON-encoded [Task.tags] into a list.
+  static List<String> tagsOf(Task task) {
+    try {
+      final decoded = jsonDecode(task.tags);
+      if (decoded is List) return decoded.cast<String>();
+    } catch (_) {}
+    return const [];
   }
 
   Future<void> setStatus(String id, TaskStatus status) {

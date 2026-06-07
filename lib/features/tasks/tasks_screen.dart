@@ -10,6 +10,7 @@ import '../../data/repositories/task_repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../../presentation/widgets/common/celebration_checkbox.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
+import 'task_editor.dart';
 import 'task_urgency.dart';
 
 enum _TaskView { open, today, done }
@@ -291,14 +292,24 @@ class _TaskTileState extends ConsumerState<_TaskTile> {
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: cs.onSurfaceVariant),
                   ),
-                if (task.actualMinutes > 0)
-                  Text('${task.actualMinutes} min',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: cs.onSurfaceVariant)),
+                if (task.actualMinutes > 0 || task.estimatedMinutes != null)
+                  Text(
+                    task.estimatedMinutes != null
+                        ? '${task.actualMinutes}/${task.estimatedMinutes} min'
+                        : '${task.actualMinutes} min',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
+                  ),
                 if (task.context != null)
                   Text(task.context!,
                       style: theme.textTheme.bodySmall
                           ?.copyWith(color: cs.onSurfaceVariant)),
+                if (task.isRecurring)
+                  Icon(Icons.repeat, size: 13, color: cs.onSurfaceVariant),
+                for (final tag in TaskRepository.tagsOf(task))
+                  Text('#$tag',
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: cs.primary)),
               ],
             ),
           ),
@@ -310,7 +321,11 @@ class _TaskTileState extends ConsumerState<_TaskTile> {
                 onChanged: (s) => _setStatus(task, s),
               ),
               const SizedBox(width: 6),
-              _PriorityChip(priority: task.priority),
+              InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => showTaskEditor(context, task),
+                child: _PriorityChip(priority: task.priority),
+              ),
               IconButton(
                 tooltip: 'Add subtask',
                 icon: const Icon(Icons.playlist_add),
@@ -321,6 +336,8 @@ class _TaskTileState extends ConsumerState<_TaskTile> {
                 icon: const Icon(Icons.more_vert),
                 onSelected: (v) {
                   switch (v) {
+                    case 'edit':
+                      showTaskEditor(context, task);
                     case 'rename':
                       _startEdit();
                     case 'due':
@@ -332,6 +349,14 @@ class _TaskTileState extends ConsumerState<_TaskTile> {
                   }
                 },
                 itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.tune),
+                      title: Text('Edit details...'),
+                    ),
+                  ),
                   const PopupMenuItem(
                     value: 'rename',
                     child: ListTile(

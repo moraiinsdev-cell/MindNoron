@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/platform/hotkey_service.dart';
 import '../../core/platform/sound_service.dart';
 import '../../core/providers/app_providers.dart';
 import '../../data/backup/backup_service.dart';
@@ -158,15 +159,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
           const _SoundSettings(),
-          const _SectionCard(
-            title: 'Shortcuts',
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.keyboard_command_key),
-              title: Text('Global quick capture'),
-              trailing: Text(AppConstants.defaultCaptureHotkey),
-            ),
-          ),
+          const _HotkeySettings(),
+          const _ContextSettings(),
           _SectionCard(
             title: 'Data',
             child: Wrap(
@@ -396,6 +390,128 @@ class _SoundSettingsState extends ConsumerState<_SoundSettings> {
                 'Animated neuron field behind the focus timer (turn off to reduce motion)'),
             value: backdrop,
             onChanged: settings.setNeuronBackdrop,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Pick the global hotkey that summons Quick Capture, and re-register it live.
+class _HotkeySettings extends ConsumerWidget {
+  const _HotkeySettings();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final current = ref.watch(captureHotkeyProvider).valueOrNull ??
+        AppConstants.defaultCaptureHotkey;
+    final settings = ref.read(settingsRepositoryProvider);
+    final options = {...HotkeyService.presets, current}.toList();
+
+    return _SectionCard(
+      title: 'Shortcuts',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Global quick capture — works from any app, even when MindNoron is '
+            'hidden in the tray.',
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(Icons.keyboard_command_key),
+              const SizedBox(width: 12),
+              const Expanded(child: Text('Capture hotkey')),
+              DropdownButton<String>(
+                value: current,
+                items: [
+                  for (final h in options)
+                    DropdownMenuItem(value: h, child: Text(h)),
+                ],
+                onChanged: (h) async {
+                  if (h == null) return;
+                  await settings.setCaptureHotkey(h);
+                  await HotkeyService.update(h);
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Manage the list of task contexts (@Home, @Office …) used by the task editor.
+class _ContextSettings extends ConsumerStatefulWidget {
+  const _ContextSettings();
+
+  @override
+  ConsumerState<_ContextSettings> createState() => _ContextSettingsState();
+}
+
+class _ContextSettingsState extends ConsumerState<_ContextSettings> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _add() async {
+    var value = _controller.text.trim();
+    if (value.isEmpty) return;
+    if (!value.startsWith('@')) value = '@$value';
+    await ref.read(settingsRepositoryProvider).addContext(value);
+    _controller.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final contexts = ref.watch(contextsProvider).valueOrNull ?? const [];
+    final settings = ref.read(settingsRepositoryProvider);
+
+    return _SectionCard(
+      title: 'Contexts',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Where a task gets done. Pick one in the task editor.',
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final c in contexts)
+                InputChip(
+                  label: Text(c),
+                  onDeleted: () => settings.removeContext(c),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controller,
+            onSubmitted: (_) => _add(),
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: 'Add a context (e.g. @Errands)',
+              prefixIcon: const Icon(Icons.place_outlined, size: 18),
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: _add,
+              ),
+            ),
           ),
         ],
       ),
