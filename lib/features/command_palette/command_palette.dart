@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../data/database/app_database.dart';
+import '../../data/repositories/inbox_repository.dart';
 import '../../data/repositories/notes_repository.dart';
+import '../../data/repositories/settings_repository.dart';
 import '../../data/repositories/task_repository.dart';
 import '../../presentation/navigation/app_router.dart';
 import '../capture/capture_dialog.dart';
@@ -67,6 +69,10 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     });
   }
 
+  int get _workMinutes =>
+      ref.watch(workMinutesProvider).valueOrNull ??
+      AppConstants.defaultWorkMinutes;
+
   List<_Command> _build() {
     final q = _query.trim().toLowerCase();
     final base = <_Command>[
@@ -81,10 +87,10 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         final c = rootNavigatorKey.currentContext;
         if (c != null) showCaptureDialog(c);
       }),
-      _Command(Icons.play_arrow,
-          'Start ${AppConstants.defaultWorkMinutes} min focus', () {
-        ref.read(timerControllerProvider.notifier).start(
-            duration: const Duration(minutes: AppConstants.defaultWorkMinutes));
+      _Command(Icons.play_arrow, 'Start $_workMinutes min focus', () {
+        ref
+            .read(timerControllerProvider.notifier)
+            .start(duration: Duration(minutes: _workMinutes));
         Navigator.of(context).pop();
         appRouter.go(Routes.timer);
       }),
@@ -113,6 +119,16 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         list.add(_Command(Icons.sticky_note_2_outlined, 'Note: $title', () {
           Navigator.of(context).pop();
           appRouter.go(Routes.notes);
+        }));
+      }
+      final inbox =
+          ref.watch(unprocessedInboxProvider).valueOrNull ?? const <InboxItem>[];
+      for (final item in inbox
+          .where((i) => i.content.toLowerCase().contains(q))
+          .take(5)) {
+        list.add(_Command(Icons.inbox_outlined, 'Inbox: ${item.content}', () {
+          Navigator.of(context).pop();
+          appRouter.go(Routes.inbox);
         }));
       }
     }
