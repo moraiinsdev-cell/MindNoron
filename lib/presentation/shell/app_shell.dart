@@ -61,7 +61,15 @@ class AppShell extends ConsumerWidget {
         child: Scaffold(
           body: Row(
             children: [
-              NavigationRail(
+              // Let the rail scroll when the window is too short for all the
+              // destinations (otherwise the last items overflow vertically).
+              LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints:
+                        BoxConstraints(minHeight: constraints.maxHeight),
+                    child: IntrinsicHeight(
+                      child: NavigationRail(
                 selectedIndex: _selectedIndex(location),
                 onDestinationSelected: (i) => context.go(_routes[i]),
                 labelType: NavigationRailLabelType.all,
@@ -144,6 +152,10 @@ class AppShell extends ConsumerWidget {
                     label: Text(l10n.navSettings),
                   ),
                 ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
               const VerticalDivider(width: 1),
               Expanded(child: child),
