@@ -1,11 +1,15 @@
-# Build if needed, then open the MindNoron Windows desktop app.
+# Build (if needed) and open the MindNoron Windows desktop app — one command.
 #
 # Usage:
-#   powershell -ExecutionPolicy Bypass -File tool\open_app.ps1
-#   powershell -ExecutionPolicy Bypass -File tool\open_app.ps1 -Rebuild
+#   powershell -ExecutionPolicy Bypass -File tool\open_app.ps1            # build only if exe missing, then open
+#   powershell -ExecutionPolicy Bypass -File tool\open_app.ps1 -Rebuild   # always rebuild from latest code, then open
+#   powershell -ExecutionPolicy Bypass -File tool\open_app.ps1 -Codegen   # rebuild AND re-run Drift/l10n codegen (use after model/.arb changes)
+#
+# Tip: just double-click  run.bat  in the project root.
 
 param(
-  [switch]$Rebuild
+  [switch]$Rebuild,
+  [switch]$Codegen
 )
 
 $ErrorActionPreference = 'Stop'
@@ -25,8 +29,11 @@ function Resolve-Flutter {
 Set-Location $root
 $flutter = Resolve-Flutter
 
-if ($Rebuild -or -not (Test-Path $exe)) {
-  Write-Host "Preparing MindNoron..."
+# A running instance locks the exe — stop it before rebuilding.
+Get-Process mind_noron -ErrorAction SilentlyContinue | Stop-Process -Force
+
+if ($Rebuild -or $Codegen -or -not (Test-Path $exe)) {
+  Write-Host "Preparing MindNoron..." -ForegroundColor Cyan
   & $flutter pub get
 
   $junctionScript = Join-Path $root 'tool\setup_plugin_junctions.ps1'
@@ -34,8 +41,16 @@ if ($Rebuild -or -not (Test-Path $exe)) {
     & powershell -ExecutionPolicy Bypass -File $junctionScript
   }
 
+  if ($Codegen) {
+    Write-Host "Running Drift codegen..." -ForegroundColor Cyan
+    & $flutter pub run build_runner build --delete-conflicting-outputs
+    Write-Host "Generating localizations..." -ForegroundColor Cyan
+    & $flutter gen-l10n
+  }
+
+  Write-Host "Building Windows (debug)..." -ForegroundColor Cyan
   & $flutter build windows --debug
 }
 
-Write-Host "Opening MindNoron..."
+Write-Host "Opening MindNoron..." -ForegroundColor Green
 Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe)
