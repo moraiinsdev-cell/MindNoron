@@ -50,5 +50,19 @@ void main() {
       expect(ageLabelForDates(now.add(const Duration(days: 3)), now, now),
           'Due in 3d');
     });
+
+    test('age is by calendar day, not 24h chunks (regression)', () {
+      // Created at 11pm, read at 8am next morning: only ~9h elapsed but it is
+      // the previous calendar day, so it must read "Yesterday", not "Today".
+      final morning = DateTime(2026, 6, 6, 8);
+      final lastNight = DateTime(2026, 6, 5, 23);
+      expect(ageLabelForDates(null, lastNight, morning), 'Yesterday');
+      expect(urgencyForDates(null, lastNight, morning), 0);
+
+      // Created two calendar days ago in the evening → "2d ago" + urgency 1.
+      final twoDaysAgo = DateTime(2026, 6, 4, 22);
+      expect(ageLabelForDates(null, twoDaysAgo, morning), '2d ago');
+      expect(urgencyForDates(null, twoDaysAgo, morning), 1);
+    });
   });
 }
