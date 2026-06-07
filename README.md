@@ -32,9 +32,11 @@ the app and commit to the day.
 - Timestamp-based Pomodoro/focus timer that stays accurate across restarts.
 - Dashboard with today's focus minutes, completed tasks, top priorities, and
   energy check-in.
-- Notes module with a simple master-detail editor.
-- Habits with streak calculation and daily toggles.
-- Command palette with navigation and search.
+- Notes with Markdown preview and [[wikilink]] backlinks.
+- Habits with a tappable 7-day history, streaks, and totals.
+- Daily reflection journal with prompts, mood, and autosave.
+- Focus-by-week and energy-trend charts.
+- Command palette with navigation and search (tasks, notes, inbox).
 - Local backup, export, import, and clear-data controls.
 - Local-first SQLite data model designed to be sync-ready later.
 
@@ -53,8 +55,9 @@ the app and commit to the day.
 | 0 | Foundation: theme, Drift DB, migrations, window/tray/hotkey/notifications, router shell, l10n | Done |
 | 1A | Core loop: capture, Inbox, tasks, focus timer, dashboard stats, backup-on-exit | Done |
 | 1B | Command palette, settings, theme, export/import, energy check-in | Done |
-| 2 | Notes module and global search | Started |
-| 3 | Projects, tags, charts, habits, journal, goals, calendar | Planned |
+| 2 | Notes (Markdown + [[backlinks]]), tags, contexts, palette search | Done |
+| 3 | Habits, journal, focus/energy charts, calendar | Started |
+| 3b | Projects and goals | Planned |
 | 4 | Optional Supabase sync and mobile companion | Planned |
 
 See [PLAN.md](PLAN.md) for the full product spec and roadmap.

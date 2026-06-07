@@ -82,7 +82,11 @@ class DashboardScreen extends ConsumerWidget {
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           if (topTasks.isEmpty)
-            const SizedBox(height: 140, child: ComingSoon())
+            const SizedBox(
+              height: 140,
+              child: ComingSoon(
+                  label: 'No open tasks — capture something to get going'),
+            )
           else
             Card(
               child: Column(

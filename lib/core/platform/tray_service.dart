@@ -18,7 +18,7 @@ class TrayService with TrayListener {
   Future<void> init() async {
     try {
       trayManager.addListener(this);
-      // NOTE: ship a real icon at assets/images/tray_icon.ico (Phase 0 TODO).
+      // Ships a real 64x64 icon; init fails gracefully if the asset is missing.
       await trayManager.setIcon('assets/images/tray_icon.ico');
       await trayManager.setToolTip(AppConstants.appName);
       await _setMenu();
