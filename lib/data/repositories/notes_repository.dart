@@ -53,6 +53,25 @@ class NotesRepository {
         .watch();
   }
 
+  /// `[[Wiki Link]]` targets referenced inside a note's content. Powers the
+  /// note↔note backlink graph (PLAN.md §4.8).
+  static final _wikilink = RegExp(r'\[\[([^\[\]]+)\]\]');
+
+  static List<String> linkTargets(String content) {
+    return _wikilink
+        .allMatches(content)
+        .map((m) => m.group(1)!.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
+
+  /// Whether [note] links to a note titled [title] (case-insensitive).
+  static bool linksTo(Note note, String title) {
+    final lower = title.toLowerCase();
+    return linkTargets(note.content)
+        .any((t) => t.toLowerCase() == lower);
+  }
+
   Future<List<Note>> search(String query) {
     final like = '%$query%';
     return (_db.select(_db.notes)
