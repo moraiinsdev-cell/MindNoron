@@ -25,10 +25,18 @@ class NoronBackdrop extends StatefulWidget {
 
 class _NoronBackdropState extends State<NoronBackdrop>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: const Duration(seconds: 28),
-  )..repeat();
+  // Free-running elapsed seconds. The field is driven by a monotonic clock
+  // rather than an AnimationController that ramps 0→1 and resets: because the
+  // node speeds aren't whole numbers, restarting the phase every cycle made the
+  // whole field visibly jump at the loop point. A clock that only ever counts
+  // up keeps the orbital sin/cos motion seamless forever.
+  final _seconds = ValueNotifier<double>(0);
+  late final _ticker = createTicker((elapsed) {
+    _seconds.value = elapsed.inMicroseconds / Duration.microsecondsPerSecond;
+  })..start();
+
+  // Angular speed, preserving the previous ~28s-per-revolution pace.
+  static const _omega = 2 * pi / 28;
 
   late final List<_Node> _nodes = _make();
 
@@ -49,7 +57,8 @@ class _NoronBackdropState extends State<NoronBackdrop>
 
   @override
   void dispose() {
-    _c.dispose();
+    _ticker.dispose();
+    _seconds.dispose();
     super.dispose();
   }
 
@@ -58,13 +67,13 @@ class _NoronBackdropState extends State<NoronBackdrop>
     return IgnorePointer(
       child: ClipRect(
         child: RepaintBoundary(
-          child: AnimatedBuilder(
-            animation: _c,
-            builder: (_, __) => CustomPaint(
+          child: ValueListenableBuilder<double>(
+            valueListenable: _seconds,
+            builder: (_, seconds, __) => CustomPaint(
               size: Size.infinite,
               painter: _NoronPainter(
                 nodes: _nodes,
-                t: _c.value * 2 * pi,
+                t: seconds * _omega,
                 color: widget.color,
                 intensity: widget.intensity,
               ),
