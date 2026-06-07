@@ -233,16 +233,19 @@ class _EnergySegment extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(999),
         child: Stack(
+          fit: StackFit.expand,
           children: [
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(color: cs.surfaceContainerHighest),
-              ),
+            DecoratedBox(
+              decoration: BoxDecoration(color: cs.surfaceContainerHighest),
             ),
-            FractionallySizedBox(
-              widthFactor: value,
-              child: DecoratedBox(
-                decoration: BoxDecoration(color: cs.primary),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FractionallySizedBox(
+                widthFactor: value,
+                heightFactor: 1,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(color: cs.primary),
+                ),
               ),
             ),
           ],
