@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/repositories/inbox_repository.dart';
 import '../../data/repositories/task_repository.dart';
+import '../../features/calendar/event_reminder.dart';
 import '../../features/capture/capture_dialog.dart';
 import '../../features/command_palette/command_palette.dart';
 import '../../l10n/app_localizations.dart';
@@ -20,6 +21,7 @@ class AppShell extends ConsumerWidget {
   static const _routes = [
     Routes.dashboard,
     Routes.tasks,
+    Routes.calendar,
     Routes.timer,
     Routes.inbox,
     Routes.notes,
@@ -37,6 +39,8 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final location = GoRouterState.of(context).matchedLocation;
+    // Keep the event-reminder poller alive for the life of the app shell.
+    ref.watch(eventReminderProvider);
     final openTaskCount = ref.watch(openTasksProvider).maybeWhen(
           data: (tasks) => tasks.length,
           orElse: () => 0,
@@ -89,6 +93,11 @@ class AppShell extends ConsumerWidget {
                       tooltip: '$openTaskCount open tasks',
                     ),
                     label: Text(l10n.navTasks),
+                  ),
+                  const NavigationRailDestination(
+                    icon: Icon(Icons.calendar_month_outlined),
+                    selectedIcon: Icon(Icons.calendar_month),
+                    label: Text('Calendar'),
                   ),
                   NavigationRailDestination(
                     icon: const Icon(Icons.timer_outlined),

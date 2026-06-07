@@ -5096,6 +5096,821 @@ class ThoughtsCompanion extends UpdateCompanion<Thought> {
   }
 }
 
+class $CalendarEventsTable extends CalendarEvents
+    with TableInfo<$CalendarEventsTable, CalendarEvent> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CalendarEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  static const VerificationMeta _deletedAtMeta =
+      const VerificationMeta('deletedAt');
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+      'deleted_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _isDirtyMeta =
+      const VerificationMeta('isDirty');
+  @override
+  late final GeneratedColumn<bool> isDirty = GeneratedColumn<bool>(
+      'is_dirty', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_dirty" IN (0, 1))'),
+      defaultValue: const Constant(true));
+  static const VerificationMeta _syncedAtMeta =
+      const VerificationMeta('syncedAt');
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+      'synced_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+      'title', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _descriptionMeta =
+      const VerificationMeta('description');
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+      'description', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _startTimeMeta =
+      const VerificationMeta('startTime');
+  @override
+  late final GeneratedColumn<DateTime> startTime = GeneratedColumn<DateTime>(
+      'start_time', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _endTimeMeta =
+      const VerificationMeta('endTime');
+  @override
+  late final GeneratedColumn<DateTime> endTime = GeneratedColumn<DateTime>(
+      'end_time', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _isAllDayMeta =
+      const VerificationMeta('isAllDay');
+  @override
+  late final GeneratedColumn<bool> isAllDay = GeneratedColumn<bool>(
+      'is_all_day', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_all_day" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _locationMeta =
+      const VerificationMeta('location');
+  @override
+  late final GeneratedColumn<String> location = GeneratedColumn<String>(
+      'location', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _colorTagMeta =
+      const VerificationMeta('colorTag');
+  @override
+  late final GeneratedColumn<String> colorTag = GeneratedColumn<String>(
+      'color_tag', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('blue'));
+  static const VerificationMeta _isRecurringMeta =
+      const VerificationMeta('isRecurring');
+  @override
+  late final GeneratedColumn<bool> isRecurring = GeneratedColumn<bool>(
+      'is_recurring', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("is_recurring" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _recurrenceRuleMeta =
+      const VerificationMeta('recurrenceRule');
+  @override
+  late final GeneratedColumn<String> recurrenceRule = GeneratedColumn<String>(
+      'recurrence_rule', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _reminderMinutesMeta =
+      const VerificationMeta('reminderMinutes');
+  @override
+  late final GeneratedColumn<int> reminderMinutes = GeneratedColumn<int>(
+      'reminder_minutes', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _linkedTaskIdMeta =
+      const VerificationMeta('linkedTaskId');
+  @override
+  late final GeneratedColumn<String> linkedTaskId = GeneratedColumn<String>(
+      'linked_task_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        createdAt,
+        updatedAt,
+        deletedAt,
+        isDirty,
+        syncedAt,
+        title,
+        description,
+        startTime,
+        endTime,
+        isAllDay,
+        location,
+        colorTag,
+        isRecurring,
+        recurrenceRule,
+        reminderMinutes,
+        linkedTaskId
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'calendar_events';
+  @override
+  VerificationContext validateIntegrity(Insertable<CalendarEvent> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(_deletedAtMeta,
+          deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
+    }
+    if (data.containsKey('is_dirty')) {
+      context.handle(_isDirtyMeta,
+          isDirty.isAcceptableOrUnknown(data['is_dirty']!, _isDirtyMeta));
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(_syncedAtMeta,
+          syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta));
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+          _descriptionMeta,
+          description.isAcceptableOrUnknown(
+              data['description']!, _descriptionMeta));
+    }
+    if (data.containsKey('start_time')) {
+      context.handle(_startTimeMeta,
+          startTime.isAcceptableOrUnknown(data['start_time']!, _startTimeMeta));
+    } else if (isInserting) {
+      context.missing(_startTimeMeta);
+    }
+    if (data.containsKey('end_time')) {
+      context.handle(_endTimeMeta,
+          endTime.isAcceptableOrUnknown(data['end_time']!, _endTimeMeta));
+    } else if (isInserting) {
+      context.missing(_endTimeMeta);
+    }
+    if (data.containsKey('is_all_day')) {
+      context.handle(_isAllDayMeta,
+          isAllDay.isAcceptableOrUnknown(data['is_all_day']!, _isAllDayMeta));
+    }
+    if (data.containsKey('location')) {
+      context.handle(_locationMeta,
+          location.isAcceptableOrUnknown(data['location']!, _locationMeta));
+    }
+    if (data.containsKey('color_tag')) {
+      context.handle(_colorTagMeta,
+          colorTag.isAcceptableOrUnknown(data['color_tag']!, _colorTagMeta));
+    }
+    if (data.containsKey('is_recurring')) {
+      context.handle(
+          _isRecurringMeta,
+          isRecurring.isAcceptableOrUnknown(
+              data['is_recurring']!, _isRecurringMeta));
+    }
+    if (data.containsKey('recurrence_rule')) {
+      context.handle(
+          _recurrenceRuleMeta,
+          recurrenceRule.isAcceptableOrUnknown(
+              data['recurrence_rule']!, _recurrenceRuleMeta));
+    }
+    if (data.containsKey('reminder_minutes')) {
+      context.handle(
+          _reminderMinutesMeta,
+          reminderMinutes.isAcceptableOrUnknown(
+              data['reminder_minutes']!, _reminderMinutesMeta));
+    }
+    if (data.containsKey('linked_task_id')) {
+      context.handle(
+          _linkedTaskIdMeta,
+          linkedTaskId.isAcceptableOrUnknown(
+              data['linked_task_id']!, _linkedTaskIdMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CalendarEvent map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CalendarEvent(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      deletedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at']),
+      isDirty: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_dirty'])!,
+      syncedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}synced_at']),
+      title: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
+      description: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}description']),
+      startTime: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}start_time'])!,
+      endTime: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}end_time'])!,
+      isAllDay: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_all_day'])!,
+      location: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}location']),
+      colorTag: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}color_tag'])!,
+      isRecurring: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_recurring'])!,
+      recurrenceRule: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}recurrence_rule']),
+      reminderMinutes: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}reminder_minutes']),
+      linkedTaskId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}linked_task_id']),
+    );
+  }
+
+  @override
+  $CalendarEventsTable createAlias(String alias) {
+    return $CalendarEventsTable(attachedDatabase, alias);
+  }
+}
+
+class CalendarEvent extends DataClass implements Insertable<CalendarEvent> {
+  final String id;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  final bool isDirty;
+  final DateTime? syncedAt;
+  final String title;
+  final String? description;
+  final DateTime startTime;
+  final DateTime endTime;
+  final bool isAllDay;
+  final String? location;
+  final String colorTag;
+  final bool isRecurring;
+  final String? recurrenceRule;
+  final int? reminderMinutes;
+  final String? linkedTaskId;
+  const CalendarEvent(
+      {required this.id,
+      required this.createdAt,
+      required this.updatedAt,
+      this.deletedAt,
+      required this.isDirty,
+      this.syncedAt,
+      required this.title,
+      this.description,
+      required this.startTime,
+      required this.endTime,
+      required this.isAllDay,
+      this.location,
+      required this.colorTag,
+      required this.isRecurring,
+      this.recurrenceRule,
+      this.reminderMinutes,
+      this.linkedTaskId});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['is_dirty'] = Variable<bool>(isDirty);
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
+    map['title'] = Variable<String>(title);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    map['start_time'] = Variable<DateTime>(startTime);
+    map['end_time'] = Variable<DateTime>(endTime);
+    map['is_all_day'] = Variable<bool>(isAllDay);
+    if (!nullToAbsent || location != null) {
+      map['location'] = Variable<String>(location);
+    }
+    map['color_tag'] = Variable<String>(colorTag);
+    map['is_recurring'] = Variable<bool>(isRecurring);
+    if (!nullToAbsent || recurrenceRule != null) {
+      map['recurrence_rule'] = Variable<String>(recurrenceRule);
+    }
+    if (!nullToAbsent || reminderMinutes != null) {
+      map['reminder_minutes'] = Variable<int>(reminderMinutes);
+    }
+    if (!nullToAbsent || linkedTaskId != null) {
+      map['linked_task_id'] = Variable<String>(linkedTaskId);
+    }
+    return map;
+  }
+
+  CalendarEventsCompanion toCompanion(bool nullToAbsent) {
+    return CalendarEventsCompanion(
+      id: Value(id),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      isDirty: Value(isDirty),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
+      title: Value(title),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      startTime: Value(startTime),
+      endTime: Value(endTime),
+      isAllDay: Value(isAllDay),
+      location: location == null && nullToAbsent
+          ? const Value.absent()
+          : Value(location),
+      colorTag: Value(colorTag),
+      isRecurring: Value(isRecurring),
+      recurrenceRule: recurrenceRule == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recurrenceRule),
+      reminderMinutes: reminderMinutes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reminderMinutes),
+      linkedTaskId: linkedTaskId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(linkedTaskId),
+    );
+  }
+
+  factory CalendarEvent.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CalendarEvent(
+      id: serializer.fromJson<String>(json['id']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      isDirty: serializer.fromJson<bool>(json['isDirty']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
+      title: serializer.fromJson<String>(json['title']),
+      description: serializer.fromJson<String?>(json['description']),
+      startTime: serializer.fromJson<DateTime>(json['startTime']),
+      endTime: serializer.fromJson<DateTime>(json['endTime']),
+      isAllDay: serializer.fromJson<bool>(json['isAllDay']),
+      location: serializer.fromJson<String?>(json['location']),
+      colorTag: serializer.fromJson<String>(json['colorTag']),
+      isRecurring: serializer.fromJson<bool>(json['isRecurring']),
+      recurrenceRule: serializer.fromJson<String?>(json['recurrenceRule']),
+      reminderMinutes: serializer.fromJson<int?>(json['reminderMinutes']),
+      linkedTaskId: serializer.fromJson<String?>(json['linkedTaskId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'isDirty': serializer.toJson<bool>(isDirty),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
+      'title': serializer.toJson<String>(title),
+      'description': serializer.toJson<String?>(description),
+      'startTime': serializer.toJson<DateTime>(startTime),
+      'endTime': serializer.toJson<DateTime>(endTime),
+      'isAllDay': serializer.toJson<bool>(isAllDay),
+      'location': serializer.toJson<String?>(location),
+      'colorTag': serializer.toJson<String>(colorTag),
+      'isRecurring': serializer.toJson<bool>(isRecurring),
+      'recurrenceRule': serializer.toJson<String?>(recurrenceRule),
+      'reminderMinutes': serializer.toJson<int?>(reminderMinutes),
+      'linkedTaskId': serializer.toJson<String?>(linkedTaskId),
+    };
+  }
+
+  CalendarEvent copyWith(
+          {String? id,
+          DateTime? createdAt,
+          DateTime? updatedAt,
+          Value<DateTime?> deletedAt = const Value.absent(),
+          bool? isDirty,
+          Value<DateTime?> syncedAt = const Value.absent(),
+          String? title,
+          Value<String?> description = const Value.absent(),
+          DateTime? startTime,
+          DateTime? endTime,
+          bool? isAllDay,
+          Value<String?> location = const Value.absent(),
+          String? colorTag,
+          bool? isRecurring,
+          Value<String?> recurrenceRule = const Value.absent(),
+          Value<int?> reminderMinutes = const Value.absent(),
+          Value<String?> linkedTaskId = const Value.absent()}) =>
+      CalendarEvent(
+        id: id ?? this.id,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+        deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+        isDirty: isDirty ?? this.isDirty,
+        syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
+        title: title ?? this.title,
+        description: description.present ? description.value : this.description,
+        startTime: startTime ?? this.startTime,
+        endTime: endTime ?? this.endTime,
+        isAllDay: isAllDay ?? this.isAllDay,
+        location: location.present ? location.value : this.location,
+        colorTag: colorTag ?? this.colorTag,
+        isRecurring: isRecurring ?? this.isRecurring,
+        recurrenceRule:
+            recurrenceRule.present ? recurrenceRule.value : this.recurrenceRule,
+        reminderMinutes: reminderMinutes.present
+            ? reminderMinutes.value
+            : this.reminderMinutes,
+        linkedTaskId:
+            linkedTaskId.present ? linkedTaskId.value : this.linkedTaskId,
+      );
+  CalendarEvent copyWithCompanion(CalendarEventsCompanion data) {
+    return CalendarEvent(
+      id: data.id.present ? data.id.value : this.id,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      isDirty: data.isDirty.present ? data.isDirty.value : this.isDirty,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+      title: data.title.present ? data.title.value : this.title,
+      description:
+          data.description.present ? data.description.value : this.description,
+      startTime: data.startTime.present ? data.startTime.value : this.startTime,
+      endTime: data.endTime.present ? data.endTime.value : this.endTime,
+      isAllDay: data.isAllDay.present ? data.isAllDay.value : this.isAllDay,
+      location: data.location.present ? data.location.value : this.location,
+      colorTag: data.colorTag.present ? data.colorTag.value : this.colorTag,
+      isRecurring:
+          data.isRecurring.present ? data.isRecurring.value : this.isRecurring,
+      recurrenceRule: data.recurrenceRule.present
+          ? data.recurrenceRule.value
+          : this.recurrenceRule,
+      reminderMinutes: data.reminderMinutes.present
+          ? data.reminderMinutes.value
+          : this.reminderMinutes,
+      linkedTaskId: data.linkedTaskId.present
+          ? data.linkedTaskId.value
+          : this.linkedTaskId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CalendarEvent(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('isDirty: $isDirty, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('startTime: $startTime, ')
+          ..write('endTime: $endTime, ')
+          ..write('isAllDay: $isAllDay, ')
+          ..write('location: $location, ')
+          ..write('colorTag: $colorTag, ')
+          ..write('isRecurring: $isRecurring, ')
+          ..write('recurrenceRule: $recurrenceRule, ')
+          ..write('reminderMinutes: $reminderMinutes, ')
+          ..write('linkedTaskId: $linkedTaskId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      createdAt,
+      updatedAt,
+      deletedAt,
+      isDirty,
+      syncedAt,
+      title,
+      description,
+      startTime,
+      endTime,
+      isAllDay,
+      location,
+      colorTag,
+      isRecurring,
+      recurrenceRule,
+      reminderMinutes,
+      linkedTaskId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CalendarEvent &&
+          other.id == this.id &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.isDirty == this.isDirty &&
+          other.syncedAt == this.syncedAt &&
+          other.title == this.title &&
+          other.description == this.description &&
+          other.startTime == this.startTime &&
+          other.endTime == this.endTime &&
+          other.isAllDay == this.isAllDay &&
+          other.location == this.location &&
+          other.colorTag == this.colorTag &&
+          other.isRecurring == this.isRecurring &&
+          other.recurrenceRule == this.recurrenceRule &&
+          other.reminderMinutes == this.reminderMinutes &&
+          other.linkedTaskId == this.linkedTaskId);
+}
+
+class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
+  final Value<String> id;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<bool> isDirty;
+  final Value<DateTime?> syncedAt;
+  final Value<String> title;
+  final Value<String?> description;
+  final Value<DateTime> startTime;
+  final Value<DateTime> endTime;
+  final Value<bool> isAllDay;
+  final Value<String?> location;
+  final Value<String> colorTag;
+  final Value<bool> isRecurring;
+  final Value<String?> recurrenceRule;
+  final Value<int?> reminderMinutes;
+  final Value<String?> linkedTaskId;
+  final Value<int> rowid;
+  const CalendarEventsCompanion({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.isDirty = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.title = const Value.absent(),
+    this.description = const Value.absent(),
+    this.startTime = const Value.absent(),
+    this.endTime = const Value.absent(),
+    this.isAllDay = const Value.absent(),
+    this.location = const Value.absent(),
+    this.colorTag = const Value.absent(),
+    this.isRecurring = const Value.absent(),
+    this.recurrenceRule = const Value.absent(),
+    this.reminderMinutes = const Value.absent(),
+    this.linkedTaskId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CalendarEventsCompanion.insert({
+    required String id,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.isDirty = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    required String title,
+    this.description = const Value.absent(),
+    required DateTime startTime,
+    required DateTime endTime,
+    this.isAllDay = const Value.absent(),
+    this.location = const Value.absent(),
+    this.colorTag = const Value.absent(),
+    this.isRecurring = const Value.absent(),
+    this.recurrenceRule = const Value.absent(),
+    this.reminderMinutes = const Value.absent(),
+    this.linkedTaskId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        title = Value(title),
+        startTime = Value(startTime),
+        endTime = Value(endTime);
+  static Insertable<CalendarEvent> custom({
+    Expression<String>? id,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<bool>? isDirty,
+    Expression<DateTime>? syncedAt,
+    Expression<String>? title,
+    Expression<String>? description,
+    Expression<DateTime>? startTime,
+    Expression<DateTime>? endTime,
+    Expression<bool>? isAllDay,
+    Expression<String>? location,
+    Expression<String>? colorTag,
+    Expression<bool>? isRecurring,
+    Expression<String>? recurrenceRule,
+    Expression<int>? reminderMinutes,
+    Expression<String>? linkedTaskId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (isDirty != null) 'is_dirty': isDirty,
+      if (syncedAt != null) 'synced_at': syncedAt,
+      if (title != null) 'title': title,
+      if (description != null) 'description': description,
+      if (startTime != null) 'start_time': startTime,
+      if (endTime != null) 'end_time': endTime,
+      if (isAllDay != null) 'is_all_day': isAllDay,
+      if (location != null) 'location': location,
+      if (colorTag != null) 'color_tag': colorTag,
+      if (isRecurring != null) 'is_recurring': isRecurring,
+      if (recurrenceRule != null) 'recurrence_rule': recurrenceRule,
+      if (reminderMinutes != null) 'reminder_minutes': reminderMinutes,
+      if (linkedTaskId != null) 'linked_task_id': linkedTaskId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CalendarEventsCompanion copyWith(
+      {Value<String>? id,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
+      Value<DateTime?>? deletedAt,
+      Value<bool>? isDirty,
+      Value<DateTime?>? syncedAt,
+      Value<String>? title,
+      Value<String?>? description,
+      Value<DateTime>? startTime,
+      Value<DateTime>? endTime,
+      Value<bool>? isAllDay,
+      Value<String?>? location,
+      Value<String>? colorTag,
+      Value<bool>? isRecurring,
+      Value<String?>? recurrenceRule,
+      Value<int?>? reminderMinutes,
+      Value<String?>? linkedTaskId,
+      Value<int>? rowid}) {
+    return CalendarEventsCompanion(
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      isDirty: isDirty ?? this.isDirty,
+      syncedAt: syncedAt ?? this.syncedAt,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      isAllDay: isAllDay ?? this.isAllDay,
+      location: location ?? this.location,
+      colorTag: colorTag ?? this.colorTag,
+      isRecurring: isRecurring ?? this.isRecurring,
+      recurrenceRule: recurrenceRule ?? this.recurrenceRule,
+      reminderMinutes: reminderMinutes ?? this.reminderMinutes,
+      linkedTaskId: linkedTaskId ?? this.linkedTaskId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (isDirty.present) {
+      map['is_dirty'] = Variable<bool>(isDirty.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (startTime.present) {
+      map['start_time'] = Variable<DateTime>(startTime.value);
+    }
+    if (endTime.present) {
+      map['end_time'] = Variable<DateTime>(endTime.value);
+    }
+    if (isAllDay.present) {
+      map['is_all_day'] = Variable<bool>(isAllDay.value);
+    }
+    if (location.present) {
+      map['location'] = Variable<String>(location.value);
+    }
+    if (colorTag.present) {
+      map['color_tag'] = Variable<String>(colorTag.value);
+    }
+    if (isRecurring.present) {
+      map['is_recurring'] = Variable<bool>(isRecurring.value);
+    }
+    if (recurrenceRule.present) {
+      map['recurrence_rule'] = Variable<String>(recurrenceRule.value);
+    }
+    if (reminderMinutes.present) {
+      map['reminder_minutes'] = Variable<int>(reminderMinutes.value);
+    }
+    if (linkedTaskId.present) {
+      map['linked_task_id'] = Variable<String>(linkedTaskId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CalendarEventsCompanion(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('isDirty: $isDirty, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('startTime: $startTime, ')
+          ..write('endTime: $endTime, ')
+          ..write('isAllDay: $isAllDay, ')
+          ..write('location: $location, ')
+          ..write('colorTag: $colorTag, ')
+          ..write('isRecurring: $isRecurring, ')
+          ..write('recurrenceRule: $recurrenceRule, ')
+          ..write('reminderMinutes: $reminderMinutes, ')
+          ..write('linkedTaskId: $linkedTaskId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5111,6 +5926,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $HabitCompletionsTable habitCompletions =
       $HabitCompletionsTable(this);
   late final $ThoughtsTable thoughts = $ThoughtsTable(this);
+  late final $CalendarEventsTable calendarEvents = $CalendarEventsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5125,7 +5941,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         notes,
         habits,
         habitCompletions,
-        thoughts
+        thoughts,
+        calendarEvents
       ];
 }
 
@@ -7550,6 +8367,365 @@ typedef $$ThoughtsTableProcessedTableManager = ProcessedTableManager<
     (Thought, BaseReferences<_$AppDatabase, $ThoughtsTable, Thought>),
     Thought,
     PrefetchHooks Function()>;
+typedef $$CalendarEventsTableCreateCompanionBuilder = CalendarEventsCompanion
+    Function({
+  required String id,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<DateTime?> deletedAt,
+  Value<bool> isDirty,
+  Value<DateTime?> syncedAt,
+  required String title,
+  Value<String?> description,
+  required DateTime startTime,
+  required DateTime endTime,
+  Value<bool> isAllDay,
+  Value<String?> location,
+  Value<String> colorTag,
+  Value<bool> isRecurring,
+  Value<String?> recurrenceRule,
+  Value<int?> reminderMinutes,
+  Value<String?> linkedTaskId,
+  Value<int> rowid,
+});
+typedef $$CalendarEventsTableUpdateCompanionBuilder = CalendarEventsCompanion
+    Function({
+  Value<String> id,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<DateTime?> deletedAt,
+  Value<bool> isDirty,
+  Value<DateTime?> syncedAt,
+  Value<String> title,
+  Value<String?> description,
+  Value<DateTime> startTime,
+  Value<DateTime> endTime,
+  Value<bool> isAllDay,
+  Value<String?> location,
+  Value<String> colorTag,
+  Value<bool> isRecurring,
+  Value<String?> recurrenceRule,
+  Value<int?> reminderMinutes,
+  Value<String?> linkedTaskId,
+  Value<int> rowid,
+});
+
+class $$CalendarEventsTableFilterComposer
+    extends Composer<_$AppDatabase, $CalendarEventsTable> {
+  $$CalendarEventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isDirty => $composableBuilder(
+      column: $table.isDirty, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+      column: $table.syncedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get description => $composableBuilder(
+      column: $table.description, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get startTime => $composableBuilder(
+      column: $table.startTime, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get endTime => $composableBuilder(
+      column: $table.endTime, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isAllDay => $composableBuilder(
+      column: $table.isAllDay, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get location => $composableBuilder(
+      column: $table.location, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get colorTag => $composableBuilder(
+      column: $table.colorTag, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isRecurring => $composableBuilder(
+      column: $table.isRecurring, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get recurrenceRule => $composableBuilder(
+      column: $table.recurrenceRule,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get reminderMinutes => $composableBuilder(
+      column: $table.reminderMinutes,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get linkedTaskId => $composableBuilder(
+      column: $table.linkedTaskId, builder: (column) => ColumnFilters(column));
+}
+
+class $$CalendarEventsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CalendarEventsTable> {
+  $$CalendarEventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isDirty => $composableBuilder(
+      column: $table.isDirty, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+      column: $table.syncedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get description => $composableBuilder(
+      column: $table.description, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get startTime => $composableBuilder(
+      column: $table.startTime, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get endTime => $composableBuilder(
+      column: $table.endTime, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isAllDay => $composableBuilder(
+      column: $table.isAllDay, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get location => $composableBuilder(
+      column: $table.location, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get colorTag => $composableBuilder(
+      column: $table.colorTag, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isRecurring => $composableBuilder(
+      column: $table.isRecurring, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get recurrenceRule => $composableBuilder(
+      column: $table.recurrenceRule,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get reminderMinutes => $composableBuilder(
+      column: $table.reminderMinutes,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get linkedTaskId => $composableBuilder(
+      column: $table.linkedTaskId,
+      builder: (column) => ColumnOrderings(column));
+}
+
+class $$CalendarEventsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CalendarEventsTable> {
+  $$CalendarEventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDirty =>
+      $composableBuilder(column: $table.isDirty, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+      column: $table.description, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startTime =>
+      $composableBuilder(column: $table.startTime, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endTime =>
+      $composableBuilder(column: $table.endTime, builder: (column) => column);
+
+  GeneratedColumn<bool> get isAllDay =>
+      $composableBuilder(column: $table.isAllDay, builder: (column) => column);
+
+  GeneratedColumn<String> get location =>
+      $composableBuilder(column: $table.location, builder: (column) => column);
+
+  GeneratedColumn<String> get colorTag =>
+      $composableBuilder(column: $table.colorTag, builder: (column) => column);
+
+  GeneratedColumn<bool> get isRecurring => $composableBuilder(
+      column: $table.isRecurring, builder: (column) => column);
+
+  GeneratedColumn<String> get recurrenceRule => $composableBuilder(
+      column: $table.recurrenceRule, builder: (column) => column);
+
+  GeneratedColumn<int> get reminderMinutes => $composableBuilder(
+      column: $table.reminderMinutes, builder: (column) => column);
+
+  GeneratedColumn<String> get linkedTaskId => $composableBuilder(
+      column: $table.linkedTaskId, builder: (column) => column);
+}
+
+class $$CalendarEventsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $CalendarEventsTable,
+    CalendarEvent,
+    $$CalendarEventsTableFilterComposer,
+    $$CalendarEventsTableOrderingComposer,
+    $$CalendarEventsTableAnnotationComposer,
+    $$CalendarEventsTableCreateCompanionBuilder,
+    $$CalendarEventsTableUpdateCompanionBuilder,
+    (
+      CalendarEvent,
+      BaseReferences<_$AppDatabase, $CalendarEventsTable, CalendarEvent>
+    ),
+    CalendarEvent,
+    PrefetchHooks Function()> {
+  $$CalendarEventsTableTableManager(
+      _$AppDatabase db, $CalendarEventsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CalendarEventsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CalendarEventsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CalendarEventsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<DateTime?> deletedAt = const Value.absent(),
+            Value<bool> isDirty = const Value.absent(),
+            Value<DateTime?> syncedAt = const Value.absent(),
+            Value<String> title = const Value.absent(),
+            Value<String?> description = const Value.absent(),
+            Value<DateTime> startTime = const Value.absent(),
+            Value<DateTime> endTime = const Value.absent(),
+            Value<bool> isAllDay = const Value.absent(),
+            Value<String?> location = const Value.absent(),
+            Value<String> colorTag = const Value.absent(),
+            Value<bool> isRecurring = const Value.absent(),
+            Value<String?> recurrenceRule = const Value.absent(),
+            Value<int?> reminderMinutes = const Value.absent(),
+            Value<String?> linkedTaskId = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              CalendarEventsCompanion(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            isDirty: isDirty,
+            syncedAt: syncedAt,
+            title: title,
+            description: description,
+            startTime: startTime,
+            endTime: endTime,
+            isAllDay: isAllDay,
+            location: location,
+            colorTag: colorTag,
+            isRecurring: isRecurring,
+            recurrenceRule: recurrenceRule,
+            reminderMinutes: reminderMinutes,
+            linkedTaskId: linkedTaskId,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<DateTime?> deletedAt = const Value.absent(),
+            Value<bool> isDirty = const Value.absent(),
+            Value<DateTime?> syncedAt = const Value.absent(),
+            required String title,
+            Value<String?> description = const Value.absent(),
+            required DateTime startTime,
+            required DateTime endTime,
+            Value<bool> isAllDay = const Value.absent(),
+            Value<String?> location = const Value.absent(),
+            Value<String> colorTag = const Value.absent(),
+            Value<bool> isRecurring = const Value.absent(),
+            Value<String?> recurrenceRule = const Value.absent(),
+            Value<int?> reminderMinutes = const Value.absent(),
+            Value<String?> linkedTaskId = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              CalendarEventsCompanion.insert(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            isDirty: isDirty,
+            syncedAt: syncedAt,
+            title: title,
+            description: description,
+            startTime: startTime,
+            endTime: endTime,
+            isAllDay: isAllDay,
+            location: location,
+            colorTag: colorTag,
+            isRecurring: isRecurring,
+            recurrenceRule: recurrenceRule,
+            reminderMinutes: reminderMinutes,
+            linkedTaskId: linkedTaskId,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$CalendarEventsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $CalendarEventsTable,
+    CalendarEvent,
+    $$CalendarEventsTableFilterComposer,
+    $$CalendarEventsTableOrderingComposer,
+    $$CalendarEventsTableAnnotationComposer,
+    $$CalendarEventsTableCreateCompanionBuilder,
+    $$CalendarEventsTableUpdateCompanionBuilder,
+    (
+      CalendarEvent,
+      BaseReferences<_$AppDatabase, $CalendarEventsTable, CalendarEvent>
+    ),
+    CalendarEvent,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7574,4 +8750,6 @@ class $AppDatabaseManager {
       $$HabitCompletionsTableTableManager(_db, _db.habitCompletions);
   $$ThoughtsTableTableManager get thoughts =>
       $$ThoughtsTableTableManager(_db, _db.thoughts);
+  $$CalendarEventsTableTableManager get calendarEvents =>
+      $$CalendarEventsTableTableManager(_db, _db.calendarEvents);
 }

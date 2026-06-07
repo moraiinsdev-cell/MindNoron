@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/material.dart' show DateTimeRange;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -168,6 +169,30 @@ class TaskRepository {
         .watch();
   }
 
+  /// Open + done tasks with a due date falling in [start, end] — backs the
+  /// Calendar's task overlay.
+  Stream<List<Task>> watchDueBetween(DateTime start, DateTime end) {
+    return (_db.select(_db.tasks)
+          ..where((t) =>
+              t.deletedAt.isNull() &
+              t.dueDate.isNotNull() &
+              t.dueDate.isBiggerOrEqualValue(start) &
+              t.dueDate.isSmallerOrEqualValue(end))
+          ..orderBy([(t) => OrderingTerm.asc(t.dueDate)]))
+        .watch();
+  }
+
+  /// Set (or clear) a task's due date — lets a task land on the Calendar.
+  Future<void> setDueDate(String id, DateTime? due) {
+    return (_db.update(_db.tasks)..where((t) => t.id.equals(id))).write(
+      TasksCompanion(
+        dueDate: Value(due),
+        updatedAt: Value(DateTime.now()),
+        isDirty: const Value(true),
+      ),
+    );
+  }
+
   /// Title search across non-deleted tasks.
   Future<List<Task>> search(String query) {
     final like = '%$query%';
@@ -215,4 +240,12 @@ final subtasksProvider =
 final recentlyCompletedProvider = StreamProvider<List<Task>>((ref) {
   final since = DateTime.now().subtract(const Duration(days: 7));
   return ref.watch(taskRepositoryProvider).watchCompletedSince(since);
+});
+
+/// Tasks with a due date inside the given range (Calendar overlay).
+final tasksDueBetweenProvider =
+    StreamProvider.family<List<Task>, DateTimeRange>((ref, range) {
+  return ref
+      .watch(taskRepositoryProvider)
+      .watchDueBetween(range.start, range.end);
 });

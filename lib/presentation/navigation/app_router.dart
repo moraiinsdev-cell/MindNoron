@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/activity/activity_screen.dart';
+import '../../features/calendar/calendar_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/habits/habits_screen.dart';
 import '../../features/inbox/inbox_screen.dart';
@@ -20,6 +21,7 @@ abstract final class Routes {
   static const welcome = '/welcome';
   static const dashboard = '/dashboard';
   static const tasks = '/tasks';
+  static const calendar = '/calendar';
   static const timer = '/timer';
   static const inbox = '/inbox';
   static const notes = '/notes';
@@ -46,6 +48,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: Routes.tasks,
           pageBuilder: (c, s) => _appPage(s, const TasksScreen()),
+        ),
+        GoRoute(
+          path: Routes.calendar,
+          pageBuilder: (c, s) => _appPage(s, const CalendarScreen()),
         ),
         GoRoute(
           path: Routes.timer,

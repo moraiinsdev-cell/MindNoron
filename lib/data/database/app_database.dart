@@ -21,6 +21,7 @@ part 'app_database.g.dart';
     Habits,
     HabitCompletions,
     Thoughts,
+    CalendarEvents,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -30,7 +31,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -54,6 +55,10 @@ class AppDatabase extends _$AppDatabase {
           // v5: thoughts — the noron-space thinking flow.
           if (from < 5) {
             await m.createTable(thoughts);
+          }
+          // v6: calendar events — the scheduling layer.
+          if (from < 6) {
+            await m.createTable(calendarEvents);
           }
         },
         beforeOpen: (details) async {

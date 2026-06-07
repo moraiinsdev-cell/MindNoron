@@ -179,6 +179,21 @@ class _TaskTileState extends ConsumerState<_TaskTile> {
     if (status == TaskStatus.done && !wasDone) _celebrateSound();
   }
 
+  Future<void> _setDue() async {
+    final task = widget.task;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: task.dueDate ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked == null) return;
+    await ref.read(taskRepositoryProvider).setDueDate(
+          task.id,
+          DateTime(picked.year, picked.month, picked.day),
+        );
+  }
+
   Future<void> _celebrateSound() async {
     final settings = ref.read(settingsRepositoryProvider);
     if (!await settings.getSoundEnabled()) return;
@@ -308,12 +323,16 @@ class _TaskTileState extends ConsumerState<_TaskTile> {
                   switch (v) {
                     case 'rename':
                       _startEdit();
+                    case 'due':
+                      _setDue();
+                    case 'clearDue':
+                      repo.setDueDate(task.id, null);
                     case 'delete':
                       repo.softDelete(task.id);
                   }
                 },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(
+                itemBuilder: (_) => [
+                  const PopupMenuItem(
                     value: 'rename',
                     child: ListTile(
                       contentPadding: EdgeInsets.zero,
@@ -321,7 +340,24 @@ class _TaskTileState extends ConsumerState<_TaskTile> {
                       title: Text('Rename'),
                     ),
                   ),
-                  PopupMenuItem(
+                  const PopupMenuItem(
+                    value: 'due',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.event_outlined),
+                      title: Text('Set due date'),
+                    ),
+                  ),
+                  if (task.dueDate != null)
+                    const PopupMenuItem(
+                      value: 'clearDue',
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.event_busy_outlined),
+                        title: Text('Clear due date'),
+                      ),
+                    ),
+                  const PopupMenuItem(
                     value: 'delete',
                     child: ListTile(
                       contentPadding: EdgeInsets.zero,

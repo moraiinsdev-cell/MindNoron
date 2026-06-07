@@ -102,6 +102,27 @@ class HabitCompletions extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// A calendar event / time block — the scheduling layer. Shown on the Calendar
+/// alongside tasks that carry a due date.
+class CalendarEvents extends Table with SyncBase {
+  TextColumn get title => text()();
+  TextColumn get description => text().nullable()();
+  DateTimeColumn get startTime => dateTime()();
+  DateTimeColumn get endTime => dateTime()();
+  BoolColumn get isAllDay => boolean().withDefault(const Constant(false))();
+  TextColumn get location => text().nullable()();
+  TextColumn get colorTag =>
+      text().withDefault(const Constant('blue'))(); // EventColor name
+  BoolColumn get isRecurring => boolean().withDefault(const Constant(false))();
+  TextColumn get recurrenceRule => text().nullable()(); // none|daily|weekly|monthly
+  IntColumn get reminderMinutes =>
+      integer().nullable()(); // minutes before start; null = no reminder
+  TextColumn get linkedTaskId => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// Markdown notes — the "second brain". Linked to tasks and other notes.
 class Notes extends Table with SyncBase {
   TextColumn get title => text().withDefault(const Constant(''))();
