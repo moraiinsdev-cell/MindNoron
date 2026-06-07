@@ -3,6 +3,7 @@ import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/platform/sound_service.dart';
 import '../../core/providers/app_providers.dart';
 import '../database/app_database.dart';
 
@@ -22,6 +23,7 @@ class SettingsRepository {
   static const _kAmbientVolume = 'ambientVolume';
   static const _kAmbientAutostart = 'ambientAutostart';
   static const _kNeuronBackdrop = 'neuronBackdrop';
+  static const _kCustomTracks = 'customTracks';
   static const _kUserName = 'userName';
   static const _kUserNamePrompted = 'userNamePrompted';
 
@@ -116,6 +118,28 @@ class SettingsRepository {
   Future<bool> getAmbientAutostart() async =>
       (await readValue(_kAmbientAutostart)) == 'true';
 
+  // --- Imported custom soundscapes ----------------------------------------
+
+  /// User-imported audio files usable as focus soundscapes (JSON-encoded).
+  Stream<List<CustomTrack>> watchCustomTracks() =>
+      _watch(_kCustomTracks).map(CustomTrack.decodeList);
+  Future<List<CustomTrack>> getCustomTracks() async =>
+      CustomTrack.decodeList(await readValue(_kCustomTracks));
+
+  Future<void> addCustomTrack(CustomTrack track) async {
+    final list = await getCustomTracks();
+    if (list.any((t) => t.path == track.path)) return; // already imported
+    await _set(_kCustomTracks, CustomTrack.encodeList([...list, track]));
+  }
+
+  Future<void> removeCustomTrack(String path) async {
+    final list = await getCustomTracks();
+    await _set(
+      _kCustomTracks,
+      CustomTrack.encodeList(list.where((t) => t.path != path).toList()),
+    );
+  }
+
   // --- Noron-space animated backdrop --------------------------------------
 
   Stream<bool> watchNeuronBackdrop() =>
@@ -181,4 +205,8 @@ final ambientAutostartProvider = StreamProvider<bool>((ref) {
 
 final neuronBackdropProvider = StreamProvider<bool>((ref) {
   return ref.watch(settingsRepositoryProvider).watchNeuronBackdrop();
+});
+
+final customTracksProvider = StreamProvider<List<CustomTrack>>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchCustomTracks();
 });

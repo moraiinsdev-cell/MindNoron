@@ -221,6 +221,45 @@ class _SoundSettingsState extends ConsumerState<_SoundSettings> {
     super.dispose();
   }
 
+  /// Persist the selection and live-update the preview if it is running.
+  void _select(String id, double volume) {
+    ref.read(settingsRepositoryProvider).setAmbientSound(id);
+    if (_previewing) {
+      ref.read(soundServiceProvider).startAmbientId(id, volume: volume);
+    }
+  }
+
+  Future<void> _importTrack() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final settings = ref.read(settingsRepositoryProvider);
+    final result = await FilePicker.platform.pickFiles(
+      dialogTitle: 'Import a focus track',
+      type: FileType.custom,
+      allowedExtensions: const ['mp3', 'wav', 'ogg', 'flac'],
+    );
+    final file = result?.files.single;
+    final path = file?.path;
+    if (path == null) return;
+    final name = file!.name.replaceAll(RegExp(r'\.[^.]+$'), '');
+    await settings.addCustomTrack(CustomTrack(path: path, name: name));
+    await settings.setAmbientSound('${SoundService.customPrefix}$path');
+    if (!mounted) return;
+    messenger.showSnackBar(SnackBar(content: Text('Added "$name"')));
+  }
+
+  Future<void> _removeTrack(CustomTrack track, String currentId) async {
+    final settings = ref.read(settingsRepositoryProvider);
+    await settings.removeCustomTrack(track.path);
+    // If we just removed the active soundscape, fall back to a built-in.
+    if (currentId == track.id) {
+      await settings.setAmbientSound(AmbientSound.rain.name);
+      if (_previewing) {
+        await ref.read(soundServiceProvider).stopAmbient();
+        if (mounted) setState(() => _previewing = false);
+      }
+    }
+  }
+
   static IconData _icon(AmbientSound s) => switch (s) {
         AmbientSound.rain => Icons.water_drop_outlined,
         AmbientSound.forest => Icons.forest_outlined,
@@ -239,8 +278,8 @@ class _SoundSettingsState extends ConsumerState<_SoundSettings> {
     final soundOn = ref.watch(soundEnabledProvider).valueOrNull ?? true;
     final soundVol = ref.watch(soundVolumeProvider).valueOrNull ??
         AppConstants.defaultSoundVolume;
-    final ambient = AmbientSound.fromName(
-        ref.watch(ambientSoundProvider).valueOrNull ?? 'rain');
+    final ambientId = ref.watch(ambientSoundProvider).valueOrNull ?? 'rain';
+    final tracks = ref.watch(customTracksProvider).valueOrNull ?? const [];
     final ambientVol = ref.watch(ambientVolumeProvider).valueOrNull ??
         AppConstants.defaultAmbientVolume;
     final autostart = ref.watch(ambientAutostartProvider).valueOrNull ?? false;
@@ -281,7 +320,8 @@ class _SoundSettingsState extends ConsumerState<_SoundSettings> {
           Text('Focus soundscape', style: theme.textTheme.titleSmall),
           const SizedBox(height: 4),
           Text(
-            'Loops seamlessly while you focus — fully offline.',
+            'Loops seamlessly while you focus — fully offline. Import your own '
+            'music with the button below (MP3, WAV, OGG or FLAC).',
             style: theme.textTheme.bodySmall
                 ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
@@ -289,17 +329,28 @@ class _SoundSettingsState extends ConsumerState<_SoundSettings> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               for (final s in AmbientSound.choices)
                 ChoiceChip(
                   label: Text(s.label),
                   avatar: Icon(_icon(s), size: 18),
-                  selected: s == ambient,
-                  onSelected: (_) {
-                    settings.setAmbientSound(s.name);
-                    if (_previewing) svc.startAmbient(s, volume: ambientVol);
-                  },
+                  selected: s.name == ambientId,
+                  onSelected: (_) => _select(s.name, ambientVol),
                 ),
+              for (final t in tracks)
+                InputChip(
+                  label: Text(t.name),
+                  avatar: const Icon(Icons.music_note, size: 18),
+                  selected: t.id == ambientId,
+                  onSelected: (_) => _select(t.id, ambientVol),
+                  onDeleted: () => _removeTrack(t, ambientId),
+                ),
+              ActionChip(
+                avatar: const Icon(Icons.library_music_outlined, size: 18),
+                label: const Text('Import music...'),
+                onPressed: _importTrack,
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -320,7 +371,7 @@ class _SoundSettingsState extends ConsumerState<_SoundSettings> {
                   if (_previewing) {
                     svc.stopAmbient();
                   } else {
-                    svc.startAmbient(ambient, volume: ambientVol);
+                    svc.startAmbientId(ambientId, volume: ambientVol);
                   }
                   setState(() => _previewing = !_previewing);
                 },

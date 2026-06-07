@@ -57,6 +57,19 @@ class TaskRepository {
     return setStatus(task.id, next);
   }
 
+  /// Rename a task or subtask. Blank titles are ignored (kept as-is).
+  Future<void> updateTitle(String id, String title) {
+    final trimmed = title.trim();
+    if (trimmed.isEmpty) return Future.value();
+    return (_db.update(_db.tasks)..where((t) => t.id.equals(id))).write(
+      TasksCompanion(
+        title: Value(trimmed),
+        updatedAt: Value(DateTime.now()),
+        isDirty: const Value(true),
+      ),
+    );
+  }
+
   Future<void> softDelete(String id) {
     return (_db.update(_db.tasks)..where((t) => t.id.equals(id))).write(
       TasksCompanion(

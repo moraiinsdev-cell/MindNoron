@@ -136,11 +136,14 @@ class _TaskTile extends ConsumerStatefulWidget {
 
 class _TaskTileState extends ConsumerState<_TaskTile> {
   final _subController = TextEditingController();
+  final _titleController = TextEditingController();
   bool _adding = false;
+  bool _editing = false;
 
   @override
   void dispose() {
     _subController.dispose();
+    _titleController.dispose();
     super.dispose();
   }
 
@@ -153,9 +156,27 @@ class _TaskTileState extends ConsumerState<_TaskTile> {
     _subController.clear();
   }
 
+  void _startEdit() {
+    _titleController.text = widget.task.title;
+    setState(() => _editing = true);
+  }
+
+  Future<void> _saveEdit() async {
+    await ref
+        .read(taskRepositoryProvider)
+        .updateTitle(widget.task.id, _titleController.text);
+    if (mounted) setState(() => _editing = false);
+  }
+
   void _complete(Task task, bool nowDone) {
     ref.read(taskRepositoryProvider).toggleDone(task);
     if (nowDone) _celebrateSound();
+  }
+
+  void _setStatus(Task task, TaskStatus status) {
+    final wasDone = TaskStatus.fromDb(task.status) == TaskStatus.done;
+    ref.read(taskRepositoryProvider).setStatus(task.id, status);
+    if (status == TaskStatus.done && !wasDone) _celebrateSound();
   }
 
   Future<void> _celebrateSound() async {
@@ -194,15 +215,33 @@ class _TaskTileState extends ConsumerState<_TaskTile> {
             color: cs.primary,
             onChanged: (v) => _complete(task, v),
           ),
-          title: Text(
-            task.title,
-            style: done
-                ? TextStyle(
-                    decoration: TextDecoration.lineThrough,
-                    color: cs.outline,
-                  )
-                : null,
-          ),
+          title: _editing
+              ? TextField(
+                  controller: _titleController,
+                  autofocus: true,
+                  onSubmitted: (_) => _saveEdit(),
+                  onTapOutside: (_) => _saveEdit(),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    hintText: 'Rename task... (Enter to save)',
+                  ),
+                )
+              : InkWell(
+                  onTap: _startEdit,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Text(
+                      task.title,
+                      style: done
+                          ? TextStyle(
+                              decoration: TextDecoration.lineThrough,
+                              color: cs.outline,
+                            )
+                          : null,
+                    ),
+                  ),
+                ),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Wrap(
@@ -251,16 +290,46 @@ class _TaskTileState extends ConsumerState<_TaskTile> {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              _StatusChip(
+                status: TaskStatus.fromDb(task.status),
+                onChanged: (s) => _setStatus(task, s),
+              ),
+              const SizedBox(width: 6),
               _PriorityChip(priority: task.priority),
               IconButton(
                 tooltip: 'Add subtask',
                 icon: const Icon(Icons.playlist_add),
                 onPressed: () => setState(() => _adding = !_adding),
               ),
-              IconButton(
-                tooltip: 'Delete',
-                icon: const Icon(Icons.delete_outline),
-                onPressed: () => repo.softDelete(task.id),
+              PopupMenuButton<String>(
+                tooltip: 'More',
+                icon: const Icon(Icons.more_vert),
+                onSelected: (v) {
+                  switch (v) {
+                    case 'rename':
+                      _startEdit();
+                    case 'delete':
+                      repo.softDelete(task.id);
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'rename',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.edit_outlined),
+                      title: Text('Rename'),
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.delete_outline),
+                      title: Text('Delete'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -441,6 +510,60 @@ class _CompletedArchive extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// A tappable status pill (Pending · In progress · Finished) backed by a popup.
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.status, required this.onChanged});
+
+  final TaskStatus status;
+  final ValueChanged<TaskStatus> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final color = status.color(cs);
+    return PopupMenuButton<TaskStatus>(
+      tooltip: 'Set status',
+      initialValue: status,
+      onSelected: onChanged,
+      itemBuilder: (_) => [
+        for (final s in TaskStatus.selectable)
+          PopupMenuItem(
+            value: s,
+            child: Row(
+              children: [
+                Icon(s.icon, size: 18, color: s.color(cs)),
+                const SizedBox(width: 10),
+                Text(s.label),
+              ],
+            ),
+          ),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.13),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(status.icon, size: 14, color: color),
+            const SizedBox(width: 4),
+            Text(
+              status.label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

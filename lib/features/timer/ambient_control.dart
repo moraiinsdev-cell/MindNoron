@@ -23,10 +23,11 @@ class _AmbientControlState extends ConsumerState<AmbientControl> {
   Widget build(BuildContext context) {
     final settings = ref.read(settingsRepositoryProvider);
     final svc = ref.read(soundServiceProvider);
-    final sound = AmbientSound.fromName(
-        ref.watch(ambientSoundProvider).valueOrNull ?? 'rain');
+    final id = ref.watch(ambientSoundProvider).valueOrNull ?? 'rain';
+    final tracks = ref.watch(customTracksProvider).valueOrNull ?? const [];
     final volume = ref.watch(ambientVolumeProvider).valueOrNull ??
         AppConstants.defaultAmbientVolume;
+    final label = _labelFor(id, tracks);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -36,28 +37,44 @@ class _AmbientControlState extends ConsumerState<AmbientControl> {
             if (_playing) {
               svc.stopAmbient();
             } else {
-              svc.startAmbient(sound, volume: volume);
+              svc.startAmbientId(id, volume: volume);
             }
             setState(() => _playing = !_playing);
           },
           icon: Icon(_playing ? Icons.stop : Icons.play_arrow),
-          label: Text(_playing ? 'Stop ${sound.label}' : 'Play ${sound.label}'),
+          label: Text(_playing ? 'Stop $label' : 'Play $label'),
         ),
         const SizedBox(width: 8),
-        PopupMenuButton<AmbientSound>(
+        PopupMenuButton<String>(
           tooltip: 'Change soundscape',
           icon: const Icon(Icons.graphic_eq),
-          initialValue: sound,
+          initialValue: id,
           itemBuilder: (_) => [
             for (final s in AmbientSound.choices)
-              PopupMenuItem(value: s, child: Text(s.label)),
+              PopupMenuItem(value: s.name, child: Text(s.label)),
+            if (tracks.isNotEmpty) const PopupMenuDivider(),
+            for (final t in tracks)
+              PopupMenuItem(value: t.id, child: Text(t.name)),
           ],
-          onSelected: (s) {
-            settings.setAmbientSound(s.name);
-            if (_playing) svc.startAmbient(s, volume: volume);
+          onSelected: (selectedId) {
+            settings.setAmbientSound(selectedId);
+            if (_playing) svc.startAmbientId(selectedId, volume: volume);
           },
         ),
       ],
     );
+  }
+
+  /// Display label for the current selection id (built-in name or custom id).
+  static String _labelFor(String id, List<CustomTrack> tracks) {
+    if (id.startsWith(SoundService.customPrefix)) {
+      return tracks
+          .firstWhere(
+            (t) => t.id == id,
+            orElse: () => const CustomTrack(path: '', name: 'Custom track'),
+          )
+          .name;
+    }
+    return AmbientSound.fromName(id).label;
   }
 }

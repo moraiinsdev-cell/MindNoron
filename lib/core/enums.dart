@@ -20,6 +20,34 @@ enum TaskStatus {
         'archived' => TaskStatus.archived,
         _ => TaskStatus.todo,
       };
+
+  /// Human label shown on the task status control.
+  String get label => switch (this) {
+        TaskStatus.todo => 'Pending',
+        TaskStatus.inProgress => 'In progress',
+        TaskStatus.done => 'Finished',
+        TaskStatus.archived => 'Archived',
+      };
+
+  IconData get icon => switch (this) {
+        TaskStatus.todo => Icons.radio_button_unchecked,
+        TaskStatus.inProgress => Icons.timelapse,
+        TaskStatus.done => Icons.check_circle,
+        TaskStatus.archived => Icons.inventory_2_outlined,
+      };
+
+  Color color(ColorScheme cs) => switch (this) {
+        TaskStatus.inProgress => const Color(0xFF3B82F6), // blue
+        TaskStatus.done => const Color(0xFF22C55E), // green
+        _ => cs.onSurfaceVariant,
+      };
+
+  /// The three states a user can pick from the status control.
+  static const selectable = [
+    TaskStatus.todo,
+    TaskStatus.inProgress,
+    TaskStatus.done,
+  ];
 }
 
 /// Kind of focus session.

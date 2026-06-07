@@ -142,9 +142,9 @@ class TimerController extends Notifier<TimerSnapshot> {
   Future<void> _maybeStartAmbient() async {
     final settings = ref.read(settingsRepositoryProvider);
     if (!await settings.getAmbientAutostart()) return;
-    final sound = AmbientSound.fromName(await settings.getAmbientSound());
+    final id = await settings.getAmbientSound();
     final volume = await settings.getAmbientVolume();
-    await ref.read(soundServiceProvider).startAmbient(sound, volume: volume);
+    await ref.read(soundServiceProvider).startAmbientId(id, volume: volume);
   }
 
   void _scheduleCompletion() {

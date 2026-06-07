@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 
@@ -38,6 +40,39 @@ enum AmbientSound {
       );
 }
 
+/// A user-imported audio file used as a focus soundscape. Stored (as JSON) in
+/// settings and referenced by [id] (`custom:<path>`) wherever a built-in
+/// [AmbientSound] name would otherwise appear.
+class CustomTrack {
+  const CustomTrack({required this.path, required this.name});
+
+  final String path;
+  final String name;
+
+  /// Selection id, distinguishable from a built-in [AmbientSound] name.
+  String get id => '${SoundService.customPrefix}$path';
+
+  Map<String, dynamic> toJson() => {'path': path, 'name': name};
+
+  factory CustomTrack.fromJson(Map<String, dynamic> j) =>
+      CustomTrack(path: j['path'] as String, name: j['name'] as String);
+
+  static String encodeList(List<CustomTrack> tracks) =>
+      jsonEncode([for (final t in tracks) t.toJson()]);
+
+  static List<CustomTrack> decodeList(String? raw) {
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final data = jsonDecode(raw) as List;
+      return [
+        for (final e in data) CustomTrack.fromJson(e as Map<String, dynamic>),
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+}
+
 /// Plays session cues and looping ambient beds via SoLoud (miniaudio/WASAPI).
 ///
 /// Audio is non-critical: every call is wrapped so a playback failure can never
@@ -45,15 +80,19 @@ enum AmbientSound {
 /// engine is initialized lazily on first use and assets are cached after first
 /// load so repeated cues/loops are instant.
 class SoundService {
+  /// Selection-id prefix marking an imported [CustomTrack] (vs a built-in name).
+  static const customPrefix = 'custom:';
+
   final SoLoud _soloud = SoLoud.instance;
   Future<void>? _initFuture;
   final Map<String, AudioSource> _sources = {};
 
-  AmbientSound _ambient = AmbientSound.none;
+  /// '' = nothing playing; an [AmbientSound] name; or a `custom:<path>` id.
+  String _ambientId = '';
   SoundHandle? _ambientHandle;
 
-  AmbientSound get currentAmbient => _ambient;
-  bool get ambientPlaying => _ambient != AmbientSound.none;
+  String get currentAmbientId => _ambientId;
+  bool get ambientPlaying => _ambientId.isNotEmpty;
 
   Future<void> _ensureInit() async {
     if (_soloud.isInitialized) return;
@@ -63,6 +102,16 @@ class SoundService {
 
   Future<AudioSource> _source(String asset) async {
     return _sources[asset] ??= await _soloud.loadAsset(asset);
+  }
+
+  /// Resolve a selection id to a (cached) source: a `custom:<path>` id loads the
+  /// file from disk, anything else is treated as a built-in [AmbientSound] name.
+  Future<AudioSource> _ambientSource(String id) async {
+    if (id.startsWith(customPrefix)) {
+      final path = id.substring(customPrefix.length);
+      return _sources[id] ??= await _soloud.loadFile(path);
+    }
+    return _source(AmbientSound.fromName(id).asset);
   }
 
   /// Play a one-shot cue (e.g. the session-complete chime).
@@ -76,21 +125,22 @@ class SoundService {
     }
   }
 
-  /// Start (or switch to) a looping ambient bed. [AmbientSound.none] stops it.
-  Future<void> startAmbient(AmbientSound sound, {double volume = 0.4}) async {
-    if (sound == AmbientSound.none) {
+  /// Start (or switch to) a looping bed by selection id — either a built-in
+  /// [AmbientSound] name or a `custom:<path>` id from an imported [CustomTrack].
+  Future<void> startAmbientId(String id, {double volume = 0.4}) async {
+    if (id.isEmpty || id == AmbientSound.none.name) {
       await stopAmbient();
       return;
     }
     try {
       await _ensureInit();
       await _stopAmbientHandle();
-      final src = await _source(sound.asset);
-      _ambient = sound;
+      final src = await _ambientSource(id);
+      _ambientId = id;
       _ambientHandle = await _soloud.play(src,
           volume: volume.clamp(0.0, 1.0), looping: true);
     } catch (e) {
-      debugPrint('SoundService.startAmbient failed: $e');
+      debugPrint('SoundService.startAmbientId failed: $e');
     }
   }
 
@@ -105,7 +155,7 @@ class SoundService {
   }
 
   Future<void> stopAmbient() async {
-    _ambient = AmbientSound.none;
+    _ambientId = '';
     await _stopAmbientHandle();
   }
 
