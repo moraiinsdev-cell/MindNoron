@@ -79,9 +79,14 @@ class TaskRepository {
   }
 
   /// Decode a task's JSON-encoded [Task.tags] into a list.
-  static List<String> tagsOf(Task task) {
+  static List<String> tagsOf(Task task) => decodeTags(task.tags);
+
+  /// Decode a JSON-encoded tag string (e.g. `["a","b"]`) into a list. Tolerant
+  /// of empty/legacy/corrupt values.
+  static List<String> decodeTags(String raw) {
+    if (raw.isEmpty) return const [];
     try {
-      final decoded = jsonDecode(task.tags);
+      final decoded = jsonDecode(raw);
       if (decoded is List) return decoded.cast<String>();
     } catch (_) {}
     return const [];
