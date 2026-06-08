@@ -5911,6 +5911,546 @@ class CalendarEventsCompanion extends UpdateCompanion<CalendarEvent> {
   }
 }
 
+class $ExpenseEntriesTable extends ExpenseEntries
+    with TableInfo<$ExpenseEntriesTable, ExpenseEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ExpenseEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  static const VerificationMeta _deletedAtMeta =
+      const VerificationMeta('deletedAt');
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+      'deleted_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _isDirtyMeta =
+      const VerificationMeta('isDirty');
+  @override
+  late final GeneratedColumn<bool> isDirty = GeneratedColumn<bool>(
+      'is_dirty', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_dirty" IN (0, 1))'),
+      defaultValue: const Constant(true));
+  static const VerificationMeta _syncedAtMeta =
+      const VerificationMeta('syncedAt');
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+      'synced_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+      'title', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _amountVndMeta =
+      const VerificationMeta('amountVnd');
+  @override
+  late final GeneratedColumn<int> amountVnd = GeneratedColumn<int>(
+      'amount_vnd', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _spentAtMeta =
+      const VerificationMeta('spentAt');
+  @override
+  late final GeneratedColumn<DateTime> spentAt = GeneratedColumn<DateTime>(
+      'spent_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _categoryMeta =
+      const VerificationMeta('category');
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+      'category', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('General'));
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+      'note', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        createdAt,
+        updatedAt,
+        deletedAt,
+        isDirty,
+        syncedAt,
+        title,
+        amountVnd,
+        spentAt,
+        category,
+        note
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'expense_entries';
+  @override
+  VerificationContext validateIntegrity(Insertable<ExpenseEntry> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(_deletedAtMeta,
+          deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
+    }
+    if (data.containsKey('is_dirty')) {
+      context.handle(_isDirtyMeta,
+          isDirty.isAcceptableOrUnknown(data['is_dirty']!, _isDirtyMeta));
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(_syncedAtMeta,
+          syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta));
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('amount_vnd')) {
+      context.handle(_amountVndMeta,
+          amountVnd.isAcceptableOrUnknown(data['amount_vnd']!, _amountVndMeta));
+    } else if (isInserting) {
+      context.missing(_amountVndMeta);
+    }
+    if (data.containsKey('spent_at')) {
+      context.handle(_spentAtMeta,
+          spentAt.isAcceptableOrUnknown(data['spent_at']!, _spentAtMeta));
+    } else if (isInserting) {
+      context.missing(_spentAtMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(_categoryMeta,
+          category.isAcceptableOrUnknown(data['category']!, _categoryMeta));
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+          _noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ExpenseEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ExpenseEntry(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      deletedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at']),
+      isDirty: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_dirty'])!,
+      syncedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}synced_at']),
+      title: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
+      amountVnd: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}amount_vnd'])!,
+      spentAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}spent_at'])!,
+      category: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}category'])!,
+      note: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}note']),
+    );
+  }
+
+  @override
+  $ExpenseEntriesTable createAlias(String alias) {
+    return $ExpenseEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class ExpenseEntry extends DataClass implements Insertable<ExpenseEntry> {
+  final String id;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  final bool isDirty;
+  final DateTime? syncedAt;
+  final String title;
+  final int amountVnd;
+  final DateTime spentAt;
+  final String category;
+  final String? note;
+  const ExpenseEntry(
+      {required this.id,
+      required this.createdAt,
+      required this.updatedAt,
+      this.deletedAt,
+      required this.isDirty,
+      this.syncedAt,
+      required this.title,
+      required this.amountVnd,
+      required this.spentAt,
+      required this.category,
+      this.note});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['is_dirty'] = Variable<bool>(isDirty);
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
+    map['title'] = Variable<String>(title);
+    map['amount_vnd'] = Variable<int>(amountVnd);
+    map['spent_at'] = Variable<DateTime>(spentAt);
+    map['category'] = Variable<String>(category);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    return map;
+  }
+
+  ExpenseEntriesCompanion toCompanion(bool nullToAbsent) {
+    return ExpenseEntriesCompanion(
+      id: Value(id),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      isDirty: Value(isDirty),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
+      title: Value(title),
+      amountVnd: Value(amountVnd),
+      spentAt: Value(spentAt),
+      category: Value(category),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+    );
+  }
+
+  factory ExpenseEntry.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ExpenseEntry(
+      id: serializer.fromJson<String>(json['id']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      isDirty: serializer.fromJson<bool>(json['isDirty']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
+      title: serializer.fromJson<String>(json['title']),
+      amountVnd: serializer.fromJson<int>(json['amountVnd']),
+      spentAt: serializer.fromJson<DateTime>(json['spentAt']),
+      category: serializer.fromJson<String>(json['category']),
+      note: serializer.fromJson<String?>(json['note']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'isDirty': serializer.toJson<bool>(isDirty),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
+      'title': serializer.toJson<String>(title),
+      'amountVnd': serializer.toJson<int>(amountVnd),
+      'spentAt': serializer.toJson<DateTime>(spentAt),
+      'category': serializer.toJson<String>(category),
+      'note': serializer.toJson<String?>(note),
+    };
+  }
+
+  ExpenseEntry copyWith(
+          {String? id,
+          DateTime? createdAt,
+          DateTime? updatedAt,
+          Value<DateTime?> deletedAt = const Value.absent(),
+          bool? isDirty,
+          Value<DateTime?> syncedAt = const Value.absent(),
+          String? title,
+          int? amountVnd,
+          DateTime? spentAt,
+          String? category,
+          Value<String?> note = const Value.absent()}) =>
+      ExpenseEntry(
+        id: id ?? this.id,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+        deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+        isDirty: isDirty ?? this.isDirty,
+        syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
+        title: title ?? this.title,
+        amountVnd: amountVnd ?? this.amountVnd,
+        spentAt: spentAt ?? this.spentAt,
+        category: category ?? this.category,
+        note: note.present ? note.value : this.note,
+      );
+  ExpenseEntry copyWithCompanion(ExpenseEntriesCompanion data) {
+    return ExpenseEntry(
+      id: data.id.present ? data.id.value : this.id,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      isDirty: data.isDirty.present ? data.isDirty.value : this.isDirty,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+      title: data.title.present ? data.title.value : this.title,
+      amountVnd: data.amountVnd.present ? data.amountVnd.value : this.amountVnd,
+      spentAt: data.spentAt.present ? data.spentAt.value : this.spentAt,
+      category: data.category.present ? data.category.value : this.category,
+      note: data.note.present ? data.note.value : this.note,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExpenseEntry(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('isDirty: $isDirty, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('title: $title, ')
+          ..write('amountVnd: $amountVnd, ')
+          ..write('spentAt: $spentAt, ')
+          ..write('category: $category, ')
+          ..write('note: $note')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, createdAt, updatedAt, deletedAt, isDirty,
+      syncedAt, title, amountVnd, spentAt, category, note);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ExpenseEntry &&
+          other.id == this.id &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.isDirty == this.isDirty &&
+          other.syncedAt == this.syncedAt &&
+          other.title == this.title &&
+          other.amountVnd == this.amountVnd &&
+          other.spentAt == this.spentAt &&
+          other.category == this.category &&
+          other.note == this.note);
+}
+
+class ExpenseEntriesCompanion extends UpdateCompanion<ExpenseEntry> {
+  final Value<String> id;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<bool> isDirty;
+  final Value<DateTime?> syncedAt;
+  final Value<String> title;
+  final Value<int> amountVnd;
+  final Value<DateTime> spentAt;
+  final Value<String> category;
+  final Value<String?> note;
+  final Value<int> rowid;
+  const ExpenseEntriesCompanion({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.isDirty = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.title = const Value.absent(),
+    this.amountVnd = const Value.absent(),
+    this.spentAt = const Value.absent(),
+    this.category = const Value.absent(),
+    this.note = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ExpenseEntriesCompanion.insert({
+    required String id,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.isDirty = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    required String title,
+    required int amountVnd,
+    required DateTime spentAt,
+    this.category = const Value.absent(),
+    this.note = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        title = Value(title),
+        amountVnd = Value(amountVnd),
+        spentAt = Value(spentAt);
+  static Insertable<ExpenseEntry> custom({
+    Expression<String>? id,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<bool>? isDirty,
+    Expression<DateTime>? syncedAt,
+    Expression<String>? title,
+    Expression<int>? amountVnd,
+    Expression<DateTime>? spentAt,
+    Expression<String>? category,
+    Expression<String>? note,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (isDirty != null) 'is_dirty': isDirty,
+      if (syncedAt != null) 'synced_at': syncedAt,
+      if (title != null) 'title': title,
+      if (amountVnd != null) 'amount_vnd': amountVnd,
+      if (spentAt != null) 'spent_at': spentAt,
+      if (category != null) 'category': category,
+      if (note != null) 'note': note,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ExpenseEntriesCompanion copyWith(
+      {Value<String>? id,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
+      Value<DateTime?>? deletedAt,
+      Value<bool>? isDirty,
+      Value<DateTime?>? syncedAt,
+      Value<String>? title,
+      Value<int>? amountVnd,
+      Value<DateTime>? spentAt,
+      Value<String>? category,
+      Value<String?>? note,
+      Value<int>? rowid}) {
+    return ExpenseEntriesCompanion(
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      isDirty: isDirty ?? this.isDirty,
+      syncedAt: syncedAt ?? this.syncedAt,
+      title: title ?? this.title,
+      amountVnd: amountVnd ?? this.amountVnd,
+      spentAt: spentAt ?? this.spentAt,
+      category: category ?? this.category,
+      note: note ?? this.note,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (isDirty.present) {
+      map['is_dirty'] = Variable<bool>(isDirty.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (amountVnd.present) {
+      map['amount_vnd'] = Variable<int>(amountVnd.value);
+    }
+    if (spentAt.present) {
+      map['spent_at'] = Variable<DateTime>(spentAt.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExpenseEntriesCompanion(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('isDirty: $isDirty, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('title: $title, ')
+          ..write('amountVnd: $amountVnd, ')
+          ..write('spentAt: $spentAt, ')
+          ..write('category: $category, ')
+          ..write('note: $note, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5927,6 +6467,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $HabitCompletionsTable(this);
   late final $ThoughtsTable thoughts = $ThoughtsTable(this);
   late final $CalendarEventsTable calendarEvents = $CalendarEventsTable(this);
+  late final $ExpenseEntriesTable expenseEntries = $ExpenseEntriesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5942,7 +6483,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         habits,
         habitCompletions,
         thoughts,
-        calendarEvents
+        calendarEvents,
+        expenseEntries
       ];
 }
 
@@ -8726,6 +9268,270 @@ typedef $$CalendarEventsTableProcessedTableManager = ProcessedTableManager<
     ),
     CalendarEvent,
     PrefetchHooks Function()>;
+typedef $$ExpenseEntriesTableCreateCompanionBuilder = ExpenseEntriesCompanion
+    Function({
+  required String id,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<DateTime?> deletedAt,
+  Value<bool> isDirty,
+  Value<DateTime?> syncedAt,
+  required String title,
+  required int amountVnd,
+  required DateTime spentAt,
+  Value<String> category,
+  Value<String?> note,
+  Value<int> rowid,
+});
+typedef $$ExpenseEntriesTableUpdateCompanionBuilder = ExpenseEntriesCompanion
+    Function({
+  Value<String> id,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<DateTime?> deletedAt,
+  Value<bool> isDirty,
+  Value<DateTime?> syncedAt,
+  Value<String> title,
+  Value<int> amountVnd,
+  Value<DateTime> spentAt,
+  Value<String> category,
+  Value<String?> note,
+  Value<int> rowid,
+});
+
+class $$ExpenseEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $ExpenseEntriesTable> {
+  $$ExpenseEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isDirty => $composableBuilder(
+      column: $table.isDirty, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get syncedAt => $composableBuilder(
+      column: $table.syncedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get amountVnd => $composableBuilder(
+      column: $table.amountVnd, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get spentAt => $composableBuilder(
+      column: $table.spentAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get note => $composableBuilder(
+      column: $table.note, builder: (column) => ColumnFilters(column));
+}
+
+class $$ExpenseEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ExpenseEntriesTable> {
+  $$ExpenseEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isDirty => $composableBuilder(
+      column: $table.isDirty, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get syncedAt => $composableBuilder(
+      column: $table.syncedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get amountVnd => $composableBuilder(
+      column: $table.amountVnd, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get spentAt => $composableBuilder(
+      column: $table.spentAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get note => $composableBuilder(
+      column: $table.note, builder: (column) => ColumnOrderings(column));
+}
+
+class $$ExpenseEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ExpenseEntriesTable> {
+  $$ExpenseEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDirty =>
+      $composableBuilder(column: $table.isDirty, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get syncedAt =>
+      $composableBuilder(column: $table.syncedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<int> get amountVnd =>
+      $composableBuilder(column: $table.amountVnd, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get spentAt =>
+      $composableBuilder(column: $table.spentAt, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+}
+
+class $$ExpenseEntriesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $ExpenseEntriesTable,
+    ExpenseEntry,
+    $$ExpenseEntriesTableFilterComposer,
+    $$ExpenseEntriesTableOrderingComposer,
+    $$ExpenseEntriesTableAnnotationComposer,
+    $$ExpenseEntriesTableCreateCompanionBuilder,
+    $$ExpenseEntriesTableUpdateCompanionBuilder,
+    (
+      ExpenseEntry,
+      BaseReferences<_$AppDatabase, $ExpenseEntriesTable, ExpenseEntry>
+    ),
+    ExpenseEntry,
+    PrefetchHooks Function()> {
+  $$ExpenseEntriesTableTableManager(
+      _$AppDatabase db, $ExpenseEntriesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ExpenseEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ExpenseEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ExpenseEntriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<DateTime?> deletedAt = const Value.absent(),
+            Value<bool> isDirty = const Value.absent(),
+            Value<DateTime?> syncedAt = const Value.absent(),
+            Value<String> title = const Value.absent(),
+            Value<int> amountVnd = const Value.absent(),
+            Value<DateTime> spentAt = const Value.absent(),
+            Value<String> category = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              ExpenseEntriesCompanion(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            isDirty: isDirty,
+            syncedAt: syncedAt,
+            title: title,
+            amountVnd: amountVnd,
+            spentAt: spentAt,
+            category: category,
+            note: note,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<DateTime?> deletedAt = const Value.absent(),
+            Value<bool> isDirty = const Value.absent(),
+            Value<DateTime?> syncedAt = const Value.absent(),
+            required String title,
+            required int amountVnd,
+            required DateTime spentAt,
+            Value<String> category = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              ExpenseEntriesCompanion.insert(
+            id: id,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            deletedAt: deletedAt,
+            isDirty: isDirty,
+            syncedAt: syncedAt,
+            title: title,
+            amountVnd: amountVnd,
+            spentAt: spentAt,
+            category: category,
+            note: note,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$ExpenseEntriesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $ExpenseEntriesTable,
+    ExpenseEntry,
+    $$ExpenseEntriesTableFilterComposer,
+    $$ExpenseEntriesTableOrderingComposer,
+    $$ExpenseEntriesTableAnnotationComposer,
+    $$ExpenseEntriesTableCreateCompanionBuilder,
+    $$ExpenseEntriesTableUpdateCompanionBuilder,
+    (
+      ExpenseEntry,
+      BaseReferences<_$AppDatabase, $ExpenseEntriesTable, ExpenseEntry>
+    ),
+    ExpenseEntry,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -8752,4 +9558,6 @@ class $AppDatabaseManager {
       $$ThoughtsTableTableManager(_db, _db.thoughts);
   $$CalendarEventsTableTableManager get calendarEvents =>
       $$CalendarEventsTableTableManager(_db, _db.calendarEvents);
+  $$ExpenseEntriesTableTableManager get expenseEntries =>
+      $$ExpenseEntriesTableTableManager(_db, _db.expenseEntries);
 }

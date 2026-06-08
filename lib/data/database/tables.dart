@@ -123,6 +123,18 @@ class CalendarEvents extends Table with SyncBase {
   Set<Column> get primaryKey => {id};
 }
 
+/// Money spent on a concrete item/work/activity. Stored as whole VND for now.
+class ExpenseEntries extends Table with SyncBase {
+  TextColumn get title => text()();
+  IntColumn get amountVnd => integer()();
+  DateTimeColumn get spentAt => dateTime()();
+  TextColumn get category => text().withDefault(const Constant('General'))();
+  TextColumn get note => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// Markdown notes — the "second brain". Linked to tasks and other notes.
 class Notes extends Table with SyncBase {
   TextColumn get title => text().withDefault(const Constant(''))();

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/activity/activity_screen.dart';
 import '../../features/calendar/calendar_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
+import '../../features/expenses/expenses_screen.dart';
 import '../../features/habits/habits_screen.dart';
 import '../../features/inbox/inbox_screen.dart';
 import '../../features/journal/journal_screen.dart';
@@ -28,6 +29,7 @@ abstract final class Routes {
   static const notes = '/notes';
   static const journal = '/journal';
   static const habits = '/habits';
+  static const expenses = '/expenses';
   static const activity = '/activity';
   static const settings = '/settings';
 }
@@ -74,6 +76,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: Routes.habits,
           pageBuilder: (c, s) => _appPage(s, const HabitsScreen()),
+        ),
+        GoRoute(
+          path: Routes.expenses,
+          pageBuilder: (c, s) => _appPage(s, const ExpensesScreen()),
         ),
         GoRoute(
           path: Routes.activity,

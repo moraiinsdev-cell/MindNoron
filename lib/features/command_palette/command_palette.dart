@@ -84,6 +84,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
       _nav(Icons.sticky_note_2_outlined, 'Notes', Routes.notes),
       _nav(Icons.auto_stories_outlined, 'Journal', Routes.journal),
       _nav(Icons.local_fire_department_outlined, 'Habits', Routes.habits),
+      _nav(Icons.account_balance_wallet_outlined, 'Expenses', Routes.expenses),
       _nav(Icons.insights_outlined, 'Activity', Routes.activity),
       _nav(Icons.settings_outlined, 'Settings', Routes.settings),
       _Command(Icons.add, 'Quick capture...', () {

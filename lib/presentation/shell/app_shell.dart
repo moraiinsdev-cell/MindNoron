@@ -27,6 +27,7 @@ class AppShell extends ConsumerWidget {
     Routes.notes,
     Routes.journal,
     Routes.habits,
+    Routes.expenses,
     Routes.activity,
     Routes.settings,
   ];
@@ -140,6 +141,11 @@ class AppShell extends ConsumerWidget {
                     icon: const Icon(Icons.local_fire_department_outlined),
                     selectedIcon: const Icon(Icons.local_fire_department),
                     label: Text(l10n.navHabits),
+                  ),
+                  const NavigationRailDestination(
+                    icon: Icon(Icons.account_balance_wallet_outlined),
+                    selectedIcon: Icon(Icons.account_balance_wallet),
+                    label: Text('Expenses'),
                   ),
                   NavigationRailDestination(
                     icon: const Icon(Icons.insights_outlined),
