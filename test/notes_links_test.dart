@@ -22,4 +22,28 @@ void main() {
       expect(NotesRepository.linkTargets('just prose'), isEmpty);
     });
   });
+
+  group('NotesRepository.fieldsFromCapture', () {
+    test('uses a single-line capture as the note title', () {
+      final fields = NotesRepository.fieldsFromCapture('Idea for tomorrow');
+      expect(fields.title, 'Idea for tomorrow');
+      expect(fields.content, isEmpty);
+    });
+
+    test('splits a multi-line capture into title and body', () {
+      final fields = NotesRepository.fieldsFromCapture(
+        'Meeting notes\n- follow up with Anh\n- send proposal',
+      );
+      expect(fields.title, 'Meeting notes');
+      expect(fields.content, '- follow up with Anh\n- send proposal');
+    });
+
+    test('preserves a long single-line capture in the body', () {
+      final long = 'x' * 120;
+      final fields = NotesRepository.fieldsFromCapture(long);
+      expect(fields.title.length, lessThanOrEqualTo(80));
+      expect(fields.title.endsWith('...'), isTrue);
+      expect(fields.content, long);
+    });
+  });
 }

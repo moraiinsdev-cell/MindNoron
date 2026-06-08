@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/database/app_database.dart';
 import '../../data/repositories/inbox_repository.dart';
+import '../../data/repositories/notes_repository.dart';
 import '../../data/repositories/task_repository.dart';
 import '../../l10n/app_localizations.dart';
+import '../../presentation/navigation/app_router.dart';
 import '../../presentation/widgets/common/copy_button.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
 import '../capture/capture_dialog.dart';
@@ -12,6 +15,42 @@ import '../capture/capture_dialog.dart';
 /// screen: it reads live from the local Drift database).
 class InboxScreen extends ConsumerWidget {
   const InboxScreen({super.key});
+
+  Future<void> _makeTask(
+    BuildContext context,
+    WidgetRef ref,
+    InboxItem item,
+  ) async {
+    await ref.read(taskRepositoryProvider).convertInboxToTask(item);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Converted to task'),
+        action: SnackBarAction(
+          label: 'Open tasks',
+          onPressed: () => appRouter.go(Routes.tasks),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _makeNote(
+    BuildContext context,
+    WidgetRef ref,
+    InboxItem item,
+  ) async {
+    await ref.read(notesRepositoryProvider).convertInboxToNote(item);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Converted to note'),
+        action: SnackBarAction(
+          label: 'Open notes',
+          onPressed: () => appRouter.go(Routes.notes),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -52,12 +91,15 @@ class InboxScreen extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     CopyIconButton(text: item.content),
-                    TextButton.icon(
-                      icon: const Icon(Icons.check_circle_outline, size: 18),
-                      label: const Text('Make task'),
-                      onPressed: () => ref
-                          .read(taskRepositoryProvider)
-                          .convertInboxToTask(item),
+                    IconButton(
+                      tooltip: 'Make task',
+                      icon: const Icon(Icons.check_circle_outline),
+                      onPressed: () => _makeTask(context, ref, item),
+                    ),
+                    IconButton(
+                      tooltip: 'Make note',
+                      icon: const Icon(Icons.sticky_note_2_outlined),
+                      onPressed: () => _makeNote(context, ref, item),
                     ),
                     IconButton(
                       tooltip: 'Discard',

@@ -78,10 +78,13 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     final base = <_Command>[
       _nav(Icons.dashboard_outlined, 'Dashboard', Routes.dashboard),
       _nav(Icons.check_circle_outline, 'Tasks', Routes.tasks),
+      _nav(Icons.calendar_month_outlined, 'Calendar', Routes.calendar),
       _nav(Icons.timer_outlined, 'Focus', Routes.timer),
       _nav(Icons.inbox_outlined, 'Inbox', Routes.inbox),
       _nav(Icons.sticky_note_2_outlined, 'Notes', Routes.notes),
       _nav(Icons.auto_stories_outlined, 'Journal', Routes.journal),
+      _nav(Icons.local_fire_department_outlined, 'Habits', Routes.habits),
+      _nav(Icons.insights_outlined, 'Activity', Routes.activity),
       _nav(Icons.settings_outlined, 'Settings', Routes.settings),
       _Command(Icons.add, 'Quick capture...', () {
         Navigator.of(context).pop();
@@ -122,11 +125,10 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
           appRouter.go(Routes.notes);
         }));
       }
-      final inbox =
-          ref.watch(unprocessedInboxProvider).valueOrNull ?? const <InboxItem>[];
-      for (final item in inbox
-          .where((i) => i.content.toLowerCase().contains(q))
-          .take(5)) {
+      final inbox = ref.watch(unprocessedInboxProvider).valueOrNull ??
+          const <InboxItem>[];
+      for (final item
+          in inbox.where((i) => i.content.toLowerCase().contains(q)).take(5)) {
         list.add(_Command(Icons.inbox_outlined, 'Inbox: ${item.content}', () {
           Navigator.of(context).pop();
           appRouter.go(Routes.inbox);

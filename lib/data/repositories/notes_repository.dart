@@ -12,6 +12,7 @@ class NotesRepository {
   NotesRepository(this._db);
 
   final AppDatabase _db;
+  static const _captureTitleLimit = 80;
 
   Future<String> create({String title = '', String content = ''}) async {
     final id = _uuid.v4();
@@ -22,6 +23,48 @@ class NotesRepository {
             content: Value(content),
           ),
         );
+    return id;
+  }
+
+  /// Turn quick-capture text into note fields without losing the original idea.
+  static ({String title, String content}) fieldsFromCapture(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return (title: 'Untitled capture', content: '');
+
+    final lines = trimmed.split(RegExp(r'\r?\n'));
+    final firstTextIndex = lines.indexWhere((line) => line.trim().isNotEmpty);
+    final titleSource = lines[firstTextIndex < 0 ? 0 : firstTextIndex].trim();
+    final title = _clampedTitle(titleSource);
+    final bodyLines =
+        firstTextIndex < 0 ? const <String>[] : lines.skip(firstTextIndex + 1);
+    var content = bodyLines.join('\n').trim();
+
+    if (content.isEmpty && titleSource.length > _captureTitleLimit) {
+      content = trimmed;
+    }
+    return (title: title, content: content);
+  }
+
+  static String _clampedTitle(String title) {
+    if (title.length <= _captureTitleLimit) return title;
+    return '${title.substring(0, _captureTitleLimit - 3).trimRight()}...';
+  }
+
+  /// Promote an inbox item into a note, marking the item processed.
+  Future<String> convertInboxToNote(InboxItem item) async {
+    final fields = fieldsFromCapture(item.content);
+    late String id;
+    await _db.transaction(() async {
+      id = await create(title: fields.title, content: fields.content);
+      await (_db.update(_db.inboxItems)..where((t) => t.id.equals(item.id)))
+          .write(
+        InboxItemsCompanion(
+          isProcessed: const Value(true),
+          updatedAt: Value(DateTime.now()),
+          isDirty: const Value(true),
+        ),
+      );
+    });
     return id;
   }
 
@@ -68,8 +111,7 @@ class NotesRepository {
   /// Whether [note] links to a note titled [title] (case-insensitive).
   static bool linksTo(Note note, String title) {
     final lower = title.toLowerCase();
-    return linkTargets(note.content)
-        .any((t) => t.toLowerCase() == lower);
+    return linkTargets(note.content).any((t) => t.toLowerCase() == lower);
   }
 
   Future<List<Note>> search(String query) {

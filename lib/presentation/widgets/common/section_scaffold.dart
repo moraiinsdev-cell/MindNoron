@@ -22,6 +22,32 @@ class SectionScaffold extends StatelessWidget {
     final theme = Theme.of(context);
     final width = MediaQuery.sizeOf(context).width;
     final horizontalPadding = width < 720 ? 18.0 : 28.0;
+    final titleBlock = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: theme.textTheme.headlineSmall),
+        if (subtitle != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            subtitle!,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ],
+    );
+    final actionBar = actions == null
+        ? null
+        : Wrap(
+            alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: actions!,
+          );
+    final compactHeader = width < 840;
+
     return SafeArea(
       child: Padding(
         padding:
@@ -29,25 +55,31 @@ class SectionScaffold extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: theme.textTheme.headlineSmall),
-                      if (subtitle != null) ...[
-                        const SizedBox(height: 4),
-                        Text(subtitle!,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant)),
-                      ],
-                    ],
+            if (compactHeader && actionBar != null)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  titleBlock,
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: actionBar,
                   ),
-                ),
-                if (actions != null) ...actions!,
-              ],
-            ),
+                ],
+              )
+            else
+              Row(
+                children: [
+                  Expanded(child: titleBlock),
+                  if (actionBar != null)
+                    Flexible(
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: actionBar,
+                      ),
+                    ),
+                ],
+              ),
             const SizedBox(height: 20),
             Expanded(
               child: TweenAnimationBuilder<double>(

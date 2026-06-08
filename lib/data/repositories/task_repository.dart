@@ -193,8 +193,7 @@ class TaskRepository {
   Stream<List<Task>> watchCompletedSince(DateTime since) {
     return (_db.select(_db.tasks)
           ..where((t) =>
-              t.deletedAt.isNull() &
-              t.completedAt.isBiggerOrEqualValue(since))
+              t.deletedAt.isNull() & t.completedAt.isBiggerOrEqualValue(since))
           ..orderBy([(t) => OrderingTerm.desc(t.completedAt)]))
         .watch();
   }
@@ -216,9 +215,30 @@ class TaskRepository {
           ..where((t) =>
               t.deletedAt.isNull() &
               t.status.isNotIn(_openStatuses) &
+              t.parentTaskId.isNull() &
               t.dueDate.isNotNull() &
               t.dueDate.isSmallerOrEqualValue(end))
           ..orderBy([(t) => OrderingTerm.asc(t.priority)]))
+        .watch();
+  }
+
+  /// Open top-level tasks due after today and within the next [days] days.
+  Stream<List<Task>> watchUpcoming({int days = 7}) {
+    final tomorrow =
+        AppDateUtils.startOfDay(DateTime.now().add(const Duration(days: 1)));
+    final end = AppDateUtils.endOfDay(DateTime.now().add(Duration(days: days)));
+    return (_db.select(_db.tasks)
+          ..where((t) =>
+              t.deletedAt.isNull() &
+              t.status.isNotIn(_openStatuses) &
+              t.parentTaskId.isNull() &
+              t.dueDate.isNotNull() &
+              t.dueDate.isBiggerOrEqualValue(tomorrow) &
+              t.dueDate.isSmallerOrEqualValue(end))
+          ..orderBy([
+            (t) => OrderingTerm.asc(t.dueDate),
+            (t) => OrderingTerm.asc(t.priority),
+          ]))
         .watch();
   }
 
@@ -277,6 +297,10 @@ final openTasksProvider = StreamProvider<List<Task>>((ref) {
 
 final todayTasksProvider = StreamProvider<List<Task>>((ref) {
   return ref.watch(taskRepositoryProvider).watchToday();
+});
+
+final upcomingTasksProvider = StreamProvider<List<Task>>((ref) {
+  return ref.watch(taskRepositoryProvider).watchUpcoming();
 });
 
 final completedTodayCountProvider = StreamProvider<int>((ref) {

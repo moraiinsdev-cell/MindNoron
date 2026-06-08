@@ -13,7 +13,7 @@ import '../../presentation/widgets/common/section_scaffold.dart';
 import 'task_editor.dart';
 import 'task_urgency.dart';
 
-enum _TaskView { open, today, done }
+enum _TaskView { open, today, upcoming, done }
 
 class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
@@ -48,8 +48,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       actions: [
         SegmentedButton<_TaskView>(
           segments: const [
-            ButtonSegment(value: _TaskView.open, label: Text('Open')),
+            ButtonSegment(value: _TaskView.open, label: Text('All open')),
             ButtonSegment(value: _TaskView.today, label: Text('Today')),
+            ButtonSegment(value: _TaskView.upcoming, label: Text('Upcoming')),
             ButtonSegment(value: _TaskView.done, label: Text('Done')),
           ],
           selected: {_view},
@@ -77,22 +78,29 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Expanded(child: _buildOpenList()),
+                Expanded(child: _buildTaskList()),
               ],
             ),
     );
   }
 
-  Widget _buildOpenList() {
-    final tasksAsync = _view == _TaskView.today
-        ? ref.watch(todayTasksProvider)
-        : ref.watch(openTasksProvider);
+  Widget _buildTaskList() {
+    final tasksAsync = switch (_view) {
+      _TaskView.today => ref.watch(todayTasksProvider),
+      _TaskView.upcoming => ref.watch(upcomingTasksProvider),
+      _TaskView.open || _TaskView.done => ref.watch(openTasksProvider),
+    };
     return tasksAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Could not load tasks: $e')),
       data: (tasks) {
         if (tasks.isEmpty) {
-          return const ComingSoon(label: 'No tasks yet');
+          final label = switch (_view) {
+            _TaskView.today => 'No tasks due today',
+            _TaskView.upcoming => 'No tasks due in the next 7 days',
+            _TaskView.open || _TaskView.done => 'No open tasks yet',
+          };
+          return ComingSoon(label: label);
         }
         final now = DateTime.now();
         // Long-neglected tasks bubble to the top, then priority/due.
@@ -215,8 +223,8 @@ class _TaskTileState extends ConsumerState<_TaskTile> {
     final urgency = done ? 0 : taskUrgency(task, now);
     final ageColor = urgencyColor(urgency, cs);
 
-    final subs = ref.watch(subtasksProvider(task.id)).valueOrNull ??
-        const <Task>[];
+    final subs =
+        ref.watch(subtasksProvider(task.id)).valueOrNull ?? const <Task>[];
     final doneSubs = subs
         .where((s) => TaskStatus.fromDb(s.status) == TaskStatus.done)
         .length;

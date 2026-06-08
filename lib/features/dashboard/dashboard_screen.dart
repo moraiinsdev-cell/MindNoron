@@ -15,6 +15,7 @@ import '../../presentation/widgets/common/copy_button.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
 import '../capture/capture_dialog.dart';
 import '../motivation/quotes.dart';
+import '../tasks/task_urgency.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -26,10 +27,20 @@ class DashboardScreen extends ConsumerWidget {
     final focus = ref.watch(focusMinutesTodayProvider).valueOrNull ?? 0;
     final doneToday = ref.watch(completedTodayCountProvider).valueOrNull ?? 0;
     final userName = ref.watch(userNameProvider).valueOrNull;
-    final List<Task> topTasks =
-        (ref.watch(openTasksProvider).valueOrNull ?? const <Task>[])
-            .take(5)
-            .toList();
+    final topTasks = [
+      ...(ref.watch(openTasksProvider).valueOrNull ?? const <Task>[])
+    ]..sort((a, b) {
+        final ua = taskUrgency(a, now);
+        final ub = taskUrgency(b, now);
+        if (ua != ub) return ub - ua;
+        if (a.priority != b.priority) return a.priority - b.priority;
+        final ad = a.dueDate, bd = b.dueDate;
+        if (ad != null && bd != null) return ad.compareTo(bd);
+        if (ad != null) return -1;
+        if (bd != null) return 1;
+        return a.createdAt.compareTo(b.createdAt);
+      });
+    final visibleTopTasks = topTasks.take(5);
     final quote = ref.watch(randomQuoteProvider);
 
     return SectionScaffold(
@@ -91,7 +102,7 @@ class DashboardScreen extends ConsumerWidget {
             Card(
               child: Column(
                 children: [
-                  for (final t in topTasks)
+                  for (final t in visibleTopTasks)
                     ListTile(
                       leading: Icon(Icons.circle,
                           size: 12,
