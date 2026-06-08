@@ -18,6 +18,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navTasks => 'Tasks';
 
   @override
+  String get navCalendar => 'Calendar';
+
+  @override
   String get navTimer => 'Focus';
 
   @override
@@ -27,7 +30,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navNotes => 'Notes';
 
   @override
+  String get navJournal => 'Journal';
+
+  @override
   String get navHabits => 'Habits';
+
+  @override
+  String get navExpenses => 'Expenses';
 
   @override
   String get navActivity => 'Activity';

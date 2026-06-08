@@ -104,10 +104,10 @@ class AppShell extends ConsumerWidget {
                     ),
                     label: Text(l10n.navTasks),
                   ),
-                  const NavigationRailDestination(
-                    icon: Icon(Icons.calendar_month_outlined),
-                    selectedIcon: Icon(Icons.calendar_month),
-                    label: Text('Calendar'),
+                  NavigationRailDestination(
+                    icon: const Icon(Icons.calendar_month_outlined),
+                    selectedIcon: const Icon(Icons.calendar_month),
+                    label: Text(l10n.navCalendar),
                   ),
                   NavigationRailDestination(
                     icon: const Icon(Icons.timer_outlined),
@@ -132,20 +132,20 @@ class AppShell extends ConsumerWidget {
                     selectedIcon: const Icon(Icons.sticky_note_2),
                     label: Text(l10n.navNotes),
                   ),
-                  const NavigationRailDestination(
-                    icon: Icon(Icons.auto_stories_outlined),
-                    selectedIcon: Icon(Icons.auto_stories),
-                    label: Text('Journal'),
+                  NavigationRailDestination(
+                    icon: const Icon(Icons.auto_stories_outlined),
+                    selectedIcon: const Icon(Icons.auto_stories),
+                    label: Text(l10n.navJournal),
                   ),
                   NavigationRailDestination(
                     icon: const Icon(Icons.local_fire_department_outlined),
                     selectedIcon: const Icon(Icons.local_fire_department),
                     label: Text(l10n.navHabits),
                   ),
-                  const NavigationRailDestination(
-                    icon: Icon(Icons.account_balance_wallet_outlined),
-                    selectedIcon: Icon(Icons.account_balance_wallet),
-                    label: Text('Expenses'),
+                  NavigationRailDestination(
+                    icon: const Icon(Icons.account_balance_wallet_outlined),
+                    selectedIcon: const Icon(Icons.account_balance_wallet),
+                    label: Text(l10n.navExpenses),
                   ),
                   NavigationRailDestination(
                     icon: const Icon(Icons.insights_outlined),

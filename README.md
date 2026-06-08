@@ -34,6 +34,7 @@ the app and commit to the day.
   energy check-in.
 - Notes with Markdown preview and [[wikilink]] backlinks.
 - Habits with a tappable 7-day history, streaks, and totals.
+- Expenses tracker with daily, monthly, and yearly comparison.
 - Daily reflection journal with prompts, mood, and autosave.
 - Focus-by-week and energy-trend charts.
 - Command palette with navigation and search (tasks, notes, inbox).
@@ -61,6 +62,18 @@ the app and commit to the day.
 | 4 | Optional Supabase sync and mobile companion | Planned |
 
 See [PLAN.md](PLAN.md) for the full product spec and roadmap.
+
+## Download A Windows Build
+
+For non-developer use, download the latest Windows zip from GitHub Releases
+when one is published. Extract the zip, then run:
+
+```text
+mind_noron.exe
+```
+
+Do not copy only the `.exe` out of the folder. Flutter desktop apps need the
+neighboring DLL files and the `data/` directory.
 
 ## Prerequisites
 
@@ -93,6 +106,17 @@ The built debug binary is created at:
 build\windows\x64\runner\Debug\mind_noron.exe
 ```
 
+## Build A Release Zip
+
+On Windows, package a release build with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tool\package_release.ps1
+```
+
+The script builds `flutter build windows --release` and writes a zip to `dist/`.
+That zip contains the full runnable Release folder.
+
 ## No Developer Mode?
 
 Flutter normally needs Windows Developer Mode to create plugin symlinks. This
@@ -120,7 +144,7 @@ flutter test
 lib/
 +-- core/          # theme, constants, enums, platform services, providers
 +-- data/          # Drift database, tables, repositories, backup service
-+-- features/      # capture, dashboard, tasks, focus, inbox, notes, habits, settings
++-- features/      # capture, dashboard, tasks, focus, notes, habits, expenses
 +-- l10n/          # English localization
 +-- presentation/  # router, sidebar shell, shared widgets
 +-- app.dart       # MaterialApp.router, theme mode, close-to-tray
@@ -130,3 +154,9 @@ lib/
 Architecture: feature-first Flutter + Riverpod + Drift. Core records use UUIDs,
 timestamps, soft delete, and dirty flags so future sync can be added without
 reshaping the whole app.
+
+## Privacy, Security, And License
+
+- Privacy: [PRIVACY.md](PRIVACY.md)
+- Security reports: [SECURITY.md](SECURITY.md)
+- License: [MIT](LICENSE)

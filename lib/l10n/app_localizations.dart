@@ -112,6 +112,12 @@ abstract class AppLocalizations {
   /// **'Tasks'**
   String get navTasks;
 
+  /// No description provided for @navCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
+  String get navCalendar;
+
   /// No description provided for @navTimer.
   ///
   /// In en, this message translates to:
@@ -130,11 +136,23 @@ abstract class AppLocalizations {
   /// **'Notes'**
   String get navNotes;
 
+  /// No description provided for @navJournal.
+  ///
+  /// In en, this message translates to:
+  /// **'Journal'**
+  String get navJournal;
+
   /// No description provided for @navHabits.
   ///
   /// In en, this message translates to:
   /// **'Habits'**
   String get navHabits;
+
+  /// No description provided for @navExpenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Expenses'**
+  String get navExpenses;
 
   /// No description provided for @navActivity.
   ///
