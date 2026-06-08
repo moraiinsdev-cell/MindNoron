@@ -68,7 +68,9 @@ class TimerRepository {
     required int actualMinutes,
     String? linkedTaskId,
     bool completed = true,
+    String? stopReason,
   }) async {
+    final reason = stopReason?.trim();
     await _db.into(_db.pomodoroSessions).insert(
           PomodoroSessionsCompanion.insert(
             id: _uuid.v4(),
@@ -78,6 +80,8 @@ class TimerRepository {
             actualMinutes: Value(actualMinutes),
             type: Value(type.db),
             wasCompleted: Value(completed),
+            interruptions: Value(completed ? 0 : 1),
+            stopReason: Value(reason == null || reason.isEmpty ? null : reason),
             linkedTaskId: Value(linkedTaskId),
           ),
         );
@@ -125,6 +129,18 @@ class TimerRepository {
           _db.pomodoroSessions.deletedAt.isNull());
     return query.map((row) => row.read(total) ?? 0).watchSingle();
   }
+
+  /// Recent sessions that were stopped before the planned duration.
+  Stream<List<PomodoroSession>> watchRecentEarlyStops({int limit = 20}) {
+    return (_db.select(_db.pomodoroSessions)
+          ..where((t) =>
+              t.deletedAt.isNull() &
+              t.wasCompleted.equals(false) &
+              t.stopReason.isNotNull())
+          ..orderBy([(t) => OrderingTerm.desc(t.startTime)])
+          ..limit(limit))
+        .watch();
+  }
 }
 
 final timerRepositoryProvider = Provider<TimerRepository>((ref) {
@@ -136,4 +152,8 @@ final timerRepositoryProvider = Provider<TimerRepository>((ref) {
 
 final focusMinutesTodayProvider = StreamProvider<int>((ref) {
   return ref.watch(timerRepositoryProvider).watchFocusMinutesToday();
+});
+
+final recentEarlyStopsProvider = StreamProvider<List<PomodoroSession>>((ref) {
+  return ref.watch(timerRepositoryProvider).watchRecentEarlyStops();
 });

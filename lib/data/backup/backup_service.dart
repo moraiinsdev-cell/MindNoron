@@ -47,6 +47,7 @@ class BackupService {
         'habits': await _dump(_db.habits),
         'habitCompletions': await _dump(_db.habitCompletions),
         'calendarEvents': await _dump(_db.calendarEvents),
+        'expenseEntries': await _dump(_db.expenseEntries),
         'thoughts': await _dump(_db.thoughts),
         'settings': await _dump(_db.settings),
       },
@@ -99,6 +100,7 @@ class BackupService {
     await _db.delete(_db.habits).go();
     await _db.delete(_db.habitCompletions).go();
     await _db.delete(_db.calendarEvents).go();
+    await _db.delete(_db.expenseEntries).go();
     await _db.delete(_db.thoughts).go();
     await _db.delete(_db.settings).go();
     await _db.delete(_db.timerStates).go();
@@ -136,10 +138,15 @@ class BackupService {
         await _db.into(_db.habits).insert(Habit.fromJson(m));
       }
       for (final m in rows('habitCompletions')) {
-        await _db.into(_db.habitCompletions).insert(HabitCompletion.fromJson(m));
+        await _db
+            .into(_db.habitCompletions)
+            .insert(HabitCompletion.fromJson(m));
       }
       for (final m in rows('calendarEvents')) {
         await _db.into(_db.calendarEvents).insert(CalendarEvent.fromJson(m));
+      }
+      for (final m in rows('expenseEntries')) {
+        await _db.into(_db.expenseEntries).insert(ExpenseEntry.fromJson(m));
       }
       for (final m in rows('thoughts')) {
         await _db.into(_db.thoughts).insert(Thought.fromJson(m));

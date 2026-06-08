@@ -1628,6 +1628,12 @@ class $PomodoroSessionsTable extends PomodoroSessions
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _stopReasonMeta =
+      const VerificationMeta('stopReason');
+  @override
+  late final GeneratedColumn<String> stopReason = GeneratedColumn<String>(
+      'stop_reason', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -1643,7 +1649,8 @@ class $PomodoroSessionsTable extends PomodoroSessions
         actualMinutes,
         type,
         wasCompleted,
-        interruptions
+        interruptions,
+        stopReason
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1726,6 +1733,12 @@ class $PomodoroSessionsTable extends PomodoroSessions
           interruptions.isAcceptableOrUnknown(
               data['interruptions']!, _interruptionsMeta));
     }
+    if (data.containsKey('stop_reason')) {
+      context.handle(
+          _stopReasonMeta,
+          stopReason.isAcceptableOrUnknown(
+              data['stop_reason']!, _stopReasonMeta));
+    }
     return context;
   }
 
@@ -1763,6 +1776,8 @@ class $PomodoroSessionsTable extends PomodoroSessions
           .read(DriftSqlType.bool, data['${effectivePrefix}was_completed'])!,
       interruptions: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}interruptions'])!,
+      stopReason: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}stop_reason']),
     );
   }
 
@@ -1787,6 +1802,7 @@ class PomodoroSession extends DataClass implements Insertable<PomodoroSession> {
   final String type;
   final bool wasCompleted;
   final int interruptions;
+  final String? stopReason;
   const PomodoroSession(
       {required this.id,
       required this.createdAt,
@@ -1801,7 +1817,8 @@ class PomodoroSession extends DataClass implements Insertable<PomodoroSession> {
       required this.actualMinutes,
       required this.type,
       required this.wasCompleted,
-      required this.interruptions});
+      required this.interruptions,
+      this.stopReason});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1827,6 +1844,9 @@ class PomodoroSession extends DataClass implements Insertable<PomodoroSession> {
     map['type'] = Variable<String>(type);
     map['was_completed'] = Variable<bool>(wasCompleted);
     map['interruptions'] = Variable<int>(interruptions);
+    if (!nullToAbsent || stopReason != null) {
+      map['stop_reason'] = Variable<String>(stopReason);
+    }
     return map;
   }
 
@@ -1854,6 +1874,9 @@ class PomodoroSession extends DataClass implements Insertable<PomodoroSession> {
       type: Value(type),
       wasCompleted: Value(wasCompleted),
       interruptions: Value(interruptions),
+      stopReason: stopReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(stopReason),
     );
   }
 
@@ -1875,6 +1898,7 @@ class PomodoroSession extends DataClass implements Insertable<PomodoroSession> {
       type: serializer.fromJson<String>(json['type']),
       wasCompleted: serializer.fromJson<bool>(json['wasCompleted']),
       interruptions: serializer.fromJson<int>(json['interruptions']),
+      stopReason: serializer.fromJson<String?>(json['stopReason']),
     );
   }
   @override
@@ -1895,6 +1919,7 @@ class PomodoroSession extends DataClass implements Insertable<PomodoroSession> {
       'type': serializer.toJson<String>(type),
       'wasCompleted': serializer.toJson<bool>(wasCompleted),
       'interruptions': serializer.toJson<int>(interruptions),
+      'stopReason': serializer.toJson<String?>(stopReason),
     };
   }
 
@@ -1912,7 +1937,8 @@ class PomodoroSession extends DataClass implements Insertable<PomodoroSession> {
           int? actualMinutes,
           String? type,
           bool? wasCompleted,
-          int? interruptions}) =>
+          int? interruptions,
+          Value<String?> stopReason = const Value.absent()}) =>
       PomodoroSession(
         id: id ?? this.id,
         createdAt: createdAt ?? this.createdAt,
@@ -1929,6 +1955,7 @@ class PomodoroSession extends DataClass implements Insertable<PomodoroSession> {
         type: type ?? this.type,
         wasCompleted: wasCompleted ?? this.wasCompleted,
         interruptions: interruptions ?? this.interruptions,
+        stopReason: stopReason.present ? stopReason.value : this.stopReason,
       );
   PomodoroSession copyWithCompanion(PomodoroSessionsCompanion data) {
     return PomodoroSession(
@@ -1956,6 +1983,8 @@ class PomodoroSession extends DataClass implements Insertable<PomodoroSession> {
       interruptions: data.interruptions.present
           ? data.interruptions.value
           : this.interruptions,
+      stopReason:
+          data.stopReason.present ? data.stopReason.value : this.stopReason,
     );
   }
 
@@ -1975,7 +2004,8 @@ class PomodoroSession extends DataClass implements Insertable<PomodoroSession> {
           ..write('actualMinutes: $actualMinutes, ')
           ..write('type: $type, ')
           ..write('wasCompleted: $wasCompleted, ')
-          ..write('interruptions: $interruptions')
+          ..write('interruptions: $interruptions, ')
+          ..write('stopReason: $stopReason')
           ..write(')'))
         .toString();
   }
@@ -1995,7 +2025,8 @@ class PomodoroSession extends DataClass implements Insertable<PomodoroSession> {
       actualMinutes,
       type,
       wasCompleted,
-      interruptions);
+      interruptions,
+      stopReason);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2013,7 +2044,8 @@ class PomodoroSession extends DataClass implements Insertable<PomodoroSession> {
           other.actualMinutes == this.actualMinutes &&
           other.type == this.type &&
           other.wasCompleted == this.wasCompleted &&
-          other.interruptions == this.interruptions);
+          other.interruptions == this.interruptions &&
+          other.stopReason == this.stopReason);
 }
 
 class PomodoroSessionsCompanion extends UpdateCompanion<PomodoroSession> {
@@ -2031,6 +2063,7 @@ class PomodoroSessionsCompanion extends UpdateCompanion<PomodoroSession> {
   final Value<String> type;
   final Value<bool> wasCompleted;
   final Value<int> interruptions;
+  final Value<String?> stopReason;
   final Value<int> rowid;
   const PomodoroSessionsCompanion({
     this.id = const Value.absent(),
@@ -2047,6 +2080,7 @@ class PomodoroSessionsCompanion extends UpdateCompanion<PomodoroSession> {
     this.type = const Value.absent(),
     this.wasCompleted = const Value.absent(),
     this.interruptions = const Value.absent(),
+    this.stopReason = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PomodoroSessionsCompanion.insert({
@@ -2064,6 +2098,7 @@ class PomodoroSessionsCompanion extends UpdateCompanion<PomodoroSession> {
     this.type = const Value.absent(),
     this.wasCompleted = const Value.absent(),
     this.interruptions = const Value.absent(),
+    this.stopReason = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         startTime = Value(startTime),
@@ -2083,6 +2118,7 @@ class PomodoroSessionsCompanion extends UpdateCompanion<PomodoroSession> {
     Expression<String>? type,
     Expression<bool>? wasCompleted,
     Expression<int>? interruptions,
+    Expression<String>? stopReason,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2100,6 +2136,7 @@ class PomodoroSessionsCompanion extends UpdateCompanion<PomodoroSession> {
       if (type != null) 'type': type,
       if (wasCompleted != null) 'was_completed': wasCompleted,
       if (interruptions != null) 'interruptions': interruptions,
+      if (stopReason != null) 'stop_reason': stopReason,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2119,6 +2156,7 @@ class PomodoroSessionsCompanion extends UpdateCompanion<PomodoroSession> {
       Value<String>? type,
       Value<bool>? wasCompleted,
       Value<int>? interruptions,
+      Value<String?>? stopReason,
       Value<int>? rowid}) {
     return PomodoroSessionsCompanion(
       id: id ?? this.id,
@@ -2135,6 +2173,7 @@ class PomodoroSessionsCompanion extends UpdateCompanion<PomodoroSession> {
       type: type ?? this.type,
       wasCompleted: wasCompleted ?? this.wasCompleted,
       interruptions: interruptions ?? this.interruptions,
+      stopReason: stopReason ?? this.stopReason,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2184,6 +2223,9 @@ class PomodoroSessionsCompanion extends UpdateCompanion<PomodoroSession> {
     if (interruptions.present) {
       map['interruptions'] = Variable<int>(interruptions.value);
     }
+    if (stopReason.present) {
+      map['stop_reason'] = Variable<String>(stopReason.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2207,6 +2249,7 @@ class PomodoroSessionsCompanion extends UpdateCompanion<PomodoroSession> {
           ..write('type: $type, ')
           ..write('wasCompleted: $wasCompleted, ')
           ..write('interruptions: $interruptions, ')
+          ..write('stopReason: $stopReason, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -7169,6 +7212,7 @@ typedef $$PomodoroSessionsTableCreateCompanionBuilder
   Value<String> type,
   Value<bool> wasCompleted,
   Value<int> interruptions,
+  Value<String?> stopReason,
   Value<int> rowid,
 });
 typedef $$PomodoroSessionsTableUpdateCompanionBuilder
@@ -7187,6 +7231,7 @@ typedef $$PomodoroSessionsTableUpdateCompanionBuilder
   Value<String> type,
   Value<bool> wasCompleted,
   Value<int> interruptions,
+  Value<String?> stopReason,
   Value<int> rowid,
 });
 
@@ -7241,6 +7286,9 @@ class $$PomodoroSessionsTableFilterComposer
 
   ColumnFilters<int> get interruptions => $composableBuilder(
       column: $table.interruptions, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get stopReason => $composableBuilder(
+      column: $table.stopReason, builder: (column) => ColumnFilters(column));
 }
 
 class $$PomodoroSessionsTableOrderingComposer
@@ -7298,6 +7346,9 @@ class $$PomodoroSessionsTableOrderingComposer
   ColumnOrderings<int> get interruptions => $composableBuilder(
       column: $table.interruptions,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get stopReason => $composableBuilder(
+      column: $table.stopReason, builder: (column) => ColumnOrderings(column));
 }
 
 class $$PomodoroSessionsTableAnnotationComposer
@@ -7350,6 +7401,9 @@ class $$PomodoroSessionsTableAnnotationComposer
 
   GeneratedColumn<int> get interruptions => $composableBuilder(
       column: $table.interruptions, builder: (column) => column);
+
+  GeneratedColumn<String> get stopReason => $composableBuilder(
+      column: $table.stopReason, builder: (column) => column);
 }
 
 class $$PomodoroSessionsTableTableManager extends RootTableManager<
@@ -7393,6 +7447,7 @@ class $$PomodoroSessionsTableTableManager extends RootTableManager<
             Value<String> type = const Value.absent(),
             Value<bool> wasCompleted = const Value.absent(),
             Value<int> interruptions = const Value.absent(),
+            Value<String?> stopReason = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               PomodoroSessionsCompanion(
@@ -7410,6 +7465,7 @@ class $$PomodoroSessionsTableTableManager extends RootTableManager<
             type: type,
             wasCompleted: wasCompleted,
             interruptions: interruptions,
+            stopReason: stopReason,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -7427,6 +7483,7 @@ class $$PomodoroSessionsTableTableManager extends RootTableManager<
             Value<String> type = const Value.absent(),
             Value<bool> wasCompleted = const Value.absent(),
             Value<int> interruptions = const Value.absent(),
+            Value<String?> stopReason = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               PomodoroSessionsCompanion.insert(
@@ -7444,6 +7501,7 @@ class $$PomodoroSessionsTableTableManager extends RootTableManager<
             type: type,
             wasCompleted: wasCompleted,
             interruptions: interruptions,
+            stopReason: stopReason,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

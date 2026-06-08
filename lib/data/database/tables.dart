@@ -44,7 +44,8 @@ class Tasks extends Table with SyncBase {
       const Constant('[]'))(); // JSON array (normalized in Phase 2)
   TextColumn get context => text().nullable()(); // @Home / @Office ...
   TextColumn get projectId => text().nullable()();
-  TextColumn get parentTaskId => text().nullable()(); // set => this is a subtask
+  TextColumn get parentTaskId =>
+      text().nullable()(); // set => this is a subtask
   BoolColumn get isRecurring => boolean().withDefault(const Constant(false))();
   TextColumn get recurrenceRule => text().nullable()(); // RRULE-style string
   DateTimeColumn get completedAt => dateTime().nullable()();
@@ -64,6 +65,7 @@ class PomodoroSessions extends Table with SyncBase {
       .withDefault(const Constant('work'))(); // work|short_break|long_break
   BoolColumn get wasCompleted => boolean().withDefault(const Constant(false))();
   IntColumn get interruptions => integer().withDefault(const Constant(0))();
+  TextColumn get stopReason => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -114,7 +116,8 @@ class CalendarEvents extends Table with SyncBase {
   TextColumn get colorTag =>
       text().withDefault(const Constant('blue'))(); // EventColor name
   BoolColumn get isRecurring => boolean().withDefault(const Constant(false))();
-  TextColumn get recurrenceRule => text().nullable()(); // none|daily|weekly|monthly
+  TextColumn get recurrenceRule =>
+      text().nullable()(); // none|daily|weekly|monthly
   IntColumn get reminderMinutes =>
       integer().nullable()(); // minutes before start; null = no reminder
   TextColumn get linkedTaskId => text().nullable()();
@@ -153,8 +156,8 @@ class Notes extends Table with SyncBase {
 /// session — the "thinking flow" of the noron space.
 class Thoughts extends Table with SyncBase {
   TextColumn get content => text()();
-  TextColumn get sessionType => text()
-      .withDefault(const Constant('none'))(); // work|short_break|long_break|none
+  TextColumn get sessionType => text().withDefault(
+      const Constant('none'))(); // work|short_break|long_break|none
   TextColumn get linkedTaskId => text().nullable()();
 
   @override

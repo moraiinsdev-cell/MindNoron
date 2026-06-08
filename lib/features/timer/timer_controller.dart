@@ -86,18 +86,26 @@ class TimerController extends Notifier<TimerSnapshot> {
     _scheduleCompletion();
   }
 
-  /// Stop early; logs the elapsed time as an incomplete session.
-  Future<void> stop() async {
+  /// Stop early; logs the elapsed time as an incomplete session with a reason.
+  Future<void> stop({required String reason}) async {
     final s = state;
     if (!s.isActive) return;
+    final stopReason = reason.trim();
+    if (stopReason.isEmpty) return;
     _completion?.cancel();
-    await _finalize(s, completedAt: DateTime.now(), completed: false);
+    await _finalize(
+      s,
+      completedAt: DateTime.now(),
+      completed: false,
+      stopReason: stopReason,
+    );
   }
 
   Future<void> _finalize(
     TimerSnapshot s, {
     required DateTime completedAt,
     required bool completed,
+    String? stopReason,
   }) async {
     final elapsed = completed ? s.plannedDuration : s.elapsed(completedAt);
     final start = (s.startedAt ?? completedAt).subtract(s.pausedElapsed);
@@ -109,6 +117,7 @@ class TimerController extends Notifier<TimerSnapshot> {
       actualMinutes: elapsed.inMinutes,
       linkedTaskId: s.linkedTaskId,
       completed: completed,
+      stopReason: completed ? null : stopReason,
     );
     await _repo.clear();
     state = const TimerSnapshot.idle();

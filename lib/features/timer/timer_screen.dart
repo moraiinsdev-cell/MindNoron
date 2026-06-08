@@ -82,7 +82,10 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
               children: [
                 Expanded(child: timerArea),
                 const SizedBox(width: 20),
-                SizedBox(width: 360, child: thinking),
+                SizedBox(
+                  width: 360,
+                  child: _TimerSidePanel(thinking: thinking),
+                ),
               ],
             );
           }
@@ -91,6 +94,8 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
               SizedBox(height: 300, child: timerArea),
               const SizedBox(height: 16),
               Expanded(child: thinking),
+              const SizedBox(height: 16),
+              const SizedBox(height: 180, child: _EarlyStopsCard()),
             ],
           );
         },
@@ -270,31 +275,13 @@ class _ActiveTimerState extends ConsumerState<_ActiveTimer>
   Future<void> _confirmStop(TimerSnapshot snapshot) async {
     final controller = ref.read(timerControllerProvider.notifier);
     final isBreak = snapshot.type != SessionType.work;
-    final confirmed = await showDialog<bool>(
+    final reason = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        icon: Icon(isBreak ? Icons.self_improvement : Icons.lock_outline),
-        title: Text(isBreak ? 'End break early?' : 'End focus counter?'),
-        content: Text(
-          isBreak
-              ? 'Are you sure you want to stop now? You should rest the full break so your mind can recover for the next block. Cutting it short may make the next focus weaker.'
-              : 'Are you sure you want to stop now? Do not quit the block just because resistance got loud. If this is not truly necessary, stay locked in and finish the counter.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(isBreak ? 'Keep resting' : 'Keep focusing'),
-          ),
-          FilledButton.tonal(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(isBreak ? 'Stop break' : 'Stop focus'),
-          ),
-        ],
-      ),
+      builder: (context) => _StopReasonDialog(isBreak: isBreak),
     );
 
-    if (confirmed == true) {
-      await controller.stop();
+    if (reason != null && reason.trim().isNotEmpty) {
+      await controller.stop(reason: reason);
     }
   }
 
@@ -382,6 +369,221 @@ class _ActiveTimerState extends ConsumerState<_ActiveTimer>
         const SizedBox(height: 16),
         const AmbientControl(),
       ],
+    );
+  }
+}
+
+class _TimerSidePanel extends StatelessWidget {
+  const _TimerSidePanel({required this.thinking});
+
+  final Widget thinking;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(child: thinking),
+        const SizedBox(height: 16),
+        const SizedBox(height: 210, child: _EarlyStopsCard()),
+      ],
+    );
+  }
+}
+
+class _StopReasonDialog extends StatefulWidget {
+  const _StopReasonDialog({required this.isBreak});
+
+  final bool isBreak;
+
+  @override
+  State<_StopReasonDialog> createState() => _StopReasonDialogState();
+}
+
+class _StopReasonDialogState extends State<_StopReasonDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final reason = _controller.text.trim();
+    if (reason.isEmpty) return;
+    Navigator.pop(context, reason);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isBreak = widget.isBreak;
+    final reason = _controller.text.trim();
+    return AlertDialog(
+      icon: Icon(isBreak ? Icons.self_improvement : Icons.lock_outline),
+      title: Text(isBreak ? 'Stop break early?' : 'Stop focus early?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            isBreak
+                ? 'Write why you are cutting this break short. The reason will be saved so you can review the pattern later.'
+                : 'Write why you are ending this focus block early. The reason will be saved so you can understand what pulled you away.',
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            minLines: 3,
+            maxLines: 5,
+            textCapitalization: TextCapitalization.sentences,
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (_) => _submit(),
+            decoration: const InputDecoration(
+              hintText: 'Reason for stopping early...',
+              alignLabelWithHint: true,
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(isBreak ? 'Keep resting' : 'Keep focusing'),
+        ),
+        FilledButton.tonal(
+          onPressed: reason.isEmpty ? null : _submit,
+          child: Text(isBreak ? 'Save and stop break' : 'Save and stop focus'),
+        ),
+      ],
+    );
+  }
+}
+
+class _EarlyStopsCard extends ConsumerWidget {
+  const _EarlyStopsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final stops = ref.watch(recentEarlyStopsProvider);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.history_outlined, size: 18, color: cs.primary),
+              const SizedBox(width: 8),
+              Text('Recent early stops', style: theme.textTheme.titleSmall),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: stops.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => Text('Could not load stops: $error'),
+              data: (items) {
+                if (items.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'No early stops recorded yet.',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  itemCount: items.length,
+                  itemBuilder: (context, index) =>
+                      _EarlyStopTile(session: items[index]),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EarlyStopTile extends StatelessWidget {
+  const _EarlyStopTile({required this.session});
+
+  final PomodoroSession session;
+
+  String _time(DateTime date) {
+    final h = date.hour % 12 == 0 ? 12 : date.hour % 12;
+    final m = date.minute.toString().padLeft(2, '0');
+    return '${date.month}/${date.day} $h:$m ${date.hour < 12 ? 'AM' : 'PM'}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final type = SessionType.fromDb(session.type);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    type.label,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color:
+                          type == SessionType.work ? cs.primary : cs.secondary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    _time(session.startTime),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                session.stopReason ?? '',
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${session.actualMinutes}/${session.plannedMinutes} min',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
