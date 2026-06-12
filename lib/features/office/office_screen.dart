@@ -103,8 +103,12 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
         builder: (context, constraints) {
           final w = constraints.maxWidth;
           final h = constraints.maxHeight;
+          // Fill the canvas: integer scale when generous, otherwise snap to
+          // quarter steps so the campus never renders postage-stamp small.
           var zoom = min(w / worldWidth, h / worldHeight);
-          if (zoom > 1) zoom = zoom.floorToDouble(); // crisp integer scale
+          zoom = zoom >= 3
+              ? zoom.floorToDouble()
+              : max(0.75, (zoom * 4).floorToDouble() / 4);
           _zoom = zoom;
           _origin = Offset(
             (w - worldWidth * zoom) / 2,

@@ -6,16 +6,25 @@ import 'package:flutter/painting.dart';
 import 'office_sprites.dart';
 import 'pixel_art.dart';
 
-/// Tile size in world pixels. The whole office is laid out on a tile grid
-/// and rendered at an integer zoom for crisp pixels.
+/// Tile size in world pixels. The whole campus is laid out on a tile grid
+/// and rendered at a zoom that fills the canvas.
 const tileSize = 16;
 
-/// MindNoron Inc. headquarters: one open-plan floor.
-/// 30x20 tiles = 480x320 world pixels.
-const mapCols = 30;
-const mapRows = 20;
-const worldWidth = mapCols * tileSize; // 480
-const worldHeight = mapRows * tileSize; // 320
+/// MindNoron Campus: one indoor floor with a themed room per app module
+/// (Tasks, Calendar, Finance, Focus, Library, Inbox, Gym, Café, Analytics,
+/// Lounge) plus an outdoor garden with a swimming pool.
+/// 56x36 tiles = 896x576 world pixels.
+const mapCols = 56;
+const mapRows = 36;
+const worldWidth = mapCols * tileSize; // 896
+const worldHeight = mapRows * tileSize; // 576
+
+/// Front door: new hires walk in here; it is also the pathfinding anchor
+/// the reachability tests use.
+const doorTile = Point<int>(27, 34);
+
+/// Indoor/outdoor divider column (with two door gaps).
+const _dividerCol = 38;
 
 /// A piece of furniture: anchor tile (top-left of footprint), footprint in
 /// tiles, and the sprite (drawn bottom-aligned to the footprint, centered).
@@ -60,13 +69,15 @@ class DeskSpot {
         tx * tileSize + tileSize.toDouble(), // center between the 2 tiles
         (ty + 2) * tileSize - 3.0,
       );
+}
 
-  /// Screen region of this desk's monitor (for the flicker overlay).
-  Rect get screenRect {
-    final o = OfficeObject(deskSprite, tx: tx, ty: ty, tw: 2, th: 1)
-        .drawOrigin;
-    return Rect.fromLTWH(o.dx + 5, o.dy + 1, 10, 4);
-  }
+/// A sittable spot: walk to [approach], then snap to [seatPos]. [tile] is
+/// what the user has to drop an employee onto.
+class Seat {
+  const Seat(this.tile, this.approach, this.seatPos);
+  final Point<int> tile;
+  final Point<int> approach;
+  final Offset seatPos;
 }
 
 /// A two-person chat spot: where each stands and which way they face.
@@ -80,34 +91,99 @@ class ChatSpot {
 }
 
 // ---------------------------------------------------------------------------
-// Floor zones (painted by the static layer)
+// Rooms (floor colors + painted labels)
 // ---------------------------------------------------------------------------
 
-class FloorZone {
-  const FloorZone(this.tiles, this.base, this.alt);
+class Room {
+  const Room(this.label, this.tiles, this.base, this.alt);
+  final String label;
   final Rect tiles; // in tile units
   final Color base;
-  final Color alt; // checker/dither accent
+  final Color alt; // checker accent
 }
 
 const floorBase = Color(0xFFD8D3CA);
 const floorAlt = Color(0xFFCFC9BD);
 
-const floorZones = <FloorZone>[
-  // Desk-pod carpet
-  FloorZone(Rect.fromLTRB(2, 3, 16, 14), Color(0xFF8C9CB4), Color(0xFF8294AE)),
-  // Meeting rug
-  FloorZone(Rect.fromLTRB(20, 2, 28, 8), Color(0xFF7FA083), Color(0xFF74987A)),
-  // Kitchen tiles
-  FloorZone(Rect.fromLTRB(1, 14, 10, 19), Color(0xFFE2DCCB), Color(0xFFD4CDB8)),
-  // Lounge carpet
-  FloorZone(
-      Rect.fromLTRB(18, 13, 29, 19), Color(0xFFC4A488), Color(0xFFBA9A7E)),
+const rooms = <Room>[
+  Room('TASKS', Rect.fromLTRB(2, 3, 17, 15), Color(0xFF8C9CB4),
+      Color(0xFF8294AE)),
+  Room('ANALYTICS', Rect.fromLTRB(18, 2, 24, 7), Color(0xFFA8B0B8),
+      Color(0xFF9CA6B0)),
+  Room('CALENDAR', Rect.fromLTRB(25, 2, 38, 9), Color(0xFF7FA083),
+      Color(0xFF74987A)),
+  Room('FINANCE', Rect.fromLTRB(29, 10, 38, 18), Color(0xFFDECDA0),
+      Color(0xFFD4C290)),
+  Room('FOCUS', Rect.fromLTRB(2, 15, 10, 22), Color(0xFFB8AECE),
+      Color(0xFFAEA2C6)),
+  Room('LIBRARY', Rect.fromLTRB(12, 15, 20, 22), Color(0xFFC2A582),
+      Color(0xFFB89B76)),
+  Room('INBOX', Rect.fromLTRB(22, 15, 27, 21), Color(0xFFA9B4AE),
+      Color(0xFF9EAAA3)),
+  Room('LOUNGE', Rect.fromLTRB(29, 19, 38, 26), Color(0xFFC4A488),
+      Color(0xFFBA9A7E)),
+  Room('GYM', Rect.fromLTRB(2, 22, 13, 35), Color(0xFF707684),
+      Color(0xFF666C7A)),
+  Room('CAFÉ', Rect.fromLTRB(15, 24, 27, 35), Color(0xFFE2DCCB),
+      Color(0xFFD4CDB8)),
+  Room('POOL', Rect.fromLTRB(39, 2, 55, 35), Color(0xFF8FBE7A),
+      Color(0xFF85B470)),
 ];
+
+/// Swimming pool water (tiles, exclusive right/bottom).
+const poolTiles = Rect.fromLTRB(42, 6, 52, 15);
+
+/// Where swimmers paddle around, in world pixels (inset from the coping).
+final swimArea = Rect.fromLTRB(
+  poolTiles.left * 16 + 8,
+  poolTiles.top * 16 + 8,
+  poolTiles.right * 16 - 8,
+  poolTiles.bottom * 16 - 8,
+);
+
+/// Walk here to hop in or out of the pool.
+const swimEntry = Point<int>(41, 10);
 
 const wallFace = Color(0xFFEFE9DD);
 const wallTop = Color(0xFF3A3340);
 const wallBase = Color(0xFFC9C0B2);
+
+// ---------------------------------------------------------------------------
+// Interior walls
+// ---------------------------------------------------------------------------
+
+/// Blocked + painted as partitions. Horizontal segments read as low walls.
+final Set<Point<int>> interiorWallTiles = _buildInteriorWalls();
+
+Set<Point<int>> _buildInteriorWalls() {
+  final walls = <Point<int>>{};
+  void run(int x0, int y0, int x1, int y1, Set<Point<int>> skip) {
+    for (var y = y0; y <= y1; y++) {
+      for (var x = x0; x <= x1; x++) {
+        final p = Point(x, y);
+        if (!skip.contains(p)) walls.add(p);
+      }
+    }
+  }
+
+  // Indoor/outdoor divider, gaps at rows 8-9 and 26-27.
+  run(_dividerCol, 2, _dividerCol, 34, {
+    const Point(_dividerCol, 8),
+    const Point(_dividerCol, 9),
+    const Point(_dividerCol, 26),
+    const Point(_dividerCol, 27),
+  });
+  // Finance vault: top, bottom, and a left wall with a door gap.
+  run(29, 10, 37, 10, const {});
+  run(29, 17, 37, 17, const {});
+  run(28, 10, 28, 17, {const Point(28, 13), const Point(28, 14)});
+  // Focus room: top wall with door, right wall.
+  run(2, 15, 9, 15, {const Point(5, 15), const Point(6, 15)});
+  run(10, 15, 10, 21, const {});
+  // Gym: top wall with a door near the corridor.
+  run(2, 22, 12, 22, {const Point(11, 22), const Point(12, 22)});
+  return walls;
+}
 
 // ---------------------------------------------------------------------------
 // Furniture layout
@@ -117,92 +193,271 @@ const officeDesks = <DeskSpot>[
   DeskSpot(0, 3, 4),
   DeskSpot(1, 7, 4),
   DeskSpot(2, 11, 4),
-  DeskSpot(3, 3, 8),
-  DeskSpot(4, 7, 8),
-  DeskSpot(5, 11, 8),
-  DeskSpot(6, 3, 12),
-  DeskSpot(7, 11, 12),
+  DeskSpot(3, 14, 4),
+  DeskSpot(4, 3, 8),
+  DeskSpot(5, 7, 8),
+  DeskSpot(6, 11, 8),
+  DeskSpot(7, 3, 12),
+  DeskSpot(8, 7, 12),
+  DeskSpot(9, 11, 12),
 ];
 
 final officeObjects = <OfficeObject>[
-  // Desks (sprite is 2 tiles wide; chair + worker render under them)
+  // TASKS dept: the working desks.
   for (final d in officeDesks)
     OfficeObject(deskSprite, tx: d.tx, ty: d.ty, tw: 2, th: 1, isDesk: true),
 
-  // Meeting corner
-  OfficeObject(meetingTableSprite, tx: 22, ty: 4, tw: 3, th: 2),
-  OfficeObject(plantSprite, tx: 28, ty: 2, tw: 1, th: 1),
-  OfficeObject(plantSprite, tx: 20, ty: 2, tw: 1, th: 1),
+  // ANALYTICS: server racks + storage.
+  OfficeObject(serverRackSprite, tx: 18, ty: 2, tw: 1, th: 1),
+  OfficeObject(serverRackSprite, tx: 19, ty: 2, tw: 1, th: 1),
+  OfficeObject(serverRackSprite, tx: 20, ty: 2, tw: 1, th: 1),
+  OfficeObject(filingCabinetSprite, tx: 22, ty: 2, tw: 1, th: 1),
+  OfficeObject(printerSprite, tx: 22, ty: 5, tw: 1, th: 1),
 
-  // Kitchen (bottom-left)
-  OfficeObject(coffeeCounterSprite, tx: 2, ty: 15, tw: 2, th: 1),
-  OfficeObject(waterCoolerSprite, tx: 5, ty: 15, tw: 1, th: 1),
-  OfficeObject(vendingSprite, tx: 7, ty: 15, tw: 1, th: 1),
+  // CALENDAR: the meeting corner.
+  OfficeObject(meetingTableSprite, tx: 29, ty: 4, tw: 3, th: 2),
+  OfficeObject(plantSprite, tx: 25, ty: 2, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 36, ty: 2, tw: 1, th: 1),
+  OfficeObject(paperStackSprite, tx: 34, ty: 6, tw: 1, th: 1),
 
-  // Lounge (bottom-right)
-  OfficeObject(sofaSprite, tx: 20, ty: 15, tw: 2, th: 1),
-  OfficeObject(loungeTableSprite, tx: 20, ty: 17, tw: 1, th: 1),
-  OfficeObject(bookshelfSprite, tx: 24, ty: 15, tw: 1, th: 1),
-  OfficeObject(plantSprite, tx: 27, ty: 17, tw: 1, th: 1),
+  // FINANCE: the vault.
+  OfficeObject(safeSprite, tx: 36, ty: 11, tw: 1, th: 1),
+  OfficeObject(filingCabinetSprite, tx: 29, ty: 11, tw: 1, th: 1),
+  OfficeObject(filingCabinetSprite, tx: 30, ty: 11, tw: 1, th: 1),
+  OfficeObject(deskSprite, tx: 32, ty: 14, tw: 2, th: 1, isDesk: true),
 
-  // Scattered life
-  OfficeObject(printerSprite, tx: 16, ty: 8, tw: 1, th: 1),
+  // FOCUS: quiet room.
+  OfficeObject(bonsaiSprite, tx: 8, ty: 16, tw: 1, th: 1),
+  OfficeObject(lampSprite, tx: 2, ty: 16, tw: 1, th: 1),
+
+  // LIBRARY: a wall of books + a reading nook.
+  OfficeObject(bookshelfSprite, tx: 12, ty: 16, tw: 1, th: 1),
+  OfficeObject(bookshelfSprite, tx: 13, ty: 16, tw: 1, th: 1),
+  OfficeObject(bookshelfSprite, tx: 15, ty: 16, tw: 1, th: 1),
+  OfficeObject(bookshelfSprite, tx: 16, ty: 16, tw: 1, th: 1),
+  OfficeObject(lampSprite, tx: 19, ty: 16, tw: 1, th: 1),
+  OfficeObject(armchairSprite, tx: 13, ty: 19, tw: 1, th: 1),
+  OfficeObject(loungeTableSprite, tx: 15, ty: 19, tw: 1, th: 1),
+
+  // INBOX: the mailroom.
+  OfficeObject(mailShelfSprite, tx: 22, ty: 16, tw: 1, th: 1),
+  OfficeObject(mailShelfSprite, tx: 23, ty: 16, tw: 1, th: 1),
+  OfficeObject(boxSprite, tx: 26, ty: 16, tw: 1, th: 1),
+  OfficeObject(boxSprite, tx: 26, ty: 17, tw: 1, th: 1),
+  OfficeObject(loungeTableSprite, tx: 24, ty: 19, tw: 1, th: 1),
+
+  // LOUNGE: conversation pit.
+  OfficeObject(sofaSprite, tx: 31, ty: 20, tw: 2, th: 1),
+  OfficeObject(sofaSprite, tx: 35, ty: 20, tw: 2, th: 1),
+  OfficeObject(loungeTableSprite, tx: 33, ty: 22, tw: 1, th: 1),
+  OfficeObject(armchairSprite, tx: 30, ty: 22, tw: 1, th: 1),
+  OfficeObject(armchairSprite, tx: 36, ty: 22, tw: 1, th: 1),
+  OfficeObject(bookshelfSprite, tx: 37, ty: 19, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 29, ty: 25, tw: 1, th: 1),
+
+  // GYM: iron paradise.
+  OfficeObject(treadmillSprite, tx: 3, ty: 24, tw: 1, th: 2),
+  OfficeObject(treadmillSprite, tx: 6, ty: 24, tw: 1, th: 2),
+  OfficeObject(dumbbellRackSprite, tx: 10, ty: 24, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 2, ty: 32, tw: 1, th: 1),
+  OfficeObject(waterCoolerSprite, tx: 10, ty: 32, tw: 1, th: 1),
+
+  // CAFÉ: counter wall + seating.
+  OfficeObject(coffeeCounterSprite, tx: 15, ty: 24, tw: 2, th: 1),
+  OfficeObject(fridgeSprite, tx: 18, ty: 24, tw: 1, th: 1),
+  OfficeObject(waterCoolerSprite, tx: 20, ty: 24, tw: 1, th: 1),
+  OfficeObject(menuBoardSprite, tx: 22, ty: 24, tw: 1, th: 1),
+  OfficeObject(vendingSprite, tx: 26, ty: 24, tw: 1, th: 1),
+  OfficeObject(cafeTableSprite, tx: 17, ty: 28, tw: 1, th: 1),
+  OfficeObject(cafeTableSprite, tx: 22, ty: 28, tw: 1, th: 1),
+  OfficeObject(cafeTableSprite, tx: 19, ty: 31, tw: 1, th: 1),
+  OfficeObject(kitchenTableSprite, tx: 24, ty: 32, tw: 2, th: 1),
+  OfficeObject(plantSprite, tx: 15, ty: 33, tw: 1, th: 1),
+
+  // Entrance hall / reception.
+  OfficeObject(deskSprite, tx: 30, ty: 31, tw: 2, th: 1, isDesk: true),
+  OfficeObject(plantSprite, tx: 29, ty: 28, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 37, ty: 33, tw: 1, th: 1),
+  OfficeObject(boxSprite, tx: 37, ty: 28, tw: 1, th: 1),
+
+  // Corridor greenery & clutter.
   OfficeObject(plantSprite, tx: 1, ty: 2, tw: 1, th: 1),
-  OfficeObject(plantSprite, tx: 16, ty: 12, tw: 1, th: 1),
-  OfficeObject(plantSprite, tx: 12, ty: 18, tw: 1, th: 1),
-  OfficeObject(paperStackSprite, tx: 17, ty: 2, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 27, ty: 2, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 18, ty: 12, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 21, ty: 22, tw: 1, th: 1),
+
+  // Outdoor: deck + garden.
+  OfficeObject(loungerSprite, tx: 43, ty: 16, tw: 1, th: 2),
+  OfficeObject(loungerSprite, tx: 46, ty: 16, tw: 1, th: 2),
+  OfficeObject(loungerSprite, tx: 49, ty: 16, tw: 1, th: 2),
+  OfficeObject(umbrellaSprite, tx: 52, ty: 16, tw: 1, th: 2),
+  OfficeObject(plantSprite, tx: 40, ty: 2, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 53, ty: 2, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 53, ty: 22, tw: 1, th: 1),
+  OfficeObject(bonsaiSprite, tx: 47, ty: 26, tw: 1, th: 1),
+  OfficeObject(bonsaiSprite, tx: 51, ty: 29, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 40, ty: 32, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 46, ty: 32, tw: 1, th: 1),
+];
+
+/// Flat props painted with the floor (walk-over-able): mats, cushions,
+/// stools, gold, the pool ladder.
+final flatDecor = <(PixelSprite, int, int)>[
+  (yogaMatSprite, 4, 30),
+  (yogaMatSprite, 7, 30),
+  (cushionSprite, 3, 18),
+  (cushionSprite, 5, 18),
+  (cushionSprite, 7, 18),
+  (moneyPileSprite, 33, 12),
+  (moneyPileSprite, 35, 15),
+  (moneyPileSprite, 31, 11),
+  (stoolSprite, 16, 28),
+  (stoolSprite, 18, 28),
+  (stoolSprite, 21, 28),
+  (stoolSprite, 23, 28),
+  (stoolSprite, 18, 31),
+  (stoolSprite, 20, 31),
+  (poolLadderSprite, 51, 10),
 ];
 
 /// Decor mounted on the top wall (drawn with the static layer, no collision).
-/// Pairs of (sprite, top-left world offset).
 final wallDecor = <(PixelSprite, Offset)>[
-  (windowSprite, const Offset(4 * 16.0, 10)),
-  (windowSprite, const Offset(8 * 16.0, 10)),
-  (windowSprite, const Offset(12 * 16.0, 10)),
-  (clockSprite, const Offset(17 * 16.0 + 3, 12)),
-  (posterSprite, const Offset(19 * 16.0, 11)),
-  (whiteboardSprite, const Offset(22 * 16.0, 9)),
-  (windowSprite, const Offset(26 * 16.0, 10)),
+  (windowSprite, const Offset(3 * 16.0, 10)),
+  (windowSprite, const Offset(7 * 16.0, 10)),
+  (windowSprite, const Offset(11 * 16.0, 10)),
+  (windowSprite, const Offset(15 * 16.0, 10)),
+  (clockSprite, const Offset(21 * 16.0 + 3, 12)),
+  (posterSprite, const Offset(23 * 16.0, 11)),
+  (wallCalendarSprite, const Offset(26 * 16.0, 11)),
+  (whiteboardSprite, const Offset(29 * 16.0, 9)),
+  (windowSprite, const Offset(33 * 16.0, 10)),
+  (windowSprite, const Offset(36 * 16.0, 10)),
+  (windowSprite, const Offset(44 * 16.0, 10)),
+  (windowSprite, const Offset(49 * 16.0, 10)),
 ];
 
 // ---------------------------------------------------------------------------
 // Points of interest
 // ---------------------------------------------------------------------------
 
-const coffeeSpot = Point<int>(2, 16); // stand here, face up
-const vendingSpot = Point<int>(7, 16);
-const printerSpot = Point<int>(16, 9);
+const coffeeSpot = Point<int>(15, 25); // café counter
+const vendingSpot = Point<int>(26, 25);
+const waterSpot = Point<int>(20, 25);
+const snackSpot = Point<int>(18, 25); // the fridge
 
-/// Sofa: path to the approach tile, then snap onto the seat pixel position.
-/// Seat y sits 1px past the sofa's footprint bottom so seated characters
-/// y-sort in front of the sofa sprite instead of hiding behind it.
-const sofaApproach = [Point<int>(20, 16), Point<int>(21, 16)];
-final sofaSeatPos = [
-  const Offset(20 * 16.0 + 8, 16 * 16.0 + 1),
-  const Offset(21 * 16.0 + 8, 16 * 16.0 + 1),
+/// Lounge seats (sofas + armchairs) for naps.
+const sofaSeats = <Seat>[
+  Seat(Point(31, 20), Point(31, 21), Offset(31 * 16.0 + 8, 21 * 16.0 + 1)),
+  Seat(Point(32, 20), Point(32, 21), Offset(32 * 16.0 + 8, 21 * 16.0 + 1)),
+  Seat(Point(35, 20), Point(35, 21), Offset(35 * 16.0 + 8, 21 * 16.0 + 1)),
+  Seat(Point(36, 20), Point(36, 21), Offset(36 * 16.0 + 8, 21 * 16.0 + 1)),
+  Seat(Point(30, 22), Point(30, 23), Offset(30 * 16.0 + 8, 23 * 16.0 + 1)),
+  Seat(Point(36, 22), Point(36, 23), Offset(36 * 16.0 + 8, 23 * 16.0 + 1)),
+];
+
+/// Poolside loungers for sunbathing.
+const deckSeats = <Seat>[
+  Seat(Point(43, 16), Point(43, 18), Offset(43 * 16.0 + 8, 18 * 16.0 + 1)),
+  Seat(Point(46, 16), Point(46, 18), Offset(46 * 16.0 + 8, 18 * 16.0 + 1)),
+  Seat(Point(49, 16), Point(49, 18), Offset(49 * 16.0 + 8, 18 * 16.0 + 1)),
+];
+
+/// Meditation cushions in the Focus room (flat: approach == tile).
+const cushionSeats = <Seat>[
+  Seat(Point(3, 18), Point(3, 18), Offset(3 * 16.0 + 8, 18 * 16.0 + 13)),
+  Seat(Point(5, 18), Point(5, 18), Offset(5 * 16.0 + 8, 18 * 16.0 + 13)),
+  Seat(Point(7, 18), Point(7, 18), Offset(7 * 16.0 + 8, 18 * 16.0 + 13)),
+];
+
+/// The library reading chair.
+const readSeats = <Seat>[
+  Seat(Point(13, 19), Point(13, 20), Offset(13 * 16.0 + 9, 20 * 16.0 + 1)),
+];
+
+/// Stand-and-browse spots in front of the bookshelves.
+const readStandSpots = <Point<int>>[Point(12, 17), Point(15, 17)];
+
+/// Gym spots: on the yoga mats and at the dumbbell rack.
+const workoutSpots = <Point<int>>[Point(4, 30), Point(7, 30), Point(10, 25)];
+
+/// Café stools — standing here reads as sitting at the table.
+const cafeSpots = <Point<int>>[
+  Point(16, 28),
+  Point(18, 28),
+  Point(21, 28),
+  Point(23, 28),
+  Point(18, 31),
+  Point(20, 31),
 ];
 
 /// Spots where two employees can stop and chat face-to-face.
 const chatSpots = <ChatSpot>[
-  ChatSpot(Point(4, 16), Point(6, 16), true), // water cooler
-  ChatSpot(Point(22, 3), Point(22, 6), false), // across the meeting table
-  ChatSpot(Point(25, 3), Point(25, 6), false),
-  ChatSpot(Point(18, 15), Point(18, 17), false), // lounge corner
-  ChatSpot(Point(13, 15), Point(15, 15), true), // hallway
+  ChatSpot(Point(19, 25), Point(21, 25), true), // café water cooler
+  ChatSpot(Point(16, 28), Point(18, 28), true), // café table
+  ChatSpot(Point(29, 3), Point(29, 6), false), // across the meeting table
+  ChatSpot(Point(31, 3), Point(31, 6), false),
+  ChatSpot(Point(18, 3), Point(20, 3), true), // server-room gossip
+  ChatSpot(Point(33, 21), Point(33, 23), false), // lounge pit
+  ChatSpot(Point(44, 18), Point(46, 18), true), // poolside
+  ChatSpot(Point(4, 27), Point(6, 27), true), // gym
+  ChatSpot(Point(30, 30), Point(32, 30), true), // entrance hall
 ];
 
-/// Idle stroll destinations (visit a plant, the printer, a window...).
+/// Idle stroll destinations all over the campus.
 const wanderSpots = <Point<int>>[
-  Point(16, 9),
+  Point(21, 3), // analytics
+  Point(22, 6), // by the printer
   Point(1, 3),
-  Point(28, 3),
-  Point(17, 3),
-  Point(5, 14),
-  Point(26, 13),
-  Point(14, 17),
-  Point(22, 6),
-  Point(9, 14),
+  Point(35, 3), // meeting plant
+  Point(27, 12), // corridor
+  Point(33, 13), // admiring the gold
+  Point(11, 16), // corridor by the library
+  Point(13, 17), // bookshelves
+  Point(24, 18), // mailroom
+  Point(3, 26), // gym floor
+  Point(19, 29), // café
+  Point(30, 33), // reception
+  Point(41, 4), // garden north
+  Point(53, 8), // pool east edge
+  Point(44, 20), // deck
+  Point(48, 28), // zen garden
+  Point(41, 30), // garden south
 ];
+
+// ---------------------------------------------------------------------------
+// Drop targets (god mode)
+// ---------------------------------------------------------------------------
+
+enum DropKind { coffee, water, snack }
+
+/// What dropping an employee on [tile] should trigger (refreshments).
+DropKind? dropTargetAt(Point<int> tile) {
+  if (tile.y == 24 || tile.y == 25) {
+    if (tile.x >= 15 && tile.x <= 16) return DropKind.coffee;
+    if (tile.x == 20) return DropKind.water;
+    if (tile.x == 18) return DropKind.snack;
+    if (tile.x == 26) return DropKind.snack; // vending machine
+  }
+  if ((tile.y == 32 || tile.y == 33) && tile.x == 10) {
+    return DropKind.water; // gym cooler
+  }
+  return null;
+}
+
+/// Finds the seat covering [tile] in [seats] (seat tile or its approach).
+int? seatIndexAt(List<Seat> seats, Point<int> tile) {
+  for (var i = 0; i < seats.length; i++) {
+    if (seats[i].tile == tile) return i;
+  }
+  return null;
+}
+
+/// True if [tile] is inside the pool water.
+bool isPoolTile(Point<int> tile) =>
+    tile.x >= poolTiles.left &&
+    tile.x < poolTiles.right &&
+    tile.y >= poolTiles.top &&
+    tile.y < poolTiles.bottom;
 
 // ---------------------------------------------------------------------------
 // Collision + pathfinding
@@ -221,6 +476,15 @@ List<List<bool>> _buildWalkable() {
   for (var y = 0; y < mapRows; y++) {
     grid[y][0] = false;
     grid[y][mapCols - 1] = false;
+  }
+  for (final w in interiorWallTiles) {
+    grid[w.y][w.x] = false;
+  }
+  // Pool water: no walking on water (swimming is handled separately).
+  for (var y = poolTiles.top.toInt(); y < poolTiles.bottom; y++) {
+    for (var x = poolTiles.left.toInt(); x < poolTiles.right; x++) {
+      grid[y][x] = false;
+    }
   }
   for (final o in officeObjects) {
     if (!o.blocks) continue;
@@ -259,7 +523,7 @@ Point<int> nearestWalkable(Point<int> target) {
       queue.add(n);
     }
   }
-  return const Point(15, 10); // center fallback — never expected
+  return doorTile; // never expected
 }
 
 /// Breadth-first path on the tile grid (4-directional). Returns the list of

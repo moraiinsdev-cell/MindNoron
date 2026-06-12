@@ -728,6 +728,157 @@ final clockSprite = PixelSprite(const [
   'm': Color(0xFF2A2D33),
 });
 
+/// Fridge, 16x24.
+final fridgeSprite = PixelSprite(const [
+  '.oooooooooooooo.',
+  '.oCCCCCCCCCCCCo.',
+  '.oCCCCCCCCCCdCo.',
+  '.oCCCCCCCCCCdCo.',
+  '.oCCCCCCCCCCCCo.',
+  '.oooooooooooooo.',
+  '.oCCCCCCCCCCCCo.',
+  '.oCCCCCCCCCCdCo.',
+  '.oCCCCCCCCCCdCo.',
+  '.oCCCCCCCCCCdCo.',
+  '.oCCCCCCCCCCCCo.',
+  '.oCCCCCCCCCCCCo.',
+  '.oCCCCCCCCCCCCo.',
+  '.occcccccccccco.',
+  '.oooooooooooooo.',
+  '..oo........oo..',
+], const {
+  'o': Color(0xFF8A8680),
+  'C': Color(0xFFE8E6E0),
+  'c': Color(0xFFC8C4BC),
+  'd': Color(0xFF6E6A64),
+});
+
+/// Kitchen table, 32x12 — mugs and a fruit bowl.
+final kitchenTableSprite = PixelSprite(const [
+  '..oooooooooooooooooooooooooooo..',
+  '.owwwwwwwwwwwwwwwwwwwwwwwwwwwwo.',
+  '.owwwuuwwwwwwbbbbwwwwwwwuuwwwwo.',
+  '.owwwuuwwwwwbrgybbwwwwwwuuwwwwo.',
+  '.owwwwwwwwwwwbbbbwwwwwwwwwwwwwo.',
+  '.owwwwwwwwwwwwwwwwwwwwwwwwwwwwo.',
+  '..oooooooooooooooooooooooooooo..',
+  '..oddddddddddddddddddddddddddo..',
+  '...oo......................oo...',
+  '...oo......................oo...',
+], const {
+  'o': _woodEdge,
+  'w': Color(0xFFD8B886),
+  'd': Color(0xFFA8855C),
+  'u': Color(0xFFC96A4A), // mugs
+  'b': Color(0xFF8A6240), // bowl
+  'r': Color(0xFFD24A3E), // fruit
+  'g': Color(0xFF4D9E68),
+  'y': Color(0xFFC9A227),
+});
+
+/// Kitchen stool, 10x9.
+final stoolSprite = PixelSprite(const [
+  '..oooooo..',
+  '.oSSSSSSo.',
+  '.oSSSSSSo.',
+  '..oooooo..',
+  '...o..o...',
+  '...o..o...',
+  '..oo..oo..',
+], const {
+  'o': Color(0xFF5C3A28),
+  'S': Color(0xFFC9A24B),
+});
+
+/// Armchair (faces down), 18x12 — rust-colored single seat.
+final armchairSprite = PixelSprite(const [
+  '.oooooooooooooooo.',
+  'oSSSSSSSSSSSSSSSSo',
+  'oSSSSSSSSSSSSSSSSo',
+  'oosssssssssssssoo.',
+  'oCCsSSSSSSSSSsCCo.',
+  'oCCsSSSSSSSSSsCCo.',
+  'oCCsssssssssssCCo.',
+  'oCCCCCCCCCCCCCCCo.',
+  '.oooooooooooooooo.',
+  '.oo............oo.',
+], const {
+  'o': Color(0xFF5C3A28),
+  'S': Color(0xFFC98455),
+  's': Color(0xFFA8663E),
+  'C': Color(0xFFB5754A),
+});
+
+/// Filing cabinet, 14x18.
+final filingCabinetSprite = PixelSprite(const [
+  '.oooooooooooo.',
+  '.oCCCCCCCCCCo.',
+  '.oCCCdddCCCCo.',
+  '.oCCCCCCCCCCo.',
+  '.oooooooooooo.',
+  '.oCCCCCCCCCCo.',
+  '.oCCCdddCCCCo.',
+  '.oCCCCCCCCCCo.',
+  '.oooooooooooo.',
+  '.oCCCCCCCCCCo.',
+  '.oCCCdddCCCCo.',
+  '.oCCCCCCCCCCo.',
+  '.oooooooooooo.',
+  '..oo......oo..',
+], const {
+  'o': Color(0xFF4A4E55),
+  'C': Color(0xFF9AA0A8),
+  'd': Color(0xFF3A3E44),
+});
+
+/// Server rack, 16x24 — green/amber status lights.
+final serverRackSprite = PixelSprite(const [
+  'oooooooooooooooo',
+  'oNNNNNNNNNNNNNNo',
+  'oNggNNNNNNNNrrNo',
+  'oNNNNNNNNNNNNNNo',
+  'onnnnnnnnnnnnnno',
+  'oNNNNNNNNNNNNNNo',
+  'oNggNNNNNNNNggNo',
+  'oNNNNNNNNNNNNNNo',
+  'onnnnnnnnnnnnnno',
+  'oNNNNNNNNNNNNNNo',
+  'oNrrNNNNNNNNggNo',
+  'oNNNNNNNNNNNNNNo',
+  'onnnnnnnnnnnnnno',
+  'oNNNNNNNNNNNNNNo',
+  'oNggNNNNNNNNggNo',
+  'oNNNNNNNNNNNNNNo',
+  'oooooooooooooooo',
+  '.oo..........oo.',
+], const {
+  'o': Color(0xFF1A1D22),
+  'N': Color(0xFF2A2E36),
+  'n': Color(0xFF383E48),
+  'g': Color(0xFF5BD06A),
+  'r': Color(0xFFE0A548),
+});
+
+/// Cardboard box, 14x11.
+final boxSprite = PixelSprite(const [
+  '..oooooooooo..',
+  '.obbbbttbbbbo.',
+  '.obbbbttbbbbo.',
+  '.oBBBBttBBBBo.',
+  '.oBBBBBBBBBBo.',
+  '.oBBBBBBBBBBo.',
+  '.oBBlaBBBBBBo.',
+  '.oBBBBBBBBBBo.',
+  '..oooooooooo..',
+], const {
+  'o': Color(0xFF7E5C38),
+  'b': Color(0xFFC9A36A),
+  'B': Color(0xFFB58E55),
+  't': Color(0xFFE0D0A0), // tape
+  'l': Color(0xFFF5F2EA), // shipping label
+  'a': Color(0xFF3E7CB8),
+});
+
 /// Stack of papers / clutter, 12x10 (desk-area filler).
 final paperStackSprite = PixelSprite(const [
   '..qqqqqqqq..',
@@ -742,4 +893,302 @@ final paperStackSprite = PixelSprite(const [
   'q': Color(0xFFF5F2EA),
   'l': Color(0xFFAEBCCE),
   'a': Color(0xFFE0DCD0),
+});
+
+// ---------------------------------------------------------------------------
+// Campus props: gym, pool, café, finance, library, zen
+// ---------------------------------------------------------------------------
+
+/// Treadmill (seen from above, belt facing down), 16x26.
+final treadmillSprite = PixelSprite(const [
+  '...oooooooooo...',
+  '..oCCCCCCCCCCo..',
+  '..oCrrCCCCggCo..',
+  '..oCCCCCCCCCCo..',
+  '...oooooooooo...',
+  '....oo....oo....',
+  '..oooooooooooo..',
+  '..oBBBBBBBBBBo..',
+  '..oBbbbbbbbbBo..',
+  '..oBBBBBBBBBBo..',
+  '..oBbbbbbbbbBo..',
+  '..oBBBBBBBBBBo..',
+  '..oBbbbbbbbbBo..',
+  '..oBBBBBBBBBBo..',
+  '..oBbbbbbbbbBo..',
+  '..oBBBBBBBBBBo..',
+  '..oooooooooooo..',
+], const {
+  'o': Color(0xFF23252E),
+  'C': Color(0xFF565B6C), // console
+  'r': Color(0xFFE05548),
+  'g': Color(0xFF5BD06A),
+  'B': Color(0xFF3A3E48), // belt frame
+  'b': Color(0xFF2A2D36), // belt
+});
+
+/// Dumbbell rack, 16x16.
+final dumbbellRackSprite = PixelSprite(const [
+  'oooooooooooooooo',
+  'oWWooWWooWWooWWo',
+  'oWWooWWooWWooWWo',
+  'oooooooooooooooo',
+  'oWWWooWWWooWWWoo',
+  'oWWWooWWWooWWWoo',
+  'oooooooooooooooo',
+  '.oo..........oo.',
+  '.oo..........oo.',
+], const {
+  'o': Color(0xFF2A2D33),
+  'W': Color(0xFF6A7080), // weights
+});
+
+/// Yoga mat (flat on the floor, walk-on-able), 14x20.
+final yogaMatSprite = PixelSprite(const [
+  '.mmmmmmmmmmmm.',
+  'mMMMMMMMMMMMMm',
+  'mMMMMMMMMMMMMm',
+  'mMMMMMMMMMMMMm',
+  'mMMMMMMMMMMMMm',
+  'mMMMMMMMMMMMMm',
+  'mMMMMMMMMMMMMm',
+  'mMMMMMMMMMMMMm',
+  'mMMMMMMMMMMMMm',
+  'mMMMMMMMMMMMMm',
+  'mMMMMMMMMMMMMm',
+  '.mmmmmmmmmmmm.',
+], const {
+  'm': Color(0xFF6B5B95),
+  'M': Color(0xFF8C7BB8),
+});
+
+/// Pool-side lounger (deck chair facing down), 16x26.
+final loungerSprite = PixelSprite(const [
+  '..oooooooooooo..',
+  '.oWWWWWWWWWWWWo.',
+  '.oWWWWWWWWWWWWo.',
+  '.oWwwwwwwwwwWWo.',
+  '.oWWWWWWWWWWWWo.',
+  '.oWwwwwwwwwwWWo.',
+  '.oWWWWWWWWWWWWo.',
+  '.oWwwwwwwwwwWWo.',
+  '.oWWWWWWWWWWWWo.',
+  '.oWwwwwwwwwwWWo.',
+  '.oWWWWWWWWWWWWo.',
+  '..oooooooooooo..',
+  '...oo......oo...',
+], const {
+  'o': Color(0xFF8A6240),
+  'W': Color(0xFF5BAAC8), // canvas stripes
+  'w': Color(0xFFE8F2F5),
+});
+
+/// Parasol table, 22x30 — big umbrella over a small table.
+final umbrellaSprite = PixelSprite(const [
+  '.........uuuu.........',
+  '......uuuUUUUuuu......',
+  '....uuUUUUuuUUUUuu....',
+  '...uUUUuuUUUUuuUUUu...',
+  '..uUUUUUUUUUUUUUUUUu..',
+  '..uuuuuuuuuuuuuuuuuu..',
+  '.........pp...........',
+  '.........pp...........',
+  '.........pp...........',
+  '......oooooooo........',
+  '.....owwwwwwwwo.......',
+  '.....owwuuwwwwo.......',
+  '.....owwwwwwwwo.......',
+  '......oooooooo........',
+  '.......oo..oo.........',
+], const {
+  'u': Color(0xFFE05548), // canopy red
+  'U': Color(0xFFF2F0EA), // canopy white
+  'p': Color(0xFF8A8278), // pole
+  'o': Color(0xFF4A3A30),
+  'w': Color(0xFFC89B66),
+});
+
+/// Round café table, 14x14.
+final cafeTableSprite = PixelSprite(const [
+  '...oooooooo...',
+  '..owwwwwwwwo..',
+  '.owwuuwwwqwwo.',
+  '.owwuuwwqqwwo.',
+  '.owwwwwwwwwwo.',
+  '..owwwwwwwwo..',
+  '...oooooooo...',
+  '......oo......',
+  '......oo......',
+  '.....oooo.....',
+], const {
+  'o': Color(0xFF4A3A30),
+  'w': Color(0xFFD8B886),
+  'u': Color(0xFFC96A4A), // cup
+  'q': Color(0xFFF5F2EA), // saucer
+});
+
+/// Standing menu board, 14x18.
+final menuBoardSprite = PixelSprite(const [
+  '.oooooooooooo.',
+  '.obbbbbbbbbbo.',
+  '.obwwbbbbbbbo.',
+  '.obbbbbwwwbbo.',
+  '.obwwwbbbbbbo.',
+  '.obbbbbwwbbbo.',
+  '.obwwwwbbbbbo.',
+  '.obbbbbbbbbbo.',
+  '.oooooooooooo.',
+  '..o........o..',
+  '.o..........o.',
+], const {
+  'o': Color(0xFF5C3A28),
+  'b': Color(0xFF2E3A34), // chalkboard
+  'w': Color(0xFFE8E2D0), // chalk
+});
+
+/// Vault safe, 16x20.
+final safeSprite = PixelSprite(const [
+  'oooooooooooooooo',
+  'oGGGGGGGGGGGGGGo',
+  'oGGGGGGGGGGGGGGo',
+  'oGGGGddddGGGGGGo',
+  'oGGGdDDDDdGGGhGo',
+  'oGGGdDddDdGGGhGo',
+  'oGGGdDDDDdGGGGGo',
+  'oGGGGddddGGGGGGo',
+  'oGGGGGGGGGGGGGGo',
+  'oGGGGGGGGGGGGGGo',
+  'oGGGGGGGGGGGGGGo',
+  'oooooooooooooooo',
+  '.oo..........oo.',
+], const {
+  'o': Color(0xFF1F2A26),
+  'G': Color(0xFF3E5C50), // vault green
+  'd': Color(0xFF2A3E36),
+  'D': Color(0xFF8A9C94), // dial
+  'h': Color(0xFFC9A227), // handle
+});
+
+/// Pile of gold & cash, 14x10.
+final moneyPileSprite = PixelSprite(const [
+  '....gg..gg....',
+  '...gGGggGGg...',
+  '..ggGGggGGgg..',
+  '.cccccccccc...',
+  '.cCCCCCCCCcc..',
+  '.cccccccccccc.',
+  '.cCCCCCCCCCCc.',
+  '.cccccccccccc.',
+], const {
+  'g': Color(0xFFA8841F),
+  'G': Color(0xFFE0C04A), // gold
+  'c': Color(0xFF3E7C50),
+  'C': Color(0xFF5BAA6E), // cash
+});
+
+/// Mail pigeonholes, 16x22 — some slots have letters.
+final mailShelfSprite = PixelSprite(const [
+  'oooooooooooooooo',
+  'owwoowwoowwoowwo',
+  'owqoowwoowqoowwo',
+  'oooooooooooooooo',
+  'owwoowqoowwoowwo',
+  'owwoowwoowwoowqo',
+  'oooooooooooooooo',
+  'owqoowwoowwoowwo',
+  'owwoowwoowqoowwo',
+  'oooooooooooooooo',
+  '.oo..........oo.',
+], const {
+  'o': Color(0xFF4A3A30),
+  'w': Color(0xFF6E5640), // empty slot
+  'q': Color(0xFFF5F2EA), // letter
+});
+
+/// Meditation cushion (zafu) — sit-on-able, 12x8.
+final cushionSprite = PixelSprite(const [
+  '..cccccccc..',
+  '.cCCCCCCCCc.',
+  'cCCCCCCCCCCc',
+  'cCCCCCCCCCCc',
+  '.cCCCCCCCCc.',
+  '..cccccccc..',
+], const {
+  'c': Color(0xFF8C4A3E),
+  'C': Color(0xFFB86A5A),
+});
+
+/// Bonsai on a stand, 12x16.
+final bonsaiSprite = PixelSprite(const [
+  '...GGgG.....',
+  '..GGGGGG....',
+  '..gGGgGGG...',
+  '...GgGG.....',
+  '....t.......',
+  '...tt.......',
+  '..tttttt....',
+  '..tTTTTt....',
+  '...tttt.....',
+  '..oooooo....',
+  '..owwwwo....',
+  '...o..o.....',
+], const {
+  'G': Color(0xFF5FA052),
+  'g': Color(0xFF3F7A3C),
+  't': Color(0xFF7E4A33),
+  'T': Color(0xFFB06A4A),
+  'o': Color(0xFF4A3A30),
+  'w': Color(0xFF8A6240),
+});
+
+/// Floor lamp with a warm shade, 10x20.
+final lampSprite = PixelSprite(const [
+  '..LLLLLL..',
+  '.LllllllL.',
+  '.LllllllL.',
+  '..LLLLLL..',
+  '....pp....',
+  '....pp....',
+  '....pp....',
+  '....pp....',
+  '....pp....',
+  '...oooo...',
+  '..oooooo..',
+], const {
+  'L': Color(0xFFC9A227),
+  'l': Color(0xFFF2DC9C), // glow
+  'p': Color(0xFF4A4E55),
+  'o': Color(0xFF2A2D33),
+});
+
+/// Wall calendar, 14x14 (wall decor).
+final wallCalendarSprite = PixelSprite(const [
+  'oooooooooooooo',
+  'orrrrrrrrrrrro',
+  'owwwwwwwwwwwwo',
+  'owmwmwmwmwmwwo',
+  'owwwwwwwwwwwwo',
+  'owmwmwrwmwmwwo',
+  'owwwwwwwwwwwwo',
+  'owmwmwmwmwwwwo',
+  'owwwwwwwwwwwwo',
+  'oooooooooooooo',
+], const {
+  'o': Color(0xFF3A3340),
+  'r': Color(0xFFD24A3E),
+  'w': Color(0xFFF2F0EA),
+  'm': Color(0xFF8A8694),
+});
+
+/// Pool ladder (drawn over the water edge), 10x12.
+final poolLadderSprite = PixelSprite(const [
+  '.ss....ss.',
+  '.ss....ss.',
+  '.ssssssss.',
+  '.ss....ss.',
+  '.ssssssss.',
+  '.ss....ss.',
+  '.ss....ss.',
+], const {
+  's': Color(0xFFD8DCE0), // steel
 });

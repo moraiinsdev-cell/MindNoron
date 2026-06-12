@@ -16,8 +16,6 @@ void main() {
             expect(row.length, 12,
                 reason: 'frame $frame style $style row "$row"');
           }
-          // Movement frames of the same facing must share a height so the
-          // walk cycle doesn't jitter vertically.
           expect(rows.length, greaterThanOrEqualTo(12));
         }
       }
@@ -67,6 +65,28 @@ void main() {
         loungeTableSprite,
         clockSprite,
         paperStackSprite,
+        fridgeSprite,
+        kitchenTableSprite,
+        stoolSprite,
+        armchairSprite,
+        filingCabinetSprite,
+        serverRackSprite,
+        boxSprite,
+        treadmillSprite,
+        dumbbellRackSprite,
+        yogaMatSprite,
+        loungerSprite,
+        umbrellaSprite,
+        cafeTableSprite,
+        menuBoardSprite,
+        safeSprite,
+        moneyPileSprite,
+        mailShelfSprite,
+        cushionSprite,
+        bonsaiSprite,
+        lampSprite,
+        wallCalendarSprite,
+        poolLadderSprite,
       ];
       final problems = <String>[];
       for (var i = 0; i < sprites.length; i++) {
@@ -89,57 +109,95 @@ void main() {
     });
   });
 
-  group('office map', () {
+  group('campus map', () {
     test('all key spots are walkable', () {
-      for (final desk in officeDesks) {
-        expect(isWalkable(desk.seatTile.x, desk.seatTile.y), isTrue,
-            reason: 'desk ${desk.index} seat blocked');
-      }
-      expect(isWalkable(coffeeSpot.x, coffeeSpot.y), isTrue);
-      expect(isWalkable(vendingSpot.x, vendingSpot.y), isTrue);
-      for (final approach in sofaApproach) {
-        expect(isWalkable(approach.x, approach.y), isTrue);
-      }
-      for (final spot in chatSpots) {
-        expect(isWalkable(spot.a.x, spot.a.y), isTrue,
-            reason: 'chat A ${spot.a} blocked');
-        expect(isWalkable(spot.b.x, spot.b.y), isTrue,
-            reason: 'chat B ${spot.b} blocked');
-      }
-      for (final spot in wanderSpots) {
-        expect(isWalkable(spot.x, spot.y), isTrue,
-            reason: 'wander $spot blocked');
+      final spots = <String, Point<int>>{
+        for (final d in officeDesks) 'desk ${d.index} seat': d.seatTile,
+        'coffee': coffeeSpot,
+        'vending': vendingSpot,
+        'water': waterSpot,
+        'snack': snackSpot,
+        'swim entry': swimEntry,
+        for (var i = 0; i < sofaSeats.length; i++)
+          'sofa $i approach': sofaSeats[i].approach,
+        for (var i = 0; i < deckSeats.length; i++)
+          'deck $i approach': deckSeats[i].approach,
+        for (var i = 0; i < cushionSeats.length; i++)
+          'cushion $i': cushionSeats[i].approach,
+        for (var i = 0; i < readSeats.length; i++)
+          'read seat $i approach': readSeats[i].approach,
+        for (var i = 0; i < workoutSpots.length; i++)
+          'workout $i': workoutSpots[i],
+        for (var i = 0; i < cafeSpots.length; i++) 'café $i': cafeSpots[i],
+        for (var i = 0; i < readStandSpots.length; i++)
+          'read stand $i': readStandSpots[i],
+        for (var i = 0; i < chatSpots.length; i++) ...{
+          'chat $i A': chatSpots[i].a,
+          'chat $i B': chatSpots[i].b,
+        },
+        for (var i = 0; i < wanderSpots.length; i++)
+          'wander $i': wanderSpots[i],
+        'door': doorTile,
+      };
+      for (final entry in spots.entries) {
+        expect(isWalkable(entry.value.x, entry.value.y), isTrue,
+            reason: '${entry.key} at ${entry.value} is blocked');
       }
     });
 
     test('every spot is reachable from the front door', () {
-      const door = Point(14, 18);
-      expect(isWalkable(door.x, door.y), isTrue);
       final targets = [
         for (final d in officeDesks) d.seatTile,
         coffeeSpot,
         vendingSpot,
-        ...sofaApproach,
+        waterSpot,
+        snackSpot,
+        swimEntry,
+        for (final s in sofaSeats) s.approach,
+        for (final s in deckSeats) s.approach,
+        for (final s in cushionSeats) s.approach,
+        for (final s in readSeats) s.approach,
+        ...workoutSpots,
+        ...cafeSpots,
+        ...readStandSpots,
         for (final s in chatSpots) ...[s.a, s.b],
         ...wanderSpots,
       ];
       for (final t in targets) {
-        expect(findPath(door, t), isNotNull, reason: '$t unreachable');
+        expect(findPath(doorTile, t), isNotNull, reason: '$t unreachable');
       }
     });
 
     test('paths only cross walkable tiles', () {
-      final path = findPath(const Point(14, 18), officeDesks.first.seatTile)!;
+      final path = findPath(doorTile, officeDesks.first.seatTile)!;
       for (final p in path) {
         expect(isWalkable(p.x, p.y), isTrue);
       }
       expect(path.last, officeDesks.first.seatTile);
     });
 
-    test('nearestWalkable escapes furniture', () {
+    test('nearestWalkable escapes furniture and the pool', () {
       final desk = officeDesks.first;
       final out = nearestWalkable(Point(desk.tx, desk.ty));
       expect(isWalkable(out.x, out.y), isTrue);
+      final fromPool = nearestWalkable(const Point(46, 10));
+      expect(isWalkable(fromPool.x, fromPool.y), isTrue);
+    });
+
+    test('pool is not walkable but is a drop target', () {
+      expect(isWalkable(46, 10), isFalse);
+      expect(isPoolTile(const Point(46, 10)), isTrue);
+      expect(isPoolTile(doorTile), isFalse);
+    });
+
+    test('rooms cover every named module', () {
+      final labels = rooms.map((r) => r.label).toSet();
+      for (final expected in [
+        'TASKS', 'CALENDAR', 'FINANCE', 'FOCUS', 'LIBRARY', 'INBOX',
+        'GYM', 'CAFÉ', 'ANALYTICS', 'LOUNGE', 'POOL',
+      ]) {
+        expect(labels, contains(expected));
+      }
     });
   });
 
@@ -191,7 +249,6 @@ void main() {
         expect(e.activity, Activity.working);
         expect(e.deskIndex, greaterThanOrEqualTo(0));
       }
-      // All desk claims unique.
       final desks = sim.employees.map((e) => e.deskIndex).toSet();
       expect(desks.length, 8);
     });
@@ -201,7 +258,7 @@ void main() {
       final e = sim.employees.first;
       e.energy = 0.01;
       e.coffeeCooldown = 0;
-      // A few ticks: the FSM should send them walking to a refreshment.
+      e.leisureTimer = 9999; // isolate the energy-driven branch
       for (var i = 0; i < 60 && e.activity == Activity.working; i++) {
         sim.tick(0.1);
       }
@@ -209,12 +266,57 @@ void main() {
       expect([Goal.coffee, Goal.snack, Goal.sofa], contains(e.goal));
     });
 
+    test('the leisure urge sends employees around the campus', () {
+      final sim = boot();
+      final found = <Goal>{};
+      // Run each employee's leisure roll a few times; across the cast we
+      // should see several different campus activities chosen.
+      for (var round = 0; round < 6; round++) {
+        for (final e in sim.employees) {
+          if (e.activity == Activity.working) e.leisureTimer = 0.001;
+        }
+        for (var i = 0; i < 400; i++) {
+          sim.tick(0.1);
+          for (final e in sim.employees) {
+            if (e.activity == Activity.walking) found.add(e.goal);
+          }
+        }
+      }
+      const leisureGoals = {
+        Goal.gym, Goal.swim, Goal.sunbathe, Goal.read, Goal.meditate,
+        Goal.cafe,
+      };
+      expect(found.intersection(leisureGoals).length,
+          greaterThanOrEqualTo(3),
+          reason: 'saw goals: $found');
+    });
+
+    test('swimmers paddle inside the pool and climb out', () {
+      final sim = boot();
+      final e = sim.employees.first;
+      sim.beginDrag(e.spec.id);
+      sim.dragTo(e.spec.id, const Offset(46 * 16.0, 10 * 16.0));
+      sim.drop(e.spec.id);
+      expect(e.activity, Activity.swim);
+      for (var i = 0; i < 50; i++) {
+        sim.tick(0.1);
+        if (e.activity != Activity.swim) break;
+        expect(swimArea.inflate(2).contains(e.pos), isTrue,
+            reason: 'swimmer left the pool at ${e.pos}');
+      }
+      for (var i = 0; i < 400 && e.activity == Activity.swim; i++) {
+        sim.tick(0.1);
+      }
+      expect(e.activity, isNot(Activity.swim));
+    });
+
     test('lonely employees pair up for a chat', () {
       final sim = boot();
       final a = sim.employees[0];
       final b = sim.employees[1];
       for (final e in sim.employees) {
-        e.social = 1; // nobody else wants to chat
+        e.social = 1;
+        e.leisureTimer = 9999;
       }
       a.social = 0.1;
       b.social = 0.1;
@@ -226,8 +328,7 @@ void main() {
       expect(a.goal, Goal.chat);
       expect(b.goal, Goal.chat);
 
-      // Let them walk there and talk — both should eventually chat.
-      for (var i = 0; i < 1200; i++) {
+      for (var i = 0; i < 1600; i++) {
         sim.tick(0.05);
         if (a.activity == Activity.chatting &&
             b.activity == Activity.chatting) {
@@ -243,7 +344,7 @@ void main() {
       final e = sim.employees.first;
       sim.beginDrag(e.spec.id);
       expect(e.activity, Activity.dragged);
-      sim.dragTo(e.spec.id, const Offset(15 * 16.0, 17 * 16.0));
+      sim.dragTo(e.spec.id, const Offset(21 * 16.0, 11 * 16.0));
       sim.drop(e.spec.id);
       expect(e.activity, Activity.stunned);
       for (var i = 0; i < 40; i++) {
@@ -270,9 +371,19 @@ void main() {
       final sim = boot();
       final e = sim.employees.first;
       sim.beginDrag(e.spec.id);
-      sim.dragTo(e.spec.id, const Offset(20 * 16.0 + 8, 15 * 16.0 + 8));
+      sim.dragTo(
+          e.spec.id, const Offset(31 * 16.0 + 8, 20 * 16.0 + 8));
       sim.drop(e.spec.id);
       expect(e.activity, Activity.sofa);
+    });
+
+    test('dropping on a lounger starts sunbathing', () {
+      final sim = boot();
+      final e = sim.employees.first;
+      sim.beginDrag(e.spec.id);
+      sim.dragTo(e.spec.id, const Offset(43 * 16.0 + 8, 16 * 16.0 + 8));
+      sim.drop(e.spec.id);
+      expect(e.activity, Activity.sunbathe);
     });
 
     test('fired employees disappear from the floor', () {
@@ -292,7 +403,7 @@ void main() {
       sim.syncStaff(staff);
       expect(sim.employees.length, 9);
       final hire = sim.employees.last;
-      expect(tileAt(hire.pos), const Point(14, 18));
+      expect(tileAt(hire.pos), doorTile);
     });
 
     test('frame selection matches activity', () {
@@ -301,6 +412,11 @@ void main() {
       expect(sim.frameFor(e).$1, CharFrame.sitBack);
       e.activity = Activity.sofa;
       expect(sim.frameFor(e).$1, CharFrame.sitFront);
+      e.activity = Activity.meditate;
+      expect(sim.frameFor(e).$1, CharFrame.sitFront);
+      e.activity = Activity.gym;
+      expect([CharFrame.upWalkA, CharFrame.upWalkB],
+          contains(sim.frameFor(e).$1));
       e.activity = Activity.walking;
       e.facing = Facing.left;
       expect(sim.frameFor(e).$2, isTrue); // mirrored

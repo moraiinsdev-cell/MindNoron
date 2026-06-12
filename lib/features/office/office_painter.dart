@@ -8,9 +8,13 @@ import 'office_sim.dart';
 import 'office_sprites.dart';
 import 'pixel_art.dart';
 
-/// Paints the whole office: a cached static layer (floor, walls, wall decor)
-/// plus a per-frame y-sorted layer of furniture and employees, then
-/// screen-space speech bubbles and a time-of-day tint.
+const _waterBase = Color(0xFF5FA8D4);
+const _waterDeep = Color(0xFF4E96C4);
+const _coping = Color(0xFFD8DCE0);
+
+/// Paints the whole campus: a cached static layer (floors, walls, water,
+/// flat decor) plus a per-frame y-sorted layer of furniture and employees,
+/// then screen-space room labels, speech bubbles and a time-of-day tint.
 class OfficePainter extends CustomPainter {
   OfficePainter({
     required this.sim,
@@ -26,6 +30,12 @@ class OfficePainter extends CustomPainter {
 
   static ui.Picture? _staticLayer;
 
+  /// Drop the cached static layer (hot reload / map changes).
+  static void invalidateStaticLayer() {
+    _staticLayer?.dispose();
+    _staticLayer = null;
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     _staticLayer ??= _buildStaticLayer();
@@ -37,6 +47,7 @@ class OfficePainter extends CustomPainter {
     canvas.scale(zoom);
 
     canvas.drawPicture(_staticLayer!);
+    _paintWaterShimmer(canvas);
     _paintDynamic(canvas);
     canvas.restore();
 
@@ -45,7 +56,7 @@ class OfficePainter extends CustomPainter {
   }
 
   // -------------------------------------------------------------------------
-  // Static layer: floor, walls, wall decor
+  // Static layer: floors, walls, water, flat decor, wall decor
   // -------------------------------------------------------------------------
 
   ui.Picture _buildStaticLayer() {
@@ -53,27 +64,48 @@ class OfficePainter extends CustomPainter {
     final c = Canvas(recorder);
     final p = Paint()..isAntiAlias = false;
 
-    // Floor: checkered base with zone carpets.
+    // Floors: checkered base with per-room colors (incl. outdoor grass).
     for (var ty = 2; ty < mapRows - 1; ty++) {
       for (var tx = 1; tx < mapCols - 1; tx++) {
         var base = floorBase;
         var alt = floorAlt;
-        for (final zone in floorZones) {
-          if (tx >= zone.tiles.left &&
-              tx < zone.tiles.right &&
-              ty >= zone.tiles.top &&
-              ty < zone.tiles.bottom) {
-            base = zone.base;
-            alt = zone.alt;
+        for (final room in rooms) {
+          if (tx >= room.tiles.left &&
+              tx < room.tiles.right &&
+              ty >= room.tiles.top &&
+              ty < room.tiles.bottom) {
+            base = room.base;
+            alt = room.alt;
             break;
           }
         }
         p.color = (tx + ty).isEven ? base : alt;
-        c.drawRect(
-          Rect.fromLTWH(tx * 16.0, ty * 16.0, 16, 16),
-          p,
-        );
+        c.drawRect(Rect.fromLTWH(tx * 16.0, ty * 16.0, 16, 16), p);
       }
+    }
+
+    // Pool: coping + water.
+    final poolPx = Rect.fromLTRB(poolTiles.left * 16, poolTiles.top * 16,
+        poolTiles.right * 16, poolTiles.bottom * 16);
+    p.color = _coping;
+    c.drawRect(poolPx.inflate(3), p);
+    p.color = const Color(0xFFA8ACB0);
+    c.drawRect(
+        Rect.fromLTWH(poolPx.left - 3, poolPx.bottom + 1,
+            poolPx.width + 6, 2),
+        p);
+    p.color = _waterBase;
+    c.drawRect(poolPx, p);
+    p.color = _waterDeep;
+    c.drawRect(poolPx.deflate(12), p);
+
+    // Flat decor: mats, cushions, stools, gold, the pool ladder.
+    for (final (sprite, tx, ty) in flatDecor) {
+      c.save();
+      c.translate(tx * 16.0 + (16 - sprite.width) / 2,
+          ty * 16.0 + (16 - sprite.height) / 2);
+      sprite.paint(c);
+      c.restore();
     }
 
     // Top wall: a 2-tile band with face + dark crown + baseboard.
@@ -92,13 +124,22 @@ class OfficePainter extends CustomPainter {
     c.drawRect(
         const Rect.fromLTWH(0, worldHeight - 12.0, worldWidth + 0.0, 12), p);
 
-    // Entrance: a gap with a door mat at the bottom wall (cols 14-15).
-    p.color = const Color(0xFF8A8278);
-    c.drawRect(const Rect.fromLTWH(14 * 16.0, worldHeight - 12.0, 32, 12), p);
-    p.color = const Color(0xFFA89C84);
-    c.drawRect(const Rect.fromLTWH(14 * 16.0 + 2, 18 * 16.0 + 2, 28, 10), p);
+    // Interior partitions: dark wall blocks with a lighter south face.
+    for (final w in interiorWallTiles) {
+      final x = w.x * 16.0, y = w.y * 16.0;
+      p.color = wallTop;
+      c.drawRect(Rect.fromLTWH(x, y, 16, 16), p);
+      p.color = const Color(0xFF564E60);
+      c.drawRect(Rect.fromLTWH(x, y + 10, 16, 6), p);
+    }
 
-    // Wall decor (windows, whiteboard, poster, clock).
+    // Entrance: a gap with a door mat at the bottom wall (cols 27-28).
+    p.color = const Color(0xFF8A8278);
+    c.drawRect(const Rect.fromLTWH(27 * 16.0, worldHeight - 12.0, 32, 12), p);
+    p.color = const Color(0xFFA89C84);
+    c.drawRect(const Rect.fromLTWH(27 * 16.0 + 2, 33 * 16.0 + 2, 28, 12), p);
+
+    // Wall decor (windows, whiteboard, posters, clock, calendar).
     for (final (sprite, offset) in wallDecor) {
       c.save();
       c.translate(offset.dx, offset.dy);
@@ -107,6 +148,25 @@ class OfficePainter extends CustomPainter {
     }
 
     return recorder.endRecording();
+  }
+
+  /// Animated ripples drifting across the pool.
+  void _paintWaterShimmer(Canvas canvas) {
+    final t = DateTime.now().millisecondsSinceEpoch / 1000.0;
+    final p = Paint()
+      ..isAntiAlias = false
+      ..color = const Color(0x55E8F4FA);
+    final poolPx = Rect.fromLTRB(poolTiles.left * 16, poolTiles.top * 16,
+        poolTiles.right * 16, poolTiles.bottom * 16);
+    for (var i = 0; i < 12; i++) {
+      final phase = (t * 7 + i * 31) % poolPx.width;
+      final y = poolPx.top + 8 + (i * 37) % (poolPx.height - 16);
+      final x = poolPx.left + 4 + phase;
+      final w = 8.0 + (i % 3) * 4;
+      if (x + w < poolPx.right - 2) {
+        canvas.drawRect(Rect.fromLTWH(x, y.toDouble(), w, 1.6), p);
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -145,6 +205,7 @@ class OfficePainter extends CustomPainter {
     final occupied = sim.employees.any((e) =>
         e.activity == Activity.working &&
         e.deskIndex >= 0 &&
+        e.deskIndex < officeDesks.length &&
         officeDesks[e.deskIndex].tx == desk.tx &&
         officeDesks[e.deskIndex].ty == desk.ty);
     final o = desk.drawOrigin;
@@ -176,23 +237,12 @@ class OfficePainter extends CustomPainter {
     final (frame, flip) = sim.frameFor(e);
 
     final dragged = e.activity == Activity.dragged;
+    final swimming = e.activity == Activity.swim;
     final lift = dragged ? 7.0 + sin(e.animPhase * 5) * 1.5 : 0.0;
     final typingBob = e.activity == Activity.working &&
             (e.animPhase * 2.4).floor().isEven
         ? 1.0
         : 0.0;
-
-    // Shadow on the floor under their feet.
-    final shadow = Paint()
-      ..color = Color.fromRGBO(30, 28, 40, dragged ? 0.18 : 0.28)
-      ..isAntiAlias = false;
-    if (!e.isSeated) {
-      canvas.drawOval(
-        Rect.fromCenter(
-            center: Offset(e.pos.dx, e.pos.dy + 1), width: 11, height: 4),
-        shadow,
-      );
-    }
 
     // Selection marker (pulsing ring under the employee).
     if (sim.selectedId == e.spec.id) {
@@ -207,6 +257,50 @@ class OfficePainter extends CustomPainter {
       );
     }
 
+    final rows = characterRows(frame, look.hairStyle);
+    final key =
+        'c-${look.hairStyle}-${look.skin}-${look.hairColor}-${look.shirt}-'
+        '${look.pants}-${frame.name}';
+    final img = cache.imageFor(
+        key, () => PixelSprite(rows, palette),
+        flipX: flip);
+    final h = rows.length.toDouble();
+
+    if (swimming) {
+      // Only head + shoulders above the water, with a ripple ring.
+      final bob = sin(e.animPhase * 3) * 1.2;
+      canvas.drawOval(
+        Rect.fromCenter(
+            center: Offset(e.pos.dx, e.pos.dy - 2), width: 16, height: 7),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.4
+          ..color = const Color(0x88E8F4FA),
+      );
+      const visibleRows = 9.0;
+      canvas.drawImageRect(
+        img,
+        Rect.fromLTWH(0, 0, img.width.toDouble(), visibleRows),
+        Rect.fromLTWH(
+            e.pos.dx - 6, e.pos.dy - visibleRows - 1 + bob, 12, visibleRows),
+        Paint()
+          ..isAntiAlias = false
+          ..filterQuality = FilterQuality.none,
+      );
+      return;
+    }
+
+    // Shadow on the floor under their feet.
+    if (!e.isSeated) {
+      canvas.drawOval(
+        Rect.fromCenter(
+            center: Offset(e.pos.dx, e.pos.dy + 1), width: 11, height: 4),
+        Paint()
+          ..color = Color.fromRGBO(30, 28, 40, dragged ? 0.18 : 0.28)
+          ..isAntiAlias = false,
+      );
+    }
+
     // Chair under desk workers (drawn just before the person).
     if (e.activity == Activity.working) {
       final chairImg = cache.imageFor('chair', () => chairSprite);
@@ -217,15 +311,6 @@ class OfficePainter extends CustomPainter {
               e.pos.dy - chairSprite.height + 3));
     }
 
-    final rows = characterRows(frame, look.hairStyle);
-    final key =
-        'c-${look.hairStyle}-${look.skin}-${look.hairColor}-${look.shirt}-'
-        '${look.pants}-${frame.name}';
-    final img = cache.imageFor(
-        key, () => PixelSprite(rows, palette),
-        flipX: flip);
-
-    final h = rows.length.toDouble();
     drawSprite(
       canvas,
       img,
@@ -234,7 +319,7 @@ class OfficePainter extends CustomPainter {
   }
 
   // -------------------------------------------------------------------------
-  // Screen-space layers: tint, speech bubbles, name tags
+  // Screen-space layers: tint, room labels, speech bubbles, name tags
   // -------------------------------------------------------------------------
 
   void _paintTint(Canvas canvas) {
@@ -258,6 +343,26 @@ class OfficePainter extends CustomPainter {
   Offset _toScreen(Offset world) => origin + world * zoom;
 
   void _paintOverlays(Canvas canvas) {
+    // Room labels.
+    for (final room in rooms) {
+      if (room.label.isEmpty) continue;
+      final anchor = _toScreen(Offset(
+          room.tiles.left * 16 + 4, room.tiles.top * 16 + 3));
+      final tp = TextPainter(
+        text: TextSpan(
+          text: room.label,
+          style: TextStyle(
+            fontSize: 9,
+            letterSpacing: 1.5,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF2A2433).withValues(alpha: 0.38),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, anchor);
+    }
+
     for (final e in sim.employees) {
       final headWorld = Offset(e.pos.dx, e.pos.dy - 19);
       if (e.bubble != null && e.bubbleTtl > 0) {

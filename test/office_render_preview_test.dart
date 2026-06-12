@@ -99,6 +99,28 @@ void main() {
       'lounge': loungeTableSprite,
       'clock': clockSprite,
       'papers': paperStackSprite,
+      'fridge': fridgeSprite,
+      'kitchen': kitchenTableSprite,
+      'stool': stoolSprite,
+      'armchair': armchairSprite,
+      'filing': filingCabinetSprite,
+      'server': serverRackSprite,
+      'box': boxSprite,
+      'treadmill': treadmillSprite,
+      'dumbbells': dumbbellRackSprite,
+      'yogamat': yogaMatSprite,
+      'lounger': loungerSprite,
+      'umbrella': umbrellaSprite,
+      'cafetable': cafeTableSprite,
+      'menu': menuBoardSprite,
+      'safe': safeSprite,
+      'money': moneyPileSprite,
+      'mail': mailShelfSprite,
+      'cushion': cushionSprite,
+      'bonsai': bonsaiSprite,
+      'lamp': lampSprite,
+      'calendar': wallCalendarSprite,
+      'ladder': poolLadderSprite,
     };
     var x = 2.0;
     final positions = <String, double>{};
@@ -122,30 +144,47 @@ void main() {
     expect(img.width, greaterThan(0));
   });
 
-  test('full office scene renders', () async {
+  test('full campus scene renders', () async {
     final sim = OfficeSim(seed: 7);
     sim.syncStaff(defaultStaff());
     sim.placeInitial();
-    // Stage a lively scene: someone walking, a chat pair, a sofa napper.
+    // Stage a lively scene covering the campus: walker, swimmer, sunbather,
+    // gym-goer, meditator, and a chatting pair at the café cooler.
     sim.employees[1].say('the build is green!');
-    final walker = sim.employees[2];
+    final walker = sim.employees[1];
     walker.activity = Activity.walking;
     walker.goal = Goal.coffee;
     walker.pos = tileCenter(const Point(9, 11));
     walker.facing = Facing.left;
-    final napper = sim.employees[3];
-    napper.activity = Activity.sofa;
-    napper.sofaSeat = 0;
-    napper.pos = sofaSeatPos[0];
-    napper.facing = Facing.down;
-    final chatterA = sim.employees[4];
-    final chatterB = sim.employees[5];
+    final swimmer = sim.employees[2];
+    swimmer.activity = Activity.swim;
+    swimmer.pos = const Offset(46 * 16.0, 10 * 16.0);
+    swimmer.swimTarget = const Offset(48 * 16.0, 12 * 16.0);
+    final sunbather = sim.employees[3];
+    sunbather.activity = Activity.sunbathe;
+    sunbather.seatKind = SeatKind.deck;
+    sunbather.seatIndex = 0;
+    sunbather.pos = deckSeats[0].seatPos;
+    sunbather.facing = Facing.down;
+    sunbather.say('😎');
+    final lifter = sim.employees[4];
+    lifter.activity = Activity.gym;
+    lifter.pos = tileCenter(const Point(4, 30));
+    lifter.facing = Facing.up;
+    final monk = sim.employees[5];
+    monk.activity = Activity.meditate;
+    monk.seatKind = SeatKind.cushion;
+    monk.seatIndex = 0;
+    monk.pos = cushionSeats[0].seatPos;
+    monk.facing = Facing.down;
+    final chatterA = sim.employees[6];
+    final chatterB = sim.employees[7];
     chatterA.activity = Activity.chatting;
-    chatterA.pos = tileCenter(const Point(4, 16));
+    chatterA.pos = tileCenter(const Point(19, 25));
     chatterA.facing = Facing.right;
     chatterA.say('☕ lunch later?');
     chatterB.activity = Activity.chatting;
-    chatterB.pos = tileCenter(const Point(6, 16));
+    chatterB.pos = tileCenter(const Point(21, 25));
     chatterB.facing = Facing.left;
     sim.selectedId = sim.employees.first.spec.id;
 
