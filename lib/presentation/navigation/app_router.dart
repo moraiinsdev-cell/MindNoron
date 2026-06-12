@@ -10,6 +10,7 @@ import '../../features/inbox/inbox_screen.dart';
 import '../../features/journal/journal_screen.dart';
 import '../../features/motivation/welcome_screen.dart';
 import '../../features/notes/notes_screen.dart';
+import '../../features/office/office_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/tasks/tasks_screen.dart';
 import '../../features/timer/timer_screen.dart';
@@ -22,6 +23,7 @@ final rootNavigatorKey = GlobalKey<NavigatorState>();
 abstract final class Routes {
   static const welcome = '/welcome';
   static const dashboard = '/dashboard';
+  static const office = '/office';
   static const tasks = '/tasks';
   static const calendar = '/calendar';
   static const timer = '/timer';
@@ -48,6 +50,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: Routes.dashboard,
           pageBuilder: (c, s) => _appPage(s, const DashboardScreen()),
+        ),
+        GoRoute(
+          path: Routes.office,
+          pageBuilder: (c, s) => _appPage(s, const OfficeScreen()),
         ),
         GoRoute(
           path: Routes.tasks,

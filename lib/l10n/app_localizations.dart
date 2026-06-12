@@ -106,6 +106,12 @@ abstract class AppLocalizations {
   /// **'Dashboard'**
   String get navDashboard;
 
+  /// No description provided for @navOffice.
+  ///
+  /// In en, this message translates to:
+  /// **'Office'**
+  String get navOffice;
+
   /// No description provided for @navTasks.
   ///
   /// In en, this message translates to:

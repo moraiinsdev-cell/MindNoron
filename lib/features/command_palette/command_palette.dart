@@ -77,6 +77,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     final q = _query.trim().toLowerCase();
     final base = <_Command>[
       _nav(Icons.dashboard_outlined, 'Dashboard', Routes.dashboard),
+      _nav(Icons.apartment_outlined, 'Office', Routes.office),
       _nav(Icons.check_circle_outline, 'Tasks', Routes.tasks),
       _nav(Icons.calendar_month_outlined, 'Calendar', Routes.calendar),
       _nav(Icons.timer_outlined, 'Focus', Routes.timer),

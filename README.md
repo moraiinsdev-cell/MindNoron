@@ -22,6 +22,10 @@ the app and commit to the day.
 
 ## Highlights
 
+- MindNoron Inc.: a living pixel-art office lobby where employees work, chat,
+  and take coffee breaks on their own — click to inspect, drag-and-drop them
+  god-style, rename, hire, fire, and pin real tasks to each one. All artwork
+  is hand-drawn in code (no image assets).
 - English-first desktop UI.
 - Daily randomized motivation deck with 200+ original lines.
 - No repeated motivation lines during the same day until the full daily pool is

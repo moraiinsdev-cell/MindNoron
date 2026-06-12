@@ -56,6 +56,8 @@ class SettingsRepository {
         .map((r) => r?.value);
   }
 
+  Stream<String?> watchValue(String key) => _watch(key);
+
   Stream<ThemeMode> watchThemeMode() => _watch(_kThemeMode).map(_parseTheme);
   Future<void> setThemeMode(ThemeMode mode) => _set(_kThemeMode, mode.name);
 

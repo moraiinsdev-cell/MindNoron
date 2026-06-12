@@ -2,6 +2,7 @@
   "@@locale": "en",
   "appName": "MindNoron",
   "navDashboard": "Dashboard",
+  "navOffice": "Office",
   "navTasks": "Tasks",
   "navCalendar": "Calendar",
   "navTimer": "Focus",
