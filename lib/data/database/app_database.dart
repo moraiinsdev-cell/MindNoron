@@ -51,7 +51,7 @@ class AppDatabase extends _$AppDatabase {
           }
           // v4: subtasks — a task can point to a parent task.
           if (from < 4) {
-            await m.addColumn(tasks, tasks.parentTaskId);
+            await _addColumnIfMissing(m, tasks, tasks.parentTaskId);
           }
           // v5: thoughts — the noron-space thinking flow.
           if (from < 5) {
@@ -65,13 +65,36 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(expenseEntries);
           }
           if (from < 8) {
-            await m.addColumn(pomodoroSessions, pomodoroSessions.stopReason);
+            await _addColumnIfMissing(
+                m, pomodoroSessions, pomodoroSessions.stopReason);
           }
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');
         },
       );
+
+  /// `ALTER TABLE ADD COLUMN`, but tolerant of the column already existing.
+  ///
+  /// SQLite persists a successful ALTER even if the process dies before
+  /// drift bumps `user_version`; on the next launch the same migration step
+  /// re-runs and a plain addColumn crashes with "duplicate column name" —
+  /// permanently, since the version never gets bumped. Checking first makes
+  /// the step idempotent and self-heals databases stuck in that state.
+  Future<void> _addColumnIfMissing(
+    Migrator m,
+    TableInfo<Table, dynamic> table,
+    GeneratedColumn<Object> column,
+  ) async {
+    final info = await customSelect(
+      "PRAGMA table_info('${table.actualTableName}')",
+    ).get();
+    final exists =
+        info.any((row) => row.read<String>('name') == column.name);
+    if (!exists) {
+      await m.addColumn(table, column);
+    }
+  }
 
   static QueryExecutor _open() {
     // drift_flutter resolves the right native sqlite3 lib + a writable path
