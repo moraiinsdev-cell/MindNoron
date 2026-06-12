@@ -178,89 +178,92 @@ class EmployeeSpec {
   }
 }
 
-/// The founding team of MindNoron Inc.
+/// The founding team of MindNoron Inc. — a suspiciously familiar bunch of
+/// "entrepreneurs" who all somehow ended up working here.
 List<EmployeeSpec> defaultStaff() => const [
       EmployeeSpec(
-        id: 'emp-mai',
-        name: 'Mai',
-        role: 'Product Designer',
-        personalityId: 'perfectionist',
-        look: EmployeeLook(
-            skin: 0, hairStyle: 1, hairColor: 0, shirt: 5, pants: 0),
-      ),
-      EmployeeSpec(
-        id: 'emp-tuan',
-        name: 'Tuấn',
-        role: 'Backend Engineer',
-        personalityId: 'coffeeAddict',
-        look: EmployeeLook(
-            skin: 1, hairStyle: 0, hairColor: 0, shirt: 1, pants: 2),
-      ),
-      EmployeeSpec(
-        id: 'emp-linh',
-        name: 'Linh',
-        role: 'Product Manager',
-        personalityId: 'socialButterfly',
-        look: EmployeeLook(
-            skin: 0, hairStyle: 1, hairColor: 1, shirt: 0, pants: 0),
-      ),
-      EmployeeSpec(
-        id: 'emp-duc',
-        name: 'Đức',
-        role: 'QA Engineer',
-        personalityId: 'nightOwl',
-        look: EmployeeLook(
-            skin: 2, hairStyle: 2, hairColor: 0, shirt: 6, pants: 2),
-      ),
-      EmployeeSpec(
-        id: 'emp-an',
-        name: 'An',
-        role: 'Frontend Engineer',
-        personalityId: 'memeLord',
-        look: EmployeeLook(
-            skin: 1, hairStyle: 2, hairColor: 3, shirt: 2, pants: 1),
-      ),
-      EmployeeSpec(
-        id: 'emp-ha',
-        name: 'Hà',
-        role: 'Data Analyst',
-        personalityId: 'zenMaster',
-        look: EmployeeLook(
-            skin: 0, hairStyle: 1, hairColor: 4, shirt: 3, pants: 0),
-      ),
-      EmployeeSpec(
-        id: 'emp-minh',
-        name: 'Minh',
-        role: 'Intern',
-        personalityId: 'speedrunner',
-        look: EmployeeLook(
-            skin: 3, hairStyle: 0, hairColor: 0, shirt: 4, pants: 1),
-      ),
-      EmployeeSpec(
-        id: 'emp-bao',
-        name: 'Bảo',
-        role: 'CEO & Founder',
+        id: 'emp-elon',
+        name: 'Elon',
+        role: 'CEO & Chief Rocket Officer',
         personalityId: 'visionary',
         look: EmployeeLook(
-            skin: 2, hairStyle: 0, hairColor: 5, shirt: 7, pants: 2),
+            skin: 0, hairStyle: 0, hairColor: 1, shirt: 7, pants: 2),
+      ),
+      EmployeeSpec(
+        id: 'emp-jeff',
+        name: 'Jeff',
+        role: 'Logistics & Same-Day Lead',
+        personalityId: 'speedrunner',
+        look: EmployeeLook(
+            skin: 1, hairStyle: 0, hairColor: 5, shirt: 1, pants: 0),
+      ),
+      EmployeeSpec(
+        id: 'emp-bill',
+        name: 'Bill',
+        role: 'Chief Architect',
+        personalityId: 'perfectionist',
+        look: EmployeeLook(
+            skin: 0, hairStyle: 0, hairColor: 0, shirt: 3, pants: 1),
+      ),
+      EmployeeSpec(
+        id: 'emp-mark',
+        name: 'Mark',
+        role: 'Metaverse Engineer',
+        personalityId: 'memeLord',
+        look: EmployeeLook(
+            skin: 0, hairStyle: 2, hairColor: 0, shirt: 6, pants: 2),
+      ),
+      EmployeeSpec(
+        id: 'emp-tim',
+        name: 'Tim',
+        role: 'Design Director',
+        personalityId: 'zenMaster',
+        look: EmployeeLook(
+            skin: 1, hairStyle: 0, hairColor: 5, shirt: 4, pants: 0),
+      ),
+      EmployeeSpec(
+        id: 'emp-warren',
+        name: 'Warren',
+        role: 'Finance Oracle',
+        personalityId: 'coffeeAddict',
+        look: EmployeeLook(
+            skin: 0, hairStyle: 0, hairColor: 2, shirt: 0, pants: 1),
+      ),
+      EmployeeSpec(
+        id: 'emp-jensen',
+        name: 'Jensen',
+        role: 'GPU Whisperer',
+        personalityId: 'nightOwl',
+        look: EmployeeLook(
+            skin: 2, hairStyle: 2, hairColor: 0, shirt: 7, pants: 2),
+      ),
+      EmployeeSpec(
+        id: 'emp-oprah',
+        name: 'Oprah',
+        role: 'Chief Vibes Officer',
+        personalityId: 'socialButterfly',
+        look: EmployeeLook(
+            skin: 3, hairStyle: 1, hairColor: 0, shirt: 5, pants: 0),
       ),
     ];
 
+/// Walk-in candidates — the rest of the billionaire cinematic universe.
 const hireNamePool = <String>[
-  'Trang', 'Khoa', 'Vy', 'Phúc', 'Thảo', 'Nam', 'Chi', 'Quân', 'Ngọc',
-  'Huy', 'Lan', 'Sơn', 'Yến', 'Đạt', 'Hương', 'Tâm', 'Nhi', 'Dũng',
+  'Sam', 'Satya', 'Sundar', 'Larry', 'Sergey', 'Jack', 'Steve', 'Pony',
+  'Masa', 'Vượng', 'Bernard', 'Mukesh', 'Richard', 'Jamie', 'Michael',
 ];
 
 const hireRolePool = <String>[
-  'Fullstack Engineer',
-  'UX Researcher',
-  'DevOps Engineer',
-  'Marketing Lead',
-  'Office Dog Walker',
-  'Scrum Master',
-  'Tech Writer',
-  'Growth Hacker',
-  'Chief Vibes Officer',
+  'Rocket Scientist',
+  'Search Quality Rater',
+  'Cloud Evangelist',
+  'AI Researcher',
+  'Hostile Takeover Intern',
+  'Crypto Recovery Specialist',
+  'Space Tourism Agent',
+  'Chief Meme Officer',
+  'Synergy Consultant',
+  'Disruption Lead',
 ];
 
 /// Builds a fresh hire with a random identity (avoiding names already used).

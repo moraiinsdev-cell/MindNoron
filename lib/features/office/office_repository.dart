@@ -12,7 +12,10 @@ class OfficeRepository {
   OfficeRepository(this._settings);
 
   final SettingsRepository _settings;
-  static const _kStaff = 'officeStaff';
+
+  /// v2: the founding roster switched from placeholder names to the
+  /// billionaire cast; bumping the key reseeds rosters saved under v1.
+  static const _kStaff = 'officeStaffV2';
 
   Stream<List<EmployeeSpec>> watchStaff() =>
       _settings.watchValue(_kStaff).map(_decode);

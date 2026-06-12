@@ -52,7 +52,7 @@ void main() {
 
     // Company overview: header + all founding staff listed.
     expect(find.text('MindNoron Inc.'), findsOneWidget);
-    for (final name in ['Mai', 'Linh', 'An', 'Minh']) {
+    for (final name in ['Elon', 'Jeff', 'Bill', 'Oprah']) {
       expect(find.textContaining(name), findsWidgets,
           reason: '$name missing from the staff list');
     }
@@ -61,9 +61,9 @@ void main() {
     await _capture(tester, screenshotKey, 'widget_company');
 
     // Open a profile from the staff list.
-    await tester.tap(find.textContaining('Tuấn').first);
+    await tester.tap(find.textContaining('Warren').first);
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('Backend Engineer'), findsOneWidget);
+    expect(find.text('Finance Oracle'), findsOneWidget);
     expect(find.textContaining('Coffee addict'), findsOneWidget);
     expect(find.text('Assigned task'), findsOneWidget);
     expect(find.text('Energy'), findsOneWidget);
