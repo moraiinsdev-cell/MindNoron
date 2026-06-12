@@ -132,7 +132,12 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTapDown: (d) {
-                    final hit = _sim.hitTest(_toWorld(d.localPosition));
+                    final world = _toWorld(d.localPosition);
+                    final hit = _sim.hitTest(world);
+                    if (hit == null && _sim.hitTestCat(world)) {
+                      _sim.petCat();
+                      return;
+                    }
                     _sim.select(hit?.spec.id);
                   },
                   onPanStart: (d) {

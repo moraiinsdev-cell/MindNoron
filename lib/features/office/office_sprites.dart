@@ -1180,6 +1180,70 @@ final wallCalendarSprite = PixelSprite(const [
   'm': Color(0xFF8A8694),
 });
 
+// ---------------------------------------------------------------------------
+// Pixel the office cat (orange tabby)
+// ---------------------------------------------------------------------------
+
+const _catPalette = <String, Color>{
+  'C': Color(0xFFE0913F), // coat
+  'c': Color(0xFFB86F28), // stripes / shadow
+  'w': Color(0xFFF2E3C8), // chest / muzzle
+  'E': Color(0xFF2A2226), // eye
+  'p': Color(0xFFD96A8C), // nose / inner ear
+};
+
+/// Cat walking, side view facing right (flip for left), 14x10.
+final catWalkASprite = PixelSprite(const [
+  '.c.........CC.',
+  '.c........CCCC',
+  '.cc..CCCCCCECw',
+  '..cCCCcCCCCCww',
+  '...CCCCcCCCCp.',
+  '...CCCCCCCCw..',
+  '...Cc..CCc....',
+  '...C....C.....',
+  '..cC....Cc....',
+], _catPalette);
+
+final catWalkBSprite = PixelSprite(const [
+  '.c.........CC.',
+  '.c........CCCC',
+  '.cc..CCCCCCECw',
+  '..cCCCcCCCCCww',
+  '...CCCCcCCCCp.',
+  '...CCCCCCCCw..',
+  '....cC.CCc....',
+  '....C...cC....',
+  '....Cc...C....',
+], _catPalette);
+
+/// Cat sitting, facing the viewer, 10x11.
+final catSitSprite = PixelSprite(const [
+  '.C......C.',
+  '.CC....CC.',
+  '.CpC..CpC.',
+  '.CCCCCCCC.',
+  '.CECCCCEC.',
+  '.CCCpCCCC.',
+  '..CwwwCC..',
+  '..CCCCCC..',
+  '.cCCCCCCc.',
+  '.cCCCCCCc.',
+  '..cc..cc..',
+], _catPalette);
+
+/// Cat curled up asleep, 12x8.
+final catSleepSprite = PixelSprite(const [
+  '...CCCCCC...',
+  '..CCccCCCC..',
+  '.CCCCCCcCCC.',
+  '.CcCCCCCCCC.',
+  '.CCCCcCCCcC.',
+  '.cCCCCCCCC..',
+  '..cCCCCCc...',
+  '....ccc.....',
+], _catPalette);
+
 /// Pool ladder (drawn over the water edge), 10x12.
 final poolLadderSprite = PixelSprite(const [
   '.ss....ss.',

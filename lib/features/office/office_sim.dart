@@ -154,13 +154,68 @@ class EmployeeRuntime {
   }
 }
 
+enum CatState { wandering, sitting, sleeping }
+
+/// Pixel, the office cat. Fully autonomous; click her for a meow.
+class OfficeCat {
+  Offset pos = Offset.zero;
+  CatState state = CatState.sitting;
+  List<Point<int>> path = const [];
+  int pathIndex = 0;
+  double timer = 3;
+  bool facingRight = true;
+  double animPhase = 0;
+  String? bubble;
+  double bubbleTtl = 0;
+
+  void say(String text, [double ttl = 2]) {
+    bubble = text;
+    bubbleTtl = ttl;
+  }
+}
+
+/// A garden butterfly — pure ambience over the outdoor grass.
+class Butterfly {
+  Butterfly(this.pos, this.target, this.phase, this.color);
+  Offset pos;
+  Offset target;
+  double phase;
+  final Color color;
+}
+
+const _catSpeed = 26.0;
+
+/// Where Pixel likes to hang out (besides random wander spots).
+const _catNapSpots = <Point<int>>[
+  Point(33, 24), // lounge rug
+  Point(17, 20), // library
+  Point(44, 24), // sunny grass
+  Point(24, 29), // café floor
+  Point(5, 20), // focus room (zen cat)
+];
+
 /// The MindNoron campus simulation. Ticked every frame by the office screen;
 /// notifies listeners so the canvas repaints.
 class OfficeSim extends ChangeNotifier {
-  OfficeSim({int? seed}) : _rng = Random(seed);
+  OfficeSim({int? seed}) : _rng = Random(seed) {
+    for (var i = 0; i < 3; i++) {
+      butterflies.add(Butterfly(
+        _randomGardenPoint(),
+        _randomGardenPoint(),
+        _rng.nextDouble() * 10,
+        const [
+          Color(0xFFF2E8C8),
+          Color(0xFFE8C84A),
+          Color(0xFFE89CB8),
+        ][i % 3],
+      ));
+    }
+  }
 
   final Random _rng;
   final employees = <EmployeeRuntime>[];
+  final cat = OfficeCat();
+  final butterflies = <Butterfly>[];
   final _usedChatSpots = <int>{};
 
   String? selectedId;
@@ -233,6 +288,8 @@ class OfficeSim extends ChangeNotifier {
         e.activity = Activity.idle;
       }
     }
+    cat.pos = tileCenter(_catNapSpots.first);
+    cat.state = CatState.sitting;
     notifyListeners();
   }
 
@@ -283,7 +340,114 @@ class OfficeSim extends ChangeNotifier {
       }
     }
     _matchmakeChats();
+    _tickCat(dt);
+    _tickButterflies(dt);
     notifyListeners();
+  }
+
+  // -------------------------------------------------------------------------
+  // Pixel the cat & garden butterflies
+  // -------------------------------------------------------------------------
+
+  void _tickCat(double dt) {
+    final c = cat;
+    c.animPhase += dt;
+    if (c.bubbleTtl > 0) {
+      c.bubbleTtl -= dt;
+      if (c.bubbleTtl <= 0) c.bubble = null;
+    }
+    switch (c.state) {
+      case CatState.wandering:
+        if (c.pathIndex >= c.path.length) {
+          // Arrived: nap, sit, or keep prowling.
+          final roll = _rng.nextDouble();
+          if (roll < 0.35) {
+            c.state = CatState.sleeping;
+            c.timer = 14 + _rng.nextDouble() * 14;
+            c.say('💤', 2.2);
+          } else if (roll < 0.75) {
+            c.state = CatState.sitting;
+            c.timer = 5 + _rng.nextDouble() * 7;
+          } else {
+            _catProwl();
+          }
+          return;
+        }
+        final target = tileCenter(c.path[c.pathIndex]);
+        final delta = target - c.pos;
+        final dist = delta.distance;
+        final step = _catSpeed * dt;
+        if (dist <= step) {
+          c.pos = target;
+          c.pathIndex++;
+        } else {
+          c.pos += delta / dist * step;
+          if (delta.dx.abs() > 0.5) c.facingRight = delta.dx > 0;
+        }
+      case CatState.sitting:
+      case CatState.sleeping:
+        c.timer -= dt;
+        if (c.timer <= 0) _catProwl();
+    }
+  }
+
+  void _catProwl() {
+    final c = cat;
+    final useNapSpot = _rng.nextDouble() < 0.5;
+    final target = useNapSpot
+        ? _catNapSpots[_rng.nextInt(_catNapSpots.length)]
+        : wanderSpots[_rng.nextInt(wanderSpots.length)];
+    final path = findPath(tileAt(c.pos), nearestWalkable(target));
+    if (path == null) {
+      c.state = CatState.sitting;
+      c.timer = 4;
+      return;
+    }
+    c.path = path;
+    c.pathIndex = 0;
+    c.state = CatState.wandering;
+  }
+
+  /// True if [world] hits the cat (the screen pets her: meow!).
+  bool hitTestCat(Offset world) {
+    final r = Rect.fromCenter(
+        center: cat.pos.translate(0, -4), width: 16, height: 12);
+    return r.contains(world);
+  }
+
+  void petCat() {
+    cat.say(_rng.nextDouble() < 0.5 ? 'meo!' : '❤️', 2);
+    if (cat.state == CatState.sleeping) {
+      cat.state = CatState.sitting;
+      cat.timer = 4;
+    }
+    notifyListeners();
+  }
+
+  void _tickButterflies(double dt) {
+    for (final b in butterflies) {
+      b.phase += dt;
+      final delta = b.target - b.pos;
+      if (delta.distance < 4) {
+        b.target = _randomGardenPoint();
+        continue;
+      }
+      final dir = delta / delta.distance;
+      b.pos += dir * 22 * dt +
+          Offset(sin(b.phase * 5) * 0.4, cos(b.phase * 7) * 0.5);
+    }
+  }
+
+  /// A point over the outdoor grass, avoiding the pool water.
+  Offset _randomGardenPoint() {
+    for (var i = 0; i < 20; i++) {
+      final p = Offset(
+        (39 * 16) + _rng.nextDouble() * (15 * 16),
+        (3 * 16) + _rng.nextDouble() * (30 * 16),
+      );
+      if (!isPoolTile(tileAt(p))) return p;
+    }
+    return const Offset(45 * 16.0, 25 * 16.0);
   }
 
   void _tickWorking(EmployeeRuntime e, double dt) {

@@ -49,6 +49,8 @@ class OfficePainter extends CustomPainter {
     canvas.drawPicture(_staticLayer!);
     _paintWaterShimmer(canvas);
     _paintDynamic(canvas);
+    _paintButterflies(canvas);
+    _paintNightGlow(canvas);
     canvas.restore();
 
     _paintTint(canvas);
@@ -82,6 +84,38 @@ class OfficePainter extends CustomPainter {
         p.color = (tx + ty).isEven ? base : alt;
         c.drawRect(Rect.fromLTWH(tx * 16.0, ty * 16.0, 16, 16), p);
       }
+    }
+
+    // Garden details: scattered wildflowers + a stone path to the pool.
+    for (var ty = 3; ty < mapRows - 2; ty++) {
+      for (var tx = 40; tx < mapCols - 1; tx++) {
+        if (isPoolTile(Point(tx, ty))) continue;
+        final h = (tx * 73856093) ^ (ty * 19349663);
+        if (h % 11 == 0) {
+          // A tuft of grass.
+          p.color = const Color(0xFF6E9C5C);
+          c.drawRect(Rect.fromLTWH(tx * 16.0 + (h % 9), ty * 16.0 + (h % 7),
+              2, 2), p);
+        } else if (h % 17 == 3) {
+          // A tiny flower.
+          p.color = const [
+            Color(0xFFF2E8C8),
+            Color(0xFFE8C84A),
+            Color(0xFFE89CB8),
+            Color(0xFFB8A0E0),
+          ][h % 4];
+          final fx = tx * 16.0 + 3 + (h % 8), fy = ty * 16.0 + 3 + (h % 6);
+          c.drawRect(Rect.fromLTWH(fx, fy, 2, 2), p);
+          p.color = const Color(0xFF6E9C5C);
+          c.drawRect(Rect.fromLTWH(fx, fy + 2, 1, 2), p);
+        }
+      }
+    }
+    p.color = const Color(0xFFC8C2B2);
+    for (final (px, py) in [(39, 8), (40, 8), (41, 9), (39, 26), (40, 27),
+        (41, 26), (42, 27), (43, 26)]) {
+      c.drawRect(
+          Rect.fromLTWH(px * 16.0 + 3, py * 16.0 + 4, 10, 8), p);
     }
 
     // Pool: coping + water.
@@ -186,9 +220,67 @@ class OfficePainter extends CustomPainter {
       items.add((sortY, () => _paintEmployee(canvas, e)));
     }
 
+    items.add((sim.cat.pos.dy, () => _paintCat(canvas)));
+
     items.sort((a, b) => a.$1.compareTo(b.$1));
     for (final (_, draw) in items) {
       draw();
+    }
+  }
+
+  void _paintCat(Canvas canvas) {
+    final c = sim.cat;
+    final (sprite, key, flip) = switch (c.state) {
+      CatState.wandering => (c.animPhase * 7).floor() % 2 == 0
+          ? (catWalkASprite, 'cat-walkA', !c.facingRight)
+          : (catWalkBSprite, 'cat-walkB', !c.facingRight),
+      CatState.sitting => (catSitSprite, 'cat-sit', false),
+      CatState.sleeping => (catSleepSprite, 'cat-sleep', false),
+    };
+    canvas.drawOval(
+      Rect.fromCenter(
+          center: Offset(c.pos.dx, c.pos.dy + 1), width: 10, height: 3),
+      Paint()
+        ..color = const Color.fromRGBO(30, 28, 40, 0.25)
+        ..isAntiAlias = false,
+    );
+    final img = cache.imageFor(key, () => sprite, flipX: flip);
+    drawSprite(
+        canvas,
+        img,
+        Offset(c.pos.dx - sprite.width / 2,
+            c.pos.dy - sprite.height.toDouble()));
+  }
+
+  void _paintButterflies(Canvas canvas) {
+    final p = Paint()..isAntiAlias = false;
+    for (final b in sim.butterflies) {
+      final flap = sin(b.phase * 14) > 0;
+      p.color = b.color;
+      if (flap) {
+        canvas.drawRect(Rect.fromLTWH(b.pos.dx - 2, b.pos.dy - 1, 2, 2), p);
+        canvas.drawRect(Rect.fromLTWH(b.pos.dx + 1, b.pos.dy - 1, 2, 2), p);
+      } else {
+        canvas.drawRect(Rect.fromLTWH(b.pos.dx - 1, b.pos.dy - 2, 1, 3), p);
+        canvas.drawRect(Rect.fromLTWH(b.pos.dx + 1, b.pos.dy - 2, 1, 3), p);
+      }
+    }
+  }
+
+  /// Warm pools of light at the lamps and café counter after dark.
+  void _paintNightGlow(Canvas canvas) {
+    final h = DateTime.now().hour;
+    if (!(h >= 19 || h < 6)) return;
+    const glowPoints = [
+      Offset(2 * 16.0 + 8, 16 * 16.0 + 4), // focus room lamp
+      Offset(19 * 16.0 + 8, 16 * 16.0 + 4), // library lamp
+      Offset(16 * 16.0, 24 * 16.0 + 6), // café counter
+    ];
+    final inner = Paint()..color = const Color(0x2EFFD080);
+    final outer = Paint()..color = const Color(0x16FFD080);
+    for (final g in glowPoints) {
+      canvas.drawCircle(g, 34, outer);
+      canvas.drawCircle(g, 20, inner);
     }
   }
 
@@ -361,6 +453,13 @@ class OfficePainter extends CustomPainter {
         textDirection: TextDirection.ltr,
       )..layout();
       tp.paint(canvas, anchor);
+    }
+
+    final cat = sim.cat;
+    if (cat.bubble != null && cat.bubbleTtl > 0) {
+      _paintBubble(
+          canvas, _toScreen(Offset(cat.pos.dx, cat.pos.dy - 12)), cat.bubble!,
+          fade: (cat.bubbleTtl / 0.3).clamp(0.0, 1.0));
     }
 
     for (final e in sim.employees) {

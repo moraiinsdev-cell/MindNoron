@@ -87,6 +87,10 @@ void main() {
         lampSprite,
         wallCalendarSprite,
         poolLadderSprite,
+        catWalkASprite,
+        catWalkBSprite,
+        catSitSprite,
+        catSleepSprite,
       ];
       final problems = <String>[];
       for (var i = 0; i < sprites.length; i++) {
@@ -420,6 +424,35 @@ void main() {
       e.activity = Activity.walking;
       e.facing = Facing.left;
       expect(sim.frameFor(e).$2, isTrue); // mirrored
+    });
+
+    test('the cat prowls the campus and can be petted', () {
+      final sim = boot();
+      expect(sim.cat.state, CatState.sitting);
+      // Long simulation: the cat must cycle through states without escaping
+      // into walls or water.
+      var sawWandering = false;
+      for (var i = 0; i < 2400; i++) {
+        sim.tick(0.05);
+        if (sim.cat.state == CatState.wandering) sawWandering = true;
+        final t = tileAt(sim.cat.pos);
+        expect(isPoolTile(t), isFalse, reason: 'cat fell in the pool');
+      }
+      expect(sawWandering, isTrue);
+      sim.petCat();
+      expect(sim.cat.bubble, isNotNull);
+    });
+
+    test('butterflies stay over the garden', () {
+      final sim = boot();
+      for (var i = 0; i < 1200; i++) {
+        sim.tick(0.05);
+      }
+      expect(sim.butterflies.length, 3);
+      for (final b in sim.butterflies) {
+        expect(b.pos.dx, greaterThan(37 * 16.0),
+            reason: 'butterfly drifted indoors');
+      }
     });
 
     test('auto task assignment shares the backlog', () {
