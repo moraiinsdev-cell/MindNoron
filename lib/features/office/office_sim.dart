@@ -291,6 +291,18 @@ class OfficeSim extends ChangeNotifier {
   EmployeeRuntime _randomEmployee() =>
       employees[_rng.nextInt(employees.length)];
 
+  /// A coin reward landed (a real task was completed): confetti + a "+N 🪙"
+  /// float over a celebrating employee.
+  void celebrateCoins(int amount) {
+    final e = employees.isEmpty ? null : _randomEmployee();
+    final at = e?.pos ?? tileCenter(doorTile);
+    particles.confetti(Offset(at.dx, at.dy - 18), count: 16);
+    floating(Offset(at.dx, at.dy - 24), '+$amount 🪙',
+        ttl: 2.0, color: const Color(0xFFFFD24A));
+    e?.say('🎉', 2);
+    notifyListeners();
+  }
+
   void _tickWeather(double dt) {
     _weatherTimer -= dt;
     if (_weatherTimer > 0) return;

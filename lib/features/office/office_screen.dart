@@ -42,6 +42,7 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
   bool _panning = false;
   EmployeeRuntime? _hoverEmp;
   Offset _hoverCursor = Offset.zero;
+  bool _coinBusy = false;
 
   @override
   void initState() {
@@ -81,6 +82,51 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
 
     ref.read(officeSfxProvider).enabled =
         ref.watch(officeSfxEnabledProvider).valueOrNull ?? true;
+
+    // Award coins for tasks completed in the real app (idempotent).
+    final completed = ref.watch(recentlyCompletedProvider).valueOrNull;
+    if (completed != null) _reconcileCoins(completed);
+  }
+
+  /// Coin payout for a completed task: a base, plus a priority bonus
+  /// (priority 1 = most important), plus a small bonus for longer estimates.
+  static int _taskReward(Task t) {
+    final priorityBonus = (5 - t.priority).clamp(0, 4) * 2;
+    final est = t.estimatedMinutes ?? 0;
+    final estBonus = (est ~/ 30).clamp(0, 6);
+    return 6 + priorityBonus + estBonus;
+  }
+
+  /// Credits coins for any completed task not yet in the ledger. On first run
+  /// it baselines existing completions (no payout) so we never dump coins
+  /// retroactively. Guarded so overlapping async writes can't double-pay.
+  Future<void> _reconcileCoins(List<Task> completed) async {
+    if (_coinBusy || completed.isEmpty) return;
+    _coinBusy = true;
+    try {
+      final repo = ref.read(officeRepositoryProvider);
+      var econ = await repo.getEconomy();
+
+      if (!econ.seeded) {
+        await repo.saveEconomy(econ.seedWith(completed.map((t) => t.id)));
+        return;
+      }
+
+      var earned = 0;
+      for (final t in completed) {
+        if (econ.hasCredited(t.id)) continue;
+        final reward = _taskReward(t);
+        econ = econ.earn(reward, taskId: t.id);
+        earned += reward;
+      }
+      if (earned > 0) {
+        await repo.saveEconomy(econ);
+        ref.read(officeSfxProvider).play(OfficeSfxCue.coin);
+        _sim.celebrateCoins(earned);
+      }
+    } finally {
+      _coinBusy = false;
+    }
   }
 
   @override
@@ -330,6 +376,7 @@ class _CompanyOverview extends ConsumerWidget {
     final (working, breaks, chats) = sim.headcount();
     final now = TimeOfDay.now();
     final staffCount = sim.employees.length;
+    final coins = ref.watch(officeEconomyProvider).valueOrNull?.coins ?? 0;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -353,10 +400,30 @@ class _CompanyOverview extends ConsumerWidget {
                 ],
               ),
             ),
-            Text(
-              now.format(context),
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  now.format(context),
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('🪙', style: TextStyle(fontSize: 13)),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$coins',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFFD9A521),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ],
         ),

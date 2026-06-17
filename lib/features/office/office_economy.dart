@@ -13,6 +13,7 @@ class OfficeEconomy {
     this.unlockedItemIds = const <String>{},
     this.creditedTaskIds = const <String>{},
     this.focusSessions = 0,
+    this.seeded = false,
   });
 
   /// Spendable balance.
@@ -31,12 +32,17 @@ class OfficeEconomy {
   /// Count of focus sessions rewarded (for achievements/feed).
   final int focusSessions;
 
+  /// True once existing completed tasks have been recorded as a baseline, so
+  /// the office never retroactively dumps coins for work done before install.
+  final bool seeded;
+
   OfficeEconomy copyWith({
     int? coins,
     int? totalEarned,
     Set<String>? unlockedItemIds,
     Set<String>? creditedTaskIds,
     int? focusSessions,
+    bool? seeded,
   }) =>
       OfficeEconomy(
         coins: coins ?? this.coins,
@@ -44,6 +50,14 @@ class OfficeEconomy {
         unlockedItemIds: unlockedItemIds ?? this.unlockedItemIds,
         creditedTaskIds: creditedTaskIds ?? this.creditedTaskIds,
         focusSessions: focusSessions ?? this.focusSessions,
+        seeded: seeded ?? this.seeded,
+      );
+
+  /// Records [ids] as already-credited without paying out, and marks the
+  /// economy seeded. Used once on first run to baseline pre-existing work.
+  OfficeEconomy seedWith(Iterable<String> ids) => copyWith(
+        creditedTaskIds: {...creditedTaskIds, ...ids},
+        seeded: true,
       );
 
   /// Adds [amount] coins (both spendable and lifetime), optionally recording
@@ -76,6 +90,7 @@ class OfficeEconomy {
             ? creditedTaskIds.toList().sublist(creditedTaskIds.length - 500)
             : creditedTaskIds.toList(),
         'focusSessions': focusSessions,
+        'seeded': seeded,
       };
 
   factory OfficeEconomy.fromJson(Map<String, dynamic> json) => OfficeEconomy(
@@ -84,6 +99,7 @@ class OfficeEconomy {
         unlockedItemIds: _stringSet(json['unlocked']),
         creditedTaskIds: _stringSet(json['credited']),
         focusSessions: (json['focusSessions'] as num?)?.toInt() ?? 0,
+        seeded: json['seeded'] as bool? ?? false,
       );
 
   String encode() => jsonEncode(toJson());

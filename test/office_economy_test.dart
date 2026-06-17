@@ -41,6 +41,19 @@ void main() {
       expect(restored.focusSessions, original.focusSessions);
     });
 
+    test('seedWith records ids without paying and marks seeded', () {
+      final seeded = const OfficeEconomy().seedWith(['a', 'b']);
+      expect(seeded.seeded, isTrue);
+      expect(seeded.coins, 0);
+      expect(seeded.hasCredited('a'), isTrue);
+      expect(seeded.hasCredited('b'), isTrue);
+      // A later real completion still earns.
+      final earned = seeded.earn(10, taskId: 'c');
+      expect(earned.coins, 10);
+      // seeded flag survives a JSON round-trip.
+      expect(OfficeEconomy.decode(earned.encode()).seeded, isTrue);
+    });
+
     test('decode tolerates garbage and empty input', () {
       expect(OfficeEconomy.decode(null).coins, 0);
       expect(OfficeEconomy.decode('').coins, 0);
