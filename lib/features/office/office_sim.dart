@@ -252,6 +252,45 @@ class OfficeSim extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Set false to silence ambient office events (settings/tests).
+  bool eventsEnabled = true;
+  double _eventTimer = 35;
+
+  void _tickEvents(double dt) {
+    if (!eventsEnabled || employees.isEmpty) return;
+    _eventTimer -= dt;
+    if (_eventTimer > 0) return;
+    _eventTimer = 55 + _rng.nextDouble() * 75;
+    triggerRandomEvent();
+  }
+
+  /// Fires one of the little ambient office moments. Cosmetic only — bubbles,
+  /// floating labels and particles; never touches the activity state machine.
+  void triggerRandomEvent() {
+    if (employees.isEmpty) return;
+    switch (_rng.nextInt(5)) {
+      case 0: // rubber-duck debugging
+        _randomEmployee().say('rubber duck time 🦆', 3);
+      case 1: // a delivery arrives at the front door
+        floating(tileCenter(doorTile).translate(0, -10), '📦', ttl: 2.2);
+        _nudge(tileCenter(doorTile), 'delivery! 📦', range: 260);
+      case 2: // Pixel knocks something over
+        floating(cat.pos.translate(0, -10), '🐱💥', ttl: 1.8);
+        cat.say('meo!', 2);
+        particles.emitSteam(cat.pos); // a little puff of "dust"
+      case 3: // someone proposes a coffee run
+        final host = _randomEmployee();
+        host.say('coffee run? ☕', 2.4);
+        _nudge(host.pos, '🙋', range: 120);
+      case 4: // spontaneous brainstorm
+        _randomEmployee().say('💡', 2.2);
+    }
+    notifyListeners();
+  }
+
+  EmployeeRuntime _randomEmployee() =>
+      employees[_rng.nextInt(employees.length)];
+
   void _tickWeather(double dt) {
     _weatherTimer -= dt;
     if (_weatherTimer > 0) return;
@@ -394,6 +433,7 @@ class OfficeSim extends ChangeNotifier {
     _tickCat(dt);
     _tickButterflies(dt);
     _tickWeather(dt);
+    _tickEvents(dt);
     particles.tick(dt);
     if (floatingTexts.isNotEmpty) {
       for (final f in floatingTexts) {

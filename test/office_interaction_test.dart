@@ -85,4 +85,18 @@ void main() {
       expect(e.activity, Activity.walking);
     });
   });
+
+  test('random events fire without throwing and leave a trace', () {
+    final sim = freshSim();
+    var leftMark = false;
+    for (var i = 0; i < 60; i++) {
+      sim.triggerRandomEvent();
+      if (sim.floatingTexts.isNotEmpty ||
+          sim.employees.any((e) => e.bubble != null) ||
+          sim.cat.bubble != null) {
+        leftMark = true;
+      }
+    }
+    expect(leftMark, isTrue);
+  });
 }
