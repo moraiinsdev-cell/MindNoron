@@ -206,4 +206,39 @@ void main() {
     cache.dispose();
     expect(img.width, worldWidth * zoom);
   });
+
+  test('time-of-day lighting renders (morning/day/dusk/night)', () async {
+    final sim = OfficeSim(seed: 7);
+    sim.syncStaff(defaultStaff());
+    sim.placeInitial();
+    // A few workers at desks so monitor glow shows up at night.
+    for (var i = 0; i < 4; i++) {
+      sim.employees[i].activity = Activity.working;
+    }
+    const zoom = 2.0;
+    final cache = SpriteCache();
+    for (final (name, hour) in [
+      ('morning', 7.2),
+      ('day', 13.0),
+      ('dusk', 18.6),
+      ('night', 23.0),
+    ]) {
+      final painter = OfficePainter(
+        sim: sim,
+        cache: cache,
+        zoom: zoom,
+        origin: Offset.zero,
+        hourOverride: hour,
+      );
+      final img = _record(
+        (worldWidth * zoom).toInt(),
+        (worldHeight * zoom).toInt(),
+        (canvas) => painter.paint(
+            canvas, const Size(worldWidth * zoom, worldHeight * zoom)),
+      );
+      await _savePng(img, 'lighting_$name');
+      expect(img.width, worldWidth * zoom);
+    }
+    cache.dispose();
+  });
 }

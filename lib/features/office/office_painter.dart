@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import 'office_lighting.dart';
 import 'office_map.dart';
 import 'office_sim.dart';
 import 'office_sprites.dart';
@@ -21,12 +22,17 @@ class OfficePainter extends CustomPainter {
     required this.cache,
     required this.zoom,
     required this.origin,
+    this.hourOverride,
   }) : super(repaint: sim);
 
   final OfficeSim sim;
   final SpriteCache cache;
   final double zoom;
   final Offset origin;
+
+  /// Forces a specific hour-of-day for lighting (tests/previews). When null
+  /// the real wall clock is used.
+  final double? hourOverride;
 
   static ui.Picture? _staticLayer;
 
@@ -46,14 +52,16 @@ class OfficePainter extends CustomPainter {
     canvas.translate(origin.dx, origin.dy);
     canvas.scale(zoom);
 
+    final sky = hourOverride != null ? SkyLight.at(hourOverride!) : SkyLight.now();
+
     canvas.drawPicture(_staticLayer!);
     _paintWaterShimmer(canvas);
     _paintDynamic(canvas);
     _paintButterflies(canvas);
-    _paintNightGlow(canvas);
+    _paintLighting(canvas, sky);
     canvas.restore();
 
-    _paintTint(canvas);
+    _paintTint(canvas, sky);
     _paintOverlays(canvas);
   }
 
@@ -267,21 +275,47 @@ class OfficePainter extends CustomPainter {
     }
   }
 
-  /// Warm pools of light at the lamps and café counter after dark.
-  void _paintNightGlow(Canvas canvas) {
-    final h = DateTime.now().hour;
-    if (!(h >= 19 || h < 6)) return;
-    const glowPoints = [
-      Offset(2 * 16.0 + 8, 16 * 16.0 + 4), // focus room lamp
-      Offset(19 * 16.0 + 8, 16 * 16.0 + 4), // library lamp
-      Offset(16 * 16.0, 24 * 16.0 + 6), // café counter
-    ];
-    final inner = Paint()..color = const Color(0x2EFFD080);
-    final outer = Paint()..color = const Color(0x16FFD080);
-    for (final g in glowPoints) {
-      canvas.drawCircle(g, 34, outer);
-      canvas.drawCircle(g, 20, inner);
+  // Warm fixtures that glow once it gets dark (lamps, café counter, screens).
+  static const _lampPoints = [
+    Offset(2 * 16.0 + 8, 16 * 16.0 + 4), // focus room lamp
+    Offset(19 * 16.0 + 8, 16 * 16.0 + 4), // library lamp
+    Offset(16 * 16.0, 24 * 16.0 + 6), // café counter
+    Offset(34 * 16.0 + 8, 12 * 16.0), // finance lamp
+  ];
+
+  /// Additive pools of light, scaled by how dark the hour is. Lamps glow
+  /// warm; occupied monitors cast a cool wash so the office reads as "alive"
+  /// at night. Drawn in world space with [BlendMode.plus].
+  void _paintLighting(Canvas canvas, SkyLight sky) {
+    if (sky.darkness <= 0.02) return;
+    final d = sky.darkness;
+
+    for (final g in _lampPoints) {
+      _glow(canvas, g, 38, const Color(0xFFFFD080), 0.30 * d);
     }
+
+    // Cool monitor glow at desks where someone is actually working.
+    for (final e in sim.employees) {
+      if (e.activity != Activity.working) continue;
+      _glow(canvas, Offset(e.pos.dx, e.pos.dy - 6), 18,
+          const Color(0xFF8CC8FF), 0.22 * d);
+    }
+  }
+
+  void _glow(
+      Canvas canvas, Offset center, double radius, Color color, double alpha) {
+    if (alpha <= 0) return;
+    final a = alpha.clamp(0.0, 1.0);
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..blendMode = BlendMode.plus
+        ..shader = ui.Gradient.radial(center, radius, [
+          color.withValues(alpha: a),
+          color.withValues(alpha: 0),
+        ], const [0.0, 1.0]),
+    );
   }
 
   void _paintObject(Canvas canvas, OfficeObject o) {
@@ -414,22 +448,30 @@ class OfficePainter extends CustomPainter {
   // Screen-space layers: tint, room labels, speech bubbles, name tags
   // -------------------------------------------------------------------------
 
-  void _paintTint(Canvas canvas) {
-    final tint = _tintForHour(DateTime.now().hour);
-    if (tint == null) return;
-    canvas.drawRect(
-      Rect.fromLTWH(origin.dx, origin.dy, worldWidth * zoom,
-          worldHeight * zoom),
-      Paint()..color = tint,
-    );
-  }
+  void _paintTint(Canvas canvas, SkyLight sky) {
+    final rect = Rect.fromLTWH(
+        origin.dx, origin.dy, worldWidth * zoom, worldHeight * zoom);
 
-  static Color? _tintForHour(int h) {
-    if (h >= 22 || h < 6) return const Color(0x3D1E3050); // deep night
-    if (h >= 19) return const Color(0x2A283C5C); // evening
-    if (h >= 17) return const Color(0x1ED08438); // golden hour
-    if (h < 8) return const Color(0x14E8B860); // early morning
-    return null;
+    // Smooth time-of-day colour wash.
+    if (sky.tint.a > 0) {
+      canvas.drawRect(rect, Paint()..color = sky.tint);
+    }
+
+    // Subtle vignette for depth — always on, a touch heavier at night.
+    final vignette = 0.16 + 0.22 * sky.darkness;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = ui.Gradient.radial(
+          rect.center,
+          rect.longestSide * 0.62,
+          [
+            const Color(0x00000000),
+            Color.fromRGBO(8, 6, 18, vignette),
+          ],
+          const [0.62, 1.0],
+        ),
+    );
   }
 
   Offset _toScreen(Offset world) => origin + world * zoom;
