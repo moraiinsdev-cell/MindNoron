@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/enums.dart';
 import '../../data/database/app_database.dart';
 import '../../data/repositories/task_repository.dart';
+import '../timer/timer_controller.dart';
 import 'office_camera.dart';
 import 'office_catalog.dart';
 import 'office_economy.dart';
@@ -97,6 +99,13 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
     // Player-placed furniture layout.
     final layout = ref.watch(officeLayoutProvider).valueOrNull;
     if (layout != null) _sim.syncLayout(layout);
+
+    // Mirror a real focus session as office "deep work" mode.
+    final timer = ref.watch(timerControllerProvider);
+    final focusing = timer.isActive &&
+        timer.isRunning &&
+        timer.type == SessionType.work;
+    _sim.setFocusMode(focusing);
   }
 
   /// Coin payout for a completed task: a base, plus a priority bonus
@@ -287,6 +296,7 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
                         placingItem:
                             _placingId == null ? null : catalogItem(_placingId!),
                         ghostTile: _buildMode ? _ghostTile : null,
+                        focusMode: _sim.focusMode,
                       ),
                     ),
                   ),

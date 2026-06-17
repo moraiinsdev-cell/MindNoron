@@ -340,4 +340,30 @@ void main() {
     cache.dispose();
     expect(sim.placedItems.length, 3);
   });
+
+  test('focus mode renders deep-work overlay', () async {
+    final sim = OfficeSim(seed: 7);
+    sim.syncStaff(defaultStaff());
+    sim.placeInitial();
+    sim.setFocusMode(true);
+    const zoom = 2.0;
+    final cache = SpriteCache();
+    final painter = OfficePainter(
+      sim: sim,
+      cache: cache,
+      zoom: zoom,
+      origin: Offset.zero,
+      hourOverride: 14.0,
+      focusMode: true,
+    );
+    final img = _record(
+      (worldWidth * zoom).toInt(),
+      (worldHeight * zoom).toInt(),
+      (canvas) => painter.paint(
+          canvas, const Size(worldWidth * zoom, worldHeight * zoom)),
+    );
+    await _savePng(img, 'focus_mode');
+    cache.dispose();
+    expect(sim.focusMode, isTrue);
+  });
 }

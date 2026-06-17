@@ -29,6 +29,7 @@ class OfficePainter extends CustomPainter {
     this.buildMode = false,
     this.placingItem,
     this.ghostTile,
+    this.focusMode = false,
   }) : super(repaint: sim);
 
   final OfficeSim sim;
@@ -44,6 +45,9 @@ class OfficePainter extends CustomPainter {
   final bool buildMode;
   final CatalogItem? placingItem;
   final Point<int>? ghostTile;
+
+  /// Deep-work overlay (driven by a real focus session).
+  final bool focusMode;
 
   static ui.Picture? _staticLayer;
 
@@ -76,7 +80,36 @@ class OfficePainter extends CustomPainter {
 
     _paintTint(canvas, sky);
     _paintWeather(canvas);
+    if (focusMode) _paintFocusMode(canvas);
     _paintOverlays(canvas);
+  }
+
+  /// A calm dim plus a "Deep work" banner while a focus session runs.
+  void _paintFocusMode(Canvas canvas) {
+    final rect = Rect.fromLTWH(
+        origin.dx, origin.dy, worldWidth * zoom, worldHeight * zoom);
+    canvas.drawRect(rect, Paint()..color = const Color(0x33101626));
+
+    final tp = TextPainter(
+      text: const TextSpan(
+        text: '🎯  Deep work in progress',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFFEFE9DD),
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    const pad = Offset(12, 7);
+    final bannerW = tp.width + pad.dx * 2;
+    final bannerRect = Rect.fromLTWH(
+        rect.center.dx - bannerW / 2, rect.top + 14, bannerW, tp.height + pad.dy * 2);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(bannerRect, const Radius.circular(8)),
+      Paint()..color = const Color(0xCC1C2436),
+    );
+    tp.paint(canvas, bannerRect.topLeft + pad);
   }
 
   /// Rain over the outdoor garden (screen space, clipped to the grass). Indoor
@@ -794,5 +827,6 @@ class OfficePainter extends CustomPainter {
       oldDelegate.sim != sim ||
       oldDelegate.buildMode != buildMode ||
       oldDelegate.placingItem != placingItem ||
-      oldDelegate.ghostTile != ghostTile;
+      oldDelegate.ghostTile != ghostTile ||
+      oldDelegate.focusMode != focusMode;
 }

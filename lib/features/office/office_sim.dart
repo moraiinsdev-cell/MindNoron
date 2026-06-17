@@ -328,6 +328,33 @@ class OfficeSim extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Deep-work mode: mirrors a real focus session. Everyone stays at their
+  /// desks (leisure/breaks suppressed) and the canvas dims.
+  bool focusMode = false;
+
+  /// Enters/leaves deep-work mode. Entering rallies everyone to a desk;
+  /// leaving throws a little celebration.
+  void setFocusMode(bool on) {
+    if (on == focusMode) return;
+    focusMode = on;
+    if (on) {
+      for (final e in employees) {
+        if (e.activity == Activity.dragged) continue;
+        if (e.activity == Activity.chatting) _endChat(e);
+        _freeSpot(e);
+        _sendToDesk(e);
+      }
+      logEvent('🎯 Deep work — focus session started');
+    } else {
+      for (final e in employees.take(3)) {
+        particles.confetti(Offset(e.pos.dx, e.pos.dy - 18), count: 10);
+        e.say('🎉', 2);
+      }
+      logEvent('✅ Focus session complete — great work!');
+    }
+    notifyListeners();
+  }
+
   /// Set false to silence ambient office events (settings/tests).
   bool eventsEnabled = true;
   double _eventTimer = 35;
@@ -740,12 +767,13 @@ class OfficeSim extends ChangeNotifier {
             : _workPhrases[_rng.nextInt(_workPhrases.length)]);
       }
     }
-    if (e.leisureTimer <= 0) {
+    if (!focusMode && e.leisureTimer <= 0) {
       e.leisureTimer = 130 + _rng.nextDouble() * 160;
       _goLeisure(e);
       return;
     }
-    if (e.energy < 0.22 + _rng.nextDouble() * 0.06 &&
+    if (!focusMode &&
+        e.energy < 0.22 + _rng.nextDouble() * 0.06 &&
         e.coffeeCooldown <= 0) {
       final wantsCoffee = _rng.nextDouble() < 0.6 * p.coffeeLove;
       if (wantsCoffee) {

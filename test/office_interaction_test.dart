@@ -129,6 +129,42 @@ void main() {
     });
   });
 
+  group('focus mode', () {
+    test('entering rallies everyone to work and logs it', () {
+      final sim = freshSim();
+      // Scatter a couple to leisure first.
+      sim.employees[2].activity = Activity.sofa;
+      sim.employees[3].activity = Activity.gym;
+      sim.setFocusMode(true);
+      expect(sim.focusMode, isTrue);
+      // Nobody is left lounging/working-out; they head to or sit at desks.
+      expect(
+        sim.employees.every((e) =>
+            e.activity != Activity.sofa && e.activity != Activity.gym),
+        isTrue,
+      );
+      expect(sim.eventLog.first.text, contains('Deep work'));
+    });
+
+    test('working employees skip leisure while focused', () {
+      final sim = freshSim();
+      final e = sim.employees.first;
+      e.activity = Activity.working;
+      sim.focusMode = true;
+      e.leisureTimer = 0; // would normally trigger a break
+      sim.tick(0.1);
+      expect(e.activity, Activity.working); // stayed put
+    });
+
+    test('leaving focus mode celebrates', () {
+      final sim = freshSim();
+      sim.setFocusMode(true);
+      sim.setFocusMode(false);
+      expect(sim.focusMode, isFalse);
+      expect(sim.particles.particles, isNotEmpty); // confetti
+    });
+  });
+
   test('event log keeps newest first and is capped', () {
     final sim = freshSim();
     for (var i = 0; i < 40; i++) {
