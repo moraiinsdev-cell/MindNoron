@@ -582,24 +582,61 @@ class _EmployeeProfileState extends ConsumerState<_EmployeeProfile> {
           onChanged: (taskId) =>
               ref.read(officeRepositoryProvider).pinTask(spec.id, taskId),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
+        Text('God powers',
+            style: theme.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => sim.commandCoffee(spec.id),
-                icon: const Text('☕'),
-                label: const Text('Coffee'),
+              child: FilledButton.tonalIcon(
+                onPressed: () {
+                  sim.commandPraise(spec.id);
+                  ref.read(officeSfxProvider).play(OfficeSfxCue.celebrate);
+                },
+                icon: const Text('❤️'),
+                label: const Text('Praise'),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => sim.commandWork(spec.id),
-                icon: const Text('💼'),
-                label: const Text('To work'),
+              child: FilledButton.tonalIcon(
+                onPressed: () {
+                  sim.commandMotivate(spec.id);
+                  ref.read(officeSfxProvider).play(OfficeSfxCue.coin);
+                },
+                icon: const Text('⚡'),
+                label: const Text('Motivate'),
               ),
             ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _SendChip(emoji: '☕', label: 'Coffee', onTap: () {
+              sim.commandCoffee(spec.id);
+              ref.read(officeSfxProvider).play(OfficeSfxCue.coffee);
+            }),
+            _SendChip(
+                emoji: '💼',
+                label: 'Desk',
+                onTap: () => sim.commandWork(spec.id)),
+            _SendChip(
+                emoji: '🏋️',
+                label: 'Gym',
+                onTap: () => sim.commandGym(spec.id)),
+            _SendChip(emoji: '🏊', label: 'Pool', onTap: () {
+              sim.commandPool(spec.id);
+              ref.read(officeSfxProvider).play(OfficeSfxCue.splash);
+            }),
+            _SendChip(
+                emoji: '🛋️',
+                label: 'Lounge',
+                onTap: () => sim.commandLounge(spec.id)),
           ],
         ),
         const SizedBox(height: 20),
@@ -637,6 +674,25 @@ class _EmployeeProfileState extends ConsumerState<_EmployeeProfile> {
     if (confirmed == true) {
       await ref.read(officeRepositoryProvider).fire(spec.id);
     }
+  }
+}
+
+class _SendChip extends StatelessWidget {
+  const _SendChip(
+      {required this.emoji, required this.label, required this.onTap});
+
+  final String emoji;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionChip(
+      avatar: Text(emoji, style: const TextStyle(fontSize: 13)),
+      label: Text(label),
+      onPressed: onTap,
+      visualDensity: VisualDensity.compact,
+    );
   }
 }
 

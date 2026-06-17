@@ -57,4 +57,32 @@ void main() {
     expect(objectAt(const Point(1, 2)), isNotNull); // corridor plant
     expect(objectAt(const Point(5, 5)), isNull); // open floor
   });
+
+  group('god powers', () {
+    test('praise lifts social and showers hearts', () {
+      final sim = freshSim();
+      final e = sim.employees.first;
+      e.social = 0.2;
+      sim.commandPraise(e.spec.id);
+      expect(e.social, greaterThan(0.2));
+      expect(sim.floatingTexts.where((f) => f.text == '❤️'), isNotEmpty);
+      expect(sim.particles.particles, isNotEmpty);
+    });
+
+    test('motivate refills energy', () {
+      final sim = freshSim();
+      final e = sim.employees.first;
+      e.energy = 0.1;
+      sim.commandMotivate(e.spec.id);
+      expect(e.energy, greaterThan(0.4));
+    });
+
+    test('commandPool sends the employee walking toward the pool', () {
+      final sim = freshSim();
+      final e = sim.employees.first;
+      sim.commandPool(e.spec.id);
+      expect(e.goal, Goal.swim);
+      expect(e.activity, Activity.walking);
+    });
+  });
 }

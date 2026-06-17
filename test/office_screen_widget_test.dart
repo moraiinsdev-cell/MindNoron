@@ -73,8 +73,10 @@ void main() {
     // Panel commands route through the sim without throwing.
     await tester.tap(find.text('Coffee'));
     await tester.pump(const Duration(seconds: 2));
-    await tester.tap(find.text('To work'));
+    await tester.tap(find.text('Desk'));
     await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.text('Praise'));
+    await tester.pump(const Duration(milliseconds: 400));
 
     // Let the simulation run a while longer — nothing should throw while
     // employees walk, chat and take breaks.

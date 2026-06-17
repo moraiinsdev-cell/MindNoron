@@ -1263,6 +1263,69 @@ class OfficeSim extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Sends the employee to the gym (panel button).
+  void commandGym(String id) {
+    final e = byId(id);
+    if (e == null || e.activity == Activity.dragged) return;
+    if (e.activity == Activity.chatting) _endChat(e);
+    _freeSpot(e);
+    final spot = _freeSpotFrom(workoutSpots) ?? workoutSpots.first;
+    e.spotTarget = spot;
+    _sendTo(e, spot, Goal.gym);
+    notifyListeners();
+  }
+
+  /// Sends the employee for a swim (panel button).
+  void commandPool(String id) {
+    final e = byId(id);
+    if (e == null || e.activity == Activity.dragged) return;
+    if (e.activity == Activity.chatting) _endChat(e);
+    _freeSpot(e);
+    _sendTo(e, swimEntry, Goal.swim);
+    notifyListeners();
+  }
+
+  /// Sends the employee to lounge on a sofa (panel button).
+  void commandLounge(String id) {
+    final e = byId(id);
+    if (e == null || e.activity == Activity.dragged) return;
+    if (e.activity == Activity.chatting) _endChat(e);
+    _freeSpot(e);
+    if (!_trySeat(e, sofaSeats, SeatKind.sofa, Goal.sofa)) {
+      _sendTo(e, wanderSpots[_rng.nextInt(wanderSpots.length)], Goal.wander);
+    }
+    notifyListeners();
+  }
+
+  static const _praiseLines = ['❤️', '🥹', 'thank you!', '🙏', 'aw shucks'];
+  static const _motivateLines = ['💪', '🔥', "let's go!", '⚡', 'on it!'];
+
+  /// A morale boost: lifts social/energy, showers hearts and confetti.
+  void commandPraise(String id) {
+    final e = byId(id);
+    if (e == null) return;
+    e.social = (e.social + 0.3).clamp(0.0, 1.0);
+    e.energy = (e.energy + 0.12).clamp(0.0, 1.0);
+    e.say(_praiseLines[_rng.nextInt(_praiseLines.length)], 2.2);
+    for (var i = 0; i < 3; i++) {
+      floating(Offset(e.pos.dx + (i - 1) * 7, e.pos.dy - 16), '❤️',
+          ttl: 1.5, color: const Color(0xFFE85C6A));
+    }
+    particles.confetti(Offset(e.pos.dx, e.pos.dy - 18), count: 12);
+    notifyListeners();
+  }
+
+  /// An energy jolt: refills the battery and fires them up.
+  void commandMotivate(String id) {
+    final e = byId(id);
+    if (e == null) return;
+    e.energy = (e.energy + 0.35).clamp(0.0, 1.0);
+    e.say(_motivateLines[_rng.nextInt(_motivateLines.length)], 2.0);
+    floating(Offset(e.pos.dx, e.pos.dy - 16), '⚡',
+        ttl: 1.3, color: const Color(0xFFFFD24A));
+    notifyListeners();
+  }
+
   // -------------------------------------------------------------------------
   // Task helpers & status strings
   // -------------------------------------------------------------------------
