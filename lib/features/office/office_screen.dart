@@ -1,11 +1,13 @@
 import 'dart:math';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/repositories/task_repository.dart';
+import 'office_camera.dart';
 import 'office_map.dart';
 import 'office_models.dart';
 import 'office_painter.dart';
@@ -32,11 +34,11 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
   Duration _lastTick = Duration.zero;
   bool _placed = false;
 
-  // Canvas transform of the latest layout pass (for pointer mapping).
-  double _zoom = 1;
-  Offset _origin = Offset.zero;
+  // Camera owns the screen<->world transform (auto-fit + player zoom/pan).
+  final OfficeCamera _camera = OfficeCamera();
 
   String? _draggingId;
+  bool _panning = false;
   bool _hoveringEmployee = false;
 
   @override
@@ -61,7 +63,7 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
     super.dispose();
   }
 
-  Offset _toWorld(Offset local) => (local - _origin) / _zoom;
+  Offset _toWorld(Offset local) => _camera.toWorld(local);
 
   void _syncFromProviders() {
     final staff = ref.watch(officeStaffProvider).valueOrNull;
@@ -103,76 +105,89 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
         builder: (context, constraints) {
           final w = constraints.maxWidth;
           final h = constraints.maxHeight;
-          // Fill the canvas: integer scale when generous, otherwise snap to
-          // quarter steps so the campus never renders postage-stamp small.
-          var zoom = min(w / worldWidth, h / worldHeight);
-          zoom = zoom >= 3
-              ? zoom.floorToDouble()
-              : max(0.75, (zoom * 4).floorToDouble() / 4);
-          _zoom = zoom;
-          _origin = Offset(
-            (w - worldWidth * zoom) / 2,
-            (h - worldHeight * zoom) / 2,
-          );
+          _camera.fit(Size(w, h), worldWidth.toDouble(), worldHeight.toDouble());
 
           return Stack(
             children: [
-              MouseRegion(
-                cursor: _draggingId != null
-                    ? SystemMouseCursors.grabbing
-                    : _hoveringEmployee
-                        ? SystemMouseCursors.grab
-                        : MouseCursor.defer,
-                onHover: (event) {
-                  final hit = _sim.hitTest(_toWorld(event.localPosition));
-                  if ((hit != null) != _hoveringEmployee) {
-                    setState(() => _hoveringEmployee = hit != null);
+              Listener(
+                onPointerSignal: (signal) {
+                  if (signal is PointerScrollEvent) {
+                    final factor =
+                        signal.scrollDelta.dy < 0 ? 1.12 : 1 / 1.12;
+                    setState(() => _camera.zoomAt(signal.localPosition, factor));
                   }
                 },
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTapDown: (d) {
-                    final world = _toWorld(d.localPosition);
-                    final hit = _sim.hitTest(world);
-                    if (hit == null && _sim.hitTestCat(world)) {
-                      _sim.petCat();
-                      return;
-                    }
-                    _sim.select(hit?.spec.id);
-                  },
-                  onPanStart: (d) {
-                    final hit = _sim.hitTest(_toWorld(d.localPosition));
-                    if (hit != null) {
-                      _draggingId = hit.spec.id;
-                      _sim.beginDrag(hit.spec.id);
-                      setState(() {});
+                child: MouseRegion(
+                  cursor: _draggingId != null
+                      ? SystemMouseCursors.grabbing
+                      : _panning
+                          ? SystemMouseCursors.move
+                          : _hoveringEmployee
+                              ? SystemMouseCursors.grab
+                              : MouseCursor.defer,
+                  onHover: (event) {
+                    final hit = _sim.hitTest(_toWorld(event.localPosition));
+                    if ((hit != null) != _hoveringEmployee) {
+                      setState(() => _hoveringEmployee = hit != null);
                     }
                   },
-                  onPanUpdate: (d) {
-                    final id = _draggingId;
-                    if (id != null) {
-                      _sim.dragTo(id, _toWorld(d.localPosition));
-                    }
-                  },
-                  onPanEnd: (_) => _endDrag(),
-                  onPanCancel: _endDrag,
-                  child: CustomPaint(
-                    size: Size(w, h),
-                    painter: OfficePainter(
-                      sim: _sim,
-                      cache: _cache,
-                      zoom: zoom,
-                      origin: _origin,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapDown: (d) {
+                      final world = _toWorld(d.localPosition);
+                      final hit = _sim.hitTest(world);
+                      if (hit == null && _sim.hitTestCat(world)) {
+                        _sim.petCat();
+                        return;
+                      }
+                      _sim.select(hit?.spec.id);
+                    },
+                    onPanStart: (d) {
+                      final hit = _sim.hitTest(_toWorld(d.localPosition));
+                      if (hit != null) {
+                        _draggingId = hit.spec.id;
+                        _sim.beginDrag(hit.spec.id);
+                        setState(() {});
+                      } else if (_camera.canPan) {
+                        setState(() => _panning = true);
+                      }
+                    },
+                    onPanUpdate: (d) {
+                      final id = _draggingId;
+                      if (id != null) {
+                        _sim.dragTo(id, _toWorld(d.localPosition));
+                      } else if (_panning) {
+                        setState(() => _camera.panBy(d.delta));
+                      }
+                    },
+                    onPanEnd: (_) => _endDrag(),
+                    onPanCancel: _endDrag,
+                    child: CustomPaint(
+                      size: Size(w, h),
+                      painter: OfficePainter(
+                        sim: _sim,
+                        cache: _cache,
+                        zoom: _camera.zoom,
+                        origin: _camera.origin,
+                      ),
                     ),
                   ),
                 ),
               ),
+              if (_camera.canPan)
+                Positioned(
+                  right: 12,
+                  top: 12,
+                  child: _CameraResetButton(onTap: () {
+                    setState(() => _camera.reset());
+                  }),
+                ),
               Positioned(
                 left: 12,
                 bottom: 10,
                 child: IgnorePointer(
                   child: Text(
-                    'Click an employee to inspect · drag to play God ✋',
+                    'Click to inspect · drag to play God · scroll to zoom ✋',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: Colors.white.withValues(alpha: 0.45),
                     ),
@@ -191,7 +206,32 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
     if (id != null) {
       _sim.drop(id);
       setState(() => _draggingId = null);
+    } else if (_panning) {
+      setState(() => _panning = false);
     }
+  }
+}
+
+/// Small floating button that returns the camera to the fitted view.
+class _CameraResetButton extends StatelessWidget {
+  const _CameraResetButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.45),
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: const Padding(
+          padding: EdgeInsets.all(8),
+          child: Icon(Icons.zoom_out_map, size: 18, color: Colors.white),
+        ),
+      ),
+    );
   }
 }
 
