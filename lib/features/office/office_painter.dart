@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'office_lighting.dart';
 import 'office_map.dart';
+import 'office_particles.dart';
 import 'office_sim.dart';
 import 'office_sprites.dart';
 import 'pixel_art.dart';
@@ -58,6 +59,7 @@ class OfficePainter extends CustomPainter {
     _paintWaterShimmer(canvas);
     _paintDynamic(canvas);
     _paintButterflies(canvas);
+    _paintParticles(canvas);
     _paintLighting(canvas, sky);
     canvas.restore();
 
@@ -282,6 +284,45 @@ class OfficePainter extends CustomPainter {
     Offset(16 * 16.0, 24 * 16.0 + 6), // café counter
     Offset(34 * 16.0 + 8, 12 * 16.0), // finance lamp
   ];
+
+  void _paintParticles(Canvas canvas) {
+    final p = Paint()..isAntiAlias = false;
+    for (final pt in sim.particles.particles) {
+      final fade = (pt.life / pt.maxLife).clamp(0.0, 1.0);
+      switch (pt.kind) {
+        case ParticleKind.steam:
+          // Soft, expanding, fading upward wisp (additive).
+          final r = pt.size + pt.t * 2.5;
+          p
+            ..blendMode = BlendMode.plus
+            ..color = pt.color.withValues(alpha: 0.30 * (1 - pt.t));
+          canvas.drawCircle(pt.pos, r, p);
+          p.blendMode = BlendMode.srcOver;
+        case ParticleKind.dust:
+          p.color = pt.color
+              .withValues(alpha: 0.5 * sin(fade * pi).clamp(0.0, 1.0));
+          canvas.drawRect(
+              Rect.fromLTWH(pt.pos.dx, pt.pos.dy, pt.size, pt.size), p);
+        case ParticleKind.petal:
+          p.color = pt.color.withValues(alpha: fade.clamp(0.0, 1.0));
+          canvas.drawRect(
+              Rect.fromLTWH(pt.pos.dx, pt.pos.dy, pt.size, pt.size), p);
+        case ParticleKind.confetti:
+          p.color = pt.color.withValues(alpha: fade.clamp(0.0, 1.0));
+          // A spinning sliver — width/height swap by phase for flutter.
+          final flip = sin((pt.t + pt.seed) * 12) > 0;
+          canvas.drawRect(
+            Rect.fromLTWH(pt.pos.dx, pt.pos.dy, flip ? pt.size : pt.size * 0.5,
+                flip ? pt.size * 0.5 : pt.size),
+            p,
+          );
+        case ParticleKind.splash:
+          p.color = pt.color.withValues(alpha: fade.clamp(0.0, 1.0));
+          canvas.drawRect(
+              Rect.fromLTWH(pt.pos.dx, pt.pos.dy, pt.size, pt.size), p);
+      }
+    }
+  }
 
   /// Additive pools of light, scaled by how dark the hour is. Lamps glow
   /// warm; occupied monitors cast a cool wash so the office reads as "alive"

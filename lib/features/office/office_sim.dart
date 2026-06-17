@@ -5,6 +5,7 @@ import 'package:flutter/painting.dart';
 
 import 'office_map.dart';
 import 'office_models.dart';
+import 'office_particles.dart';
 import 'office_sprites.dart';
 
 enum Facing { down, up, left, right }
@@ -216,6 +217,7 @@ class OfficeSim extends ChangeNotifier {
   final employees = <EmployeeRuntime>[];
   final cat = OfficeCat();
   final butterflies = <Butterfly>[];
+  late final particles = ParticleField(_rng);
   final _usedChatSpots = <int>{};
 
   String? selectedId;
@@ -313,9 +315,14 @@ class OfficeSim extends ChangeNotifier {
         case Activity.walking:
           _tickWalking(e, dt);
         case Activity.coffee:
+        case Activity.cafe:
+          _tickRefreshment(e, dt);
+          // A wisp of steam from the fresh cup.
+          if (_rng.nextDouble() < dt * 3.5) {
+            particles.emitSteam(Offset(e.pos.dx, e.pos.dy - 12));
+          }
         case Activity.water:
         case Activity.snack:
-        case Activity.cafe:
           _tickRefreshment(e, dt);
         case Activity.sofa:
         case Activity.sunbathe:
@@ -342,6 +349,7 @@ class OfficeSim extends ChangeNotifier {
     _matchmakeChats();
     _tickCat(dt);
     _tickButterflies(dt);
+    particles.tick(dt);
     notifyListeners();
   }
 

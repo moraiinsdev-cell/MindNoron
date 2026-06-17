@@ -241,4 +241,44 @@ void main() {
     }
     cache.dispose();
   });
+
+  test('particles render (steam, dust, petals, confetti, splash)', () async {
+    final sim = OfficeSim(seed: 7);
+    sim.syncStaff(defaultStaff());
+    sim.placeInitial();
+    // Two coffee drinkers so steam puffs spawn during the warm-up.
+    sim.employees[0].activity = Activity.coffee;
+    sim.employees[0].pos = tileCenter(const Point(15, 25));
+    sim.employees[1].activity = Activity.cafe;
+    sim.employees[1].pos = tileCenter(const Point(24, 28));
+    // Warm up ambient emitters (dust + petals).
+    for (var i = 0; i < 120; i++) {
+      sim.tick(0.05);
+    }
+    // Stage one-off effects.
+    sim.particles.confetti(const Offset(20 * 16.0, 8 * 16.0));
+    sim.particles.splash(const Offset(47 * 16.0, 10 * 16.0));
+    for (var i = 0; i < 6; i++) {
+      sim.particles.emitSteam(const Offset(15 * 16.0, 24 * 16.0));
+    }
+
+    const zoom = 2.0;
+    final cache = SpriteCache();
+    final painter = OfficePainter(
+      sim: sim,
+      cache: cache,
+      zoom: zoom,
+      origin: Offset.zero,
+      hourOverride: 13.0,
+    );
+    final img = _record(
+      (worldWidth * zoom).toInt(),
+      (worldHeight * zoom).toInt(),
+      (canvas) => painter.paint(
+          canvas, const Size(worldWidth * zoom, worldHeight * zoom)),
+    );
+    await _savePng(img, 'particles');
+    cache.dispose();
+    expect(sim.particles.particles, isNotEmpty);
+  });
 }
