@@ -444,6 +444,19 @@ DropKind? dropTargetAt(Point<int> tile) {
   return null;
 }
 
+/// The furniture object whose footprint covers [tile], if any (topmost wins).
+OfficeObject? objectAt(Point<int> tile) {
+  for (final o in officeObjects) {
+    if (tile.x >= o.tx &&
+        tile.x < o.tx + o.tw &&
+        tile.y >= o.ty &&
+        tile.y < o.ty + o.th) {
+      return o;
+    }
+  }
+  return null;
+}
+
 /// Finds the seat covering [tile] in [seats] (seat tile or its approach).
 int? seatIndexAt(List<Seat> seats, Point<int> tile) {
   for (var i = 0; i < seats.length; i++) {

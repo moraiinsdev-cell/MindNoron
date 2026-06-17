@@ -161,6 +161,23 @@ enum CatState { wandering, sitting, sleeping }
 /// garden and a slight mood shift; never affects the simulation.
 enum OfficeWeather { clear, rain }
 
+/// The result of poking an object on the floor, so the screen can play a
+/// matching sound effect.
+enum PokeKind { none, splash, coffee, drink, snack, plant, books, tech, generic }
+
+/// A short-lived label that floats up and fades over the world (object pokes,
+/// "+coins", event banners).
+class FloatingText {
+  FloatingText(this.pos, this.text, this.ttl, {this.color, this.rise = 14})
+      : maxTtl = ttl;
+  final Offset pos;
+  final String text;
+  double ttl;
+  final double maxTtl;
+  final Color? color;
+  final double rise;
+}
+
 /// Pixel, the office cat. Fully autonomous; click her for a meow.
 class OfficeCat {
   Offset pos = Offset.zero;
@@ -222,6 +239,7 @@ class OfficeSim extends ChangeNotifier {
   final cat = OfficeCat();
   final butterflies = <Butterfly>[];
   late final particles = ParticleField(_rng);
+  final floatingTexts = <FloatingText>[];
   final _usedChatSpots = <int>{};
 
   /// Current outdoor weather (cosmetic). Recomputed on a slow timer.
@@ -377,6 +395,12 @@ class OfficeSim extends ChangeNotifier {
     _tickButterflies(dt);
     _tickWeather(dt);
     particles.tick(dt);
+    if (floatingTexts.isNotEmpty) {
+      for (final f in floatingTexts) {
+        f.ttl -= dt;
+      }
+      floatingTexts.removeWhere((f) => f.ttl <= 0);
+    }
     notifyListeners();
   }
 
@@ -457,6 +481,85 @@ class OfficeSim extends ChangeNotifier {
       cat.timer = 4;
     }
     notifyListeners();
+  }
+
+  /// Adds a floating label over the world.
+  void floating(Offset pos, String text, {Color? color, double ttl = 1.4}) {
+    floatingTexts.add(FloatingText(pos, text, ttl, color: color));
+  }
+
+  static const _pokeLines = ['hmm?', '✨', 'ooh', '👀', 'shiny', '*tap*'];
+
+  /// The screen pokes whatever is on [world] (not an employee or the cat).
+  /// Produces a little reaction and returns its kind so the UI can play a
+  /// matching sound. Returns [PokeKind.none] for empty floor.
+  PokeKind pokeAt(Offset world) {
+    final tile = tileAt(world);
+
+    if (isPoolTile(tile)) {
+      particles.splash(world);
+      floating(world.translate(0, -6), '💦');
+      notifyListeners();
+      return PokeKind.splash;
+    }
+
+    // Café counter — fresh brew.
+    if ((tile.y == 24 || tile.y == 25) && tile.x >= 15 && tile.x <= 16) {
+      final at = tileCenter(coffeeSpot).translate(0, -8);
+      for (var i = 0; i < 4; i++) {
+        particles.emitSteam(at);
+      }
+      floating(at, '☕');
+      _nudge(at, '☕?');
+      notifyListeners();
+      return PokeKind.coffee;
+    }
+    if ((tile.y == 24 || tile.y == 25) && tile.x == 20) {
+      floating(tileCenter(waterSpot).translate(0, -8), '💧');
+      notifyListeners();
+      return PokeKind.drink;
+    }
+    if ((tile.y == 24 || tile.y == 25) && (tile.x == 18 || tile.x == 26)) {
+      floating(tileCenter(tile).translate(0, -8), '🍫');
+      notifyListeners();
+      return PokeKind.snack;
+    }
+
+    final o = objectAt(tile);
+    if (o != null) {
+      final at = Offset(o.tx * 16 + o.tw * 8, o.ty * 16.0);
+      final s = o.sprite;
+      final (text, kind) = (s == plantSprite || s == bonsaiSprite)
+          ? ('🌱', PokeKind.plant)
+          : (s == bookshelfSprite || s == mailShelfSprite)
+              ? ('📚', PokeKind.books)
+              : (s == serverRackSprite ||
+                      s == printerSprite ||
+                      s == vendingSprite ||
+                      s == safeSprite)
+                  ? ('🔧', PokeKind.tech)
+                  : (_pokeLines[_rng.nextInt(_pokeLines.length)],
+                      PokeKind.generic);
+      floating(at, text);
+      notifyListeners();
+      return kind;
+    }
+    return PokeKind.none;
+  }
+
+  /// The nearest non-dragged employee within range glances over and reacts.
+  void _nudge(Offset at, String text, {double range = 150}) {
+    EmployeeRuntime? best;
+    var bestD = double.infinity;
+    for (final e in employees) {
+      if (e.activity == Activity.dragged) continue;
+      final d = (e.pos - at).distance;
+      if (d < bestD) {
+        bestD = d;
+        best = e;
+      }
+    }
+    if (best != null && bestD <= range) best.say(text, 1.6);
   }
 
   void _tickButterflies(double dt) {

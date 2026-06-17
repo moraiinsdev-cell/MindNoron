@@ -140,11 +140,19 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
                     onTapDown: (d) {
                       final world = _toWorld(d.localPosition);
                       final hit = _sim.hitTest(world);
-                      if (hit == null && _sim.hitTestCat(world)) {
-                        _sim.petCat();
+                      if (hit != null) {
+                        _sim.select(hit.spec.id);
                         return;
                       }
-                      _sim.select(hit?.spec.id);
+                      if (_sim.hitTestCat(world)) {
+                        _sim.petCat();
+                        _sim.select(null);
+                        return;
+                      }
+                      // Poke whatever object is there; deselect on empty floor.
+                      final poke = _sim.pokeAt(world);
+                      _playPoke(poke);
+                      if (poke == PokeKind.none) _sim.select(null);
                     },
                     onPanStart: (d) {
                       final hit = _sim.hitTest(_toWorld(d.localPosition));
@@ -203,6 +211,25 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
         },
       ),
     );
+  }
+
+  void _playPoke(PokeKind kind) {
+    final sfx = ref.read(officeSfxProvider);
+    switch (kind) {
+      case PokeKind.none:
+        return;
+      case PokeKind.splash:
+        sfx.play(OfficeSfxCue.splash);
+      case PokeKind.coffee:
+        sfx.play(OfficeSfxCue.coffee);
+      case PokeKind.drink:
+      case PokeKind.snack:
+      case PokeKind.plant:
+      case PokeKind.books:
+      case PokeKind.tech:
+      case PokeKind.generic:
+        sfx.play(OfficeSfxCue.click);
+    }
   }
 
   void _endDrag() {

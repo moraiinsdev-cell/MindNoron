@@ -579,6 +579,16 @@ class OfficePainter extends CustomPainter {
       tp.paint(canvas, anchor);
     }
 
+    // Floating labels (object pokes, +coins, banners).
+    for (final f in sim.floatingTexts) {
+      final progress = 1 - (f.ttl / f.maxTtl);
+      final fade = (f.ttl / 0.5).clamp(0.0, 1.0);
+      final at = _toScreen(
+          Offset(f.pos.dx, f.pos.dy - 8 - progress * f.rise));
+      _paintFloating(canvas, at, f.text, f.color ?? const Color(0xFFFFFDF6),
+          fade);
+    }
+
     final cat = sim.cat;
     if (cat.bubble != null && cat.bubbleTtl > 0) {
       _paintBubble(
@@ -646,6 +656,36 @@ class OfficePainter extends CustomPainter {
         Rect.fromLTWH(anchor.dx - 3.4, rect.bottom - 1.6, 6.8, 1.8), fill);
 
     tp.paint(canvas, rect.topLeft.translate(6, 4));
+  }
+
+  void _paintFloating(
+      Canvas canvas, Offset center, String text, Color color, double fade) {
+    final tp = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          color: color.withValues(alpha: fade),
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final origin = center.translate(-tp.width / 2, -tp.height / 2);
+    // Drop shadow for legibility over any floor.
+    final shadow = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          color: const Color(0xFF1A1622).withValues(alpha: 0.5 * fade),
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    shadow.paint(canvas, origin.translate(0.8, 0.8));
+    tp.paint(canvas, origin);
   }
 
   void _paintNameTag(Canvas canvas, Offset anchor, String name) {
