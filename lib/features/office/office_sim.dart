@@ -167,6 +167,13 @@ enum OfficeWeather { clear, rain }
 /// matching sound effect.
 enum PokeKind { none, splash, coffee, drink, snack, plant, books, tech, generic }
 
+/// One line in the office activity feed.
+class OfficeLogEntry {
+  OfficeLogEntry(this.text) : at = DateTime.now();
+  final String text;
+  final DateTime at;
+}
+
 /// A short-lived label that floats up and fades over the world (object pokes,
 /// "+coins", event banners).
 class FloatingText {
@@ -242,7 +249,15 @@ class OfficeSim extends ChangeNotifier {
   final butterflies = <Butterfly>[];
   late final particles = ParticleField(_rng);
   final floatingTexts = <FloatingText>[];
+  final eventLog = <OfficeLogEntry>[];
   final _usedChatSpots = <int>{};
+
+  /// Records a line in the activity feed (newest first, capped).
+  void logEvent(String text) {
+    eventLog.insert(0, OfficeLogEntry(text));
+    if (eventLog.length > 30) eventLog.removeLast();
+    notifyListeners();
+  }
 
   /// Player-placed furniture (build mode). Kept in sync with the persisted
   /// layout; drives both rendering and the dynamic collision overlay.
@@ -331,20 +346,27 @@ class OfficeSim extends ChangeNotifier {
     if (employees.isEmpty) return;
     switch (_rng.nextInt(5)) {
       case 0: // rubber-duck debugging
-        _randomEmployee().say('rubber duck time 🦆', 3);
+        final e = _randomEmployee();
+        e.say('rubber duck time 🦆', 3);
+        logEvent('🦆 ${e.spec.name} is rubber-duck debugging');
       case 1: // a delivery arrives at the front door
         floating(tileCenter(doorTile).translate(0, -10), '📦', ttl: 2.2);
         _nudge(tileCenter(doorTile), 'delivery! 📦', range: 260);
+        logEvent('📦 A delivery arrived at the front door');
       case 2: // Pixel knocks something over
         floating(cat.pos.translate(0, -10), '🐱💥', ttl: 1.8);
         cat.say('meo!', 2);
         particles.emitSteam(cat.pos); // a little puff of "dust"
+        logEvent('🐱 Pixel knocked something over');
       case 3: // someone proposes a coffee run
         final host = _randomEmployee();
         host.say('coffee run? ☕', 2.4);
         _nudge(host.pos, '🙋', range: 120);
+        logEvent('☕ ${host.spec.name} proposed a coffee run');
       case 4: // spontaneous brainstorm
-        _randomEmployee().say('💡', 2.2);
+        final e = _randomEmployee();
+        e.say('💡', 2.2);
+        logEvent('💡 ${e.spec.name} had a lightbulb moment');
     }
     notifyListeners();
   }
@@ -361,6 +383,7 @@ class OfficeSim extends ChangeNotifier {
     floating(Offset(at.dx, at.dy - 24), '+$amount 🪙',
         ttl: 2.0, color: const Color(0xFFFFD24A));
     e?.say('🎉', 2);
+    logEvent('🎉 Task shipped — earned $amount 🪙');
     notifyListeners();
   }
 

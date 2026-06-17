@@ -129,6 +129,15 @@ void main() {
     });
   });
 
+  test('event log keeps newest first and is capped', () {
+    final sim = freshSim();
+    for (var i = 0; i < 40; i++) {
+      sim.logEvent('event $i');
+    }
+    expect(sim.eventLog.length, 30);
+    expect(sim.eventLog.first.text, 'event 39'); // newest first
+  });
+
   test('random events fire without throwing and leave a trace', () {
     final sim = freshSim();
     var leftMark = false;

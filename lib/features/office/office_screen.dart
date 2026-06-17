@@ -555,6 +555,7 @@ class _CompanyOverview extends ConsumerWidget {
                       .read(officeRepositoryProvider)
                       .hire(Random());
                   ref.read(officeSfxProvider).play(OfficeSfxCue.hire);
+                  sim.logEvent('👋 ${hire.name} joined as ${hire.role}');
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                       content: Text(
@@ -574,6 +575,32 @@ class _CompanyOverview extends ConsumerWidget {
               ?.copyWith(color: theme.colorScheme.outline),
           textAlign: TextAlign.center,
         ),
+        if (sim.eventLog.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          Text('Activity',
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          for (final entry in sim.eventLog.take(6))
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(entry.text,
+                        style: theme.textTheme.bodySmall),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _relativeTime(entry.at),
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.outline),
+                  ),
+                ],
+              ),
+            ),
+        ],
         const SizedBox(height: 16),
         OutlinedButton.icon(
           onPressed: onToggleBuild,
@@ -582,6 +609,13 @@ class _CompanyOverview extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  static String _relativeTime(DateTime at) {
+    final s = DateTime.now().difference(at).inSeconds;
+    if (s < 45) return 'now';
+    if (s < 3600) return '${(s / 60).round()}m';
+    return '${(s / 3600).round()}h';
   }
 }
 
@@ -689,6 +723,7 @@ class _BuildPanel extends ConsumerWidget {
     if (spent == null) return;
     await repo.saveEconomy(spent.unlock(item.id));
     ref.read(officeSfxProvider).play(OfficeSfxCue.coin);
+    sim.logEvent('🛒 Bought a ${item.label.toLowerCase()}');
     onPick(item.id); // auto-select the freshly bought item for placement
   }
 }
