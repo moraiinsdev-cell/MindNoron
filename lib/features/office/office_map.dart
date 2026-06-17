@@ -513,7 +513,23 @@ List<List<bool>> _buildWalkable() {
   return grid;
 }
 
+/// Tiles blocked by player-placed furniture (build mode). Layered on top of
+/// the static [_walkable] grid so pathfinding routes around placed pieces
+/// without rebuilding the whole grid.
+final Set<Point<int>> placedBlocked = <Point<int>>{};
+
 bool isWalkable(int x, int y) =>
+    x >= 0 &&
+    x < mapCols &&
+    y >= 0 &&
+    y < mapRows &&
+    _walkable[y][x] &&
+    !placedBlocked.contains(Point(x, y));
+
+/// True if [tile] is on the static map (walls/furniture/pool) — independent
+/// of player-placed items. Used by build mode to decide where placement and
+/// removal are allowed.
+bool isStaticWalkable(int x, int y) =>
     x >= 0 && x < mapCols && y >= 0 && y < mapRows && _walkable[y][x];
 
 /// Nearest walkable tile to [target] (BFS ring search) — used when the user

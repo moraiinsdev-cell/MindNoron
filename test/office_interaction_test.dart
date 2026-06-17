@@ -1,6 +1,8 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mind_noron/features/office/office_catalog.dart';
+import 'package:mind_noron/features/office/office_economy.dart';
 import 'package:mind_noron/features/office/office_map.dart';
 import 'package:mind_noron/features/office/office_models.dart';
 import 'package:mind_noron/features/office/office_sim.dart';
@@ -83,6 +85,47 @@ void main() {
       sim.commandPool(e.spec.id);
       expect(e.goal, Goal.swim);
       expect(e.activity, Activity.walking);
+    });
+  });
+
+  group('build mode placement', () {
+    OfficeSim layoutSim() {
+      final sim = OfficeSim(seed: 7);
+      sim.syncStaff(defaultStaff()); // employees parked at the door
+      sim.syncLayout(const []);
+      return sim;
+    }
+
+    test('canPlaceAt respects walls, door and pool', () {
+      final sim = layoutSim();
+      final plant = catalogItem('plant')!;
+      expect(sim.canPlaceAt(plant, 5, 5), isTrue); // open Tasks floor
+      expect(sim.canPlaceAt(plant, 0, 0), isFalse); // outer wall
+      expect(sim.canPlaceAt(plant, doorTile.x, doorTile.y), isFalse); // door
+      expect(sim.canPlaceAt(plant, 45, 10), isFalse); // pool water
+    });
+
+    test('placing a blocking item updates collision + placedAt', () {
+      final sim = layoutSim();
+      sim.syncLayout(const [PlacedItem(itemId: 'bookshelf', tx: 5, ty: 5)]);
+      expect(isWalkable(5, 5), isFalse);
+      expect(sim.placedAt(const Point(5, 5))?.itemId, 'bookshelf');
+      // Can't stack another item on the same tile.
+      expect(sim.canPlaceAt(catalogItem('plant')!, 5, 5), isFalse);
+    });
+
+    test('non-blocking decor (cushion) stays walkable', () {
+      final sim = layoutSim();
+      sim.syncLayout(const [PlacedItem(itemId: 'cushion', tx: 6, ty: 6)]);
+      expect(isWalkable(6, 6), isTrue);
+      expect(sim.placedAt(const Point(6, 6))?.itemId, 'cushion');
+    });
+
+    test('multi-tile footprint blocks all covered tiles', () {
+      final sim = layoutSim();
+      sim.syncLayout(const [PlacedItem(itemId: 'sofa', tx: 5, ty: 6)]); // 2 wide
+      expect(isWalkable(5, 6), isFalse);
+      expect(isWalkable(6, 6), isFalse);
     });
   });
 

@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/database/app_database.dart';
 import '../../data/repositories/task_repository.dart';
 import 'office_camera.dart';
+import 'office_catalog.dart';
+import 'office_economy.dart';
 import 'office_map.dart';
 import 'office_models.dart';
 import 'office_painter.dart';
@@ -43,6 +45,11 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
   EmployeeRuntime? _hoverEmp;
   Offset _hoverCursor = Offset.zero;
   bool _coinBusy = false;
+
+  // Build / decorate mode.
+  bool _buildMode = false;
+  String? _placingId;
+  Point<int>? _ghostTile;
 
   @override
   void initState() {
@@ -86,6 +93,10 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
     // Award coins for tasks completed in the real app (idempotent).
     final completed = ref.watch(recentlyCompletedProvider).valueOrNull;
     if (completed != null) _reconcileCoins(completed);
+
+    // Player-placed furniture layout.
+    final layout = ref.watch(officeLayoutProvider).valueOrNull;
+    if (layout != null) _sim.syncLayout(layout);
   }
 
   /// Coin payout for a completed task: a base, plus a priority bonus
@@ -142,11 +153,30 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
           const VerticalDivider(width: 1),
           SizedBox(
             width: 300,
-            child: _OfficePanel(sim: _sim, cache: _cache),
+            child: _OfficePanel(
+              sim: _sim,
+              cache: _cache,
+              buildMode: _buildMode,
+              placingId: _placingId,
+              onToggleBuild: _toggleBuild,
+              onPick: (id) => setState(() => _placingId = id),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  void _toggleBuild() {
+    setState(() {
+      _buildMode = !_buildMode;
+      _placingId = null;
+      _ghostTile = null;
+      if (_buildMode) {
+        _sim.select(null);
+        _hoverEmp = null;
+      }
+    });
   }
 
   Widget _buildCanvas(ThemeData theme) {
@@ -177,9 +207,21 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
                               ? SystemMouseCursors.grab
                               : MouseCursor.defer,
                   onExit: (_) {
-                    if (_hoverEmp != null) setState(() => _hoverEmp = null);
+                    if (_hoverEmp != null || _ghostTile != null) {
+                      setState(() {
+                        _hoverEmp = null;
+                        _ghostTile = null;
+                      });
+                    }
                   },
                   onHover: (event) {
+                    if (_buildMode) {
+                      final tile = tileAt(_toWorld(event.localPosition));
+                      if (tile != _ghostTile) {
+                        setState(() => _ghostTile = tile);
+                      }
+                      return;
+                    }
                     if (_draggingId != null) return;
                     final hit = _sim.hitTest(_toWorld(event.localPosition));
                     if (hit != _hoverEmp ||
@@ -194,6 +236,10 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
                     behavior: HitTestBehavior.opaque,
                     onTapDown: (d) {
                       final world = _toWorld(d.localPosition);
+                      if (_buildMode) {
+                        _handleBuildTap(tileAt(world));
+                        return;
+                      }
                       final hit = _sim.hitTest(world);
                       if (hit != null) {
                         _sim.select(hit.spec.id);
@@ -210,6 +256,7 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
                       if (poke == PokeKind.none) _sim.select(null);
                     },
                     onPanStart: (d) {
+                      if (_buildMode) return;
                       final hit = _sim.hitTest(_toWorld(d.localPosition));
                       if (hit != null) {
                         _draggingId = hit.spec.id;
@@ -236,6 +283,10 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
                         cache: _cache,
                         zoom: _camera.zoom,
                         origin: _camera.origin,
+                        buildMode: _buildMode,
+                        placingItem:
+                            _placingId == null ? null : catalogItem(_placingId!),
+                        ghostTile: _buildMode ? _ghostTile : null,
                       ),
                     ),
                   ),
@@ -268,6 +319,35 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
         },
       ),
     );
+  }
+
+  Future<void> _handleBuildTap(Point<int> tile) async {
+    final repo = ref.read(officeRepositoryProvider);
+    final sfx = ref.read(officeSfxProvider);
+
+    // Remove an existing placed item if one is here (takes priority).
+    final existing = _sim.placedAt(tile);
+    if (existing != null && _placingId == null) {
+      final next = [..._sim.placedItems]..remove(existing);
+      _sim.syncLayout(next);
+      await repo.saveLayout(next);
+      sfx.play(OfficeSfxCue.poof);
+      return;
+    }
+
+    final id = _placingId;
+    if (id == null) return;
+    final item = catalogItem(id);
+    if (item == null) return;
+    if (!_sim.canPlaceAt(item, tile.x, tile.y)) {
+      sfx.play(OfficeSfxCue.click);
+      return;
+    }
+    final placed = PlacedItem(itemId: id, tx: tile.x, ty: tile.y);
+    final next = [..._sim.placedItems, placed];
+    _sim.syncLayout(next);
+    await repo.saveLayout(next);
+    sfx.play(OfficeSfxCue.poof);
   }
 
   void _playPoke(PokeKind kind) {
@@ -345,19 +425,39 @@ class _CameraResetButton extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _OfficePanel extends ConsumerWidget {
-  const _OfficePanel({required this.sim, required this.cache});
+  const _OfficePanel({
+    required this.sim,
+    required this.cache,
+    required this.buildMode,
+    required this.placingId,
+    required this.onToggleBuild,
+    required this.onPick,
+  });
 
   final OfficeSim sim;
   final SpriteCache cache;
+  final bool buildMode;
+  final String? placingId;
+  final VoidCallback onToggleBuild;
+  final ValueChanged<String?> onPick;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (buildMode) {
+      return _BuildPanel(
+        sim: sim,
+        placingId: placingId,
+        onToggleBuild: onToggleBuild,
+        onPick: onPick,
+      );
+    }
     return AnimatedBuilder(
       animation: sim,
       builder: (context, _) {
         final selected = sim.selected;
         return selected == null
-            ? _CompanyOverview(sim: sim, cache: cache)
+            ? _CompanyOverview(
+                sim: sim, cache: cache, onToggleBuild: onToggleBuild)
             : _EmployeeProfile(sim: sim, cache: cache, employee: selected);
       },
     );
@@ -365,10 +465,12 @@ class _OfficePanel extends ConsumerWidget {
 }
 
 class _CompanyOverview extends ConsumerWidget {
-  const _CompanyOverview({required this.sim, required this.cache});
+  const _CompanyOverview(
+      {required this.sim, required this.cache, required this.onToggleBuild});
 
   final OfficeSim sim;
   final SpriteCache cache;
+  final VoidCallback onToggleBuild;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -472,7 +574,155 @@ class _CompanyOverview extends ConsumerWidget {
               ?.copyWith(color: theme.colorScheme.outline),
           textAlign: TextAlign.center,
         ),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: onToggleBuild,
+          icon: const Icon(Icons.dashboard_customize_outlined, size: 18),
+          label: const Text('Build / Decorate'),
+        ),
       ],
+    );
+  }
+}
+
+/// Build-mode side panel: a shop to buy item types with coins and an
+/// inventory of owned types to select for placement.
+class _BuildPanel extends ConsumerWidget {
+  const _BuildPanel({
+    required this.sim,
+    required this.placingId,
+    required this.onToggleBuild,
+    required this.onPick,
+  });
+
+  final OfficeSim sim;
+  final String? placingId;
+  final VoidCallback onToggleBuild;
+  final ValueChanged<String?> onPick;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final economy = ref.watch(officeEconomyProvider).valueOrNull;
+    final coins = economy?.coins ?? 0;
+    final owned = [for (final c in officeCatalog) if (economy?.owns(c.id) ?? false) c];
+    final shop = [for (final c in officeCatalog) if (!(economy?.owns(c.id) ?? false)) c];
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Row(
+          children: [
+            IconButton(
+              tooltip: 'Done',
+              icon: const Icon(Icons.check, size: 20),
+              onPressed: onToggleBuild,
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text('Build & Decorate',
+                  style: theme.textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w800)),
+            ),
+            const Text('🪙', style: TextStyle(fontSize: 14)),
+            const SizedBox(width: 4),
+            Text('$coins',
+                style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFFD9A521))),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          placingId == null
+              ? 'Pick an item, then click the floor to place. Click a placed item to remove it.'
+              : 'Click the floor to place. Tap the item again to stop placing.',
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: theme.colorScheme.outline),
+        ),
+        const SizedBox(height: 14),
+        if (owned.isNotEmpty) ...[
+          Text('Your items',
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final c in owned)
+                ChoiceChip(
+                  avatar: Text(c.emoji),
+                  label: Text(c.label),
+                  selected: placingId == c.id,
+                  onSelected: (sel) => onPick(sel ? c.id : null),
+                ),
+            ],
+          ),
+          const SizedBox(height: 18),
+        ],
+        Text('Shop',
+            style: theme.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        for (final c in shop)
+          _ShopRow(
+            item: c,
+            affordable: coins >= c.price,
+            onBuy: () => _buy(ref, c),
+          ),
+        if (shop.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text('You own everything in the catalog! 🎉',
+                style: theme.textTheme.bodySmall),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _buy(WidgetRef ref, CatalogItem item) async {
+    final repo = ref.read(officeRepositoryProvider);
+    final econ = await repo.getEconomy();
+    if (econ.owns(item.id)) return;
+    final spent = econ.trySpend(item.price);
+    if (spent == null) return;
+    await repo.saveEconomy(spent.unlock(item.id));
+    ref.read(officeSfxProvider).play(OfficeSfxCue.coin);
+    onPick(item.id); // auto-select the freshly bought item for placement
+  }
+}
+
+class _ShopRow extends StatelessWidget {
+  const _ShopRow(
+      {required this.item, required this.affordable, required this.onBuy});
+
+  final CatalogItem item;
+  final bool affordable;
+  final VoidCallback onBuy;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Text(item.emoji, style: const TextStyle(fontSize: 18)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(item.label, style: theme.textTheme.bodyMedium),
+          ),
+          FilledButton.tonal(
+            onPressed: affordable ? onBuy : null,
+            style: FilledButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+            ),
+            child: Text('🪙 ${item.price}'),
+          ),
+        ],
+      ),
     );
   }
 }

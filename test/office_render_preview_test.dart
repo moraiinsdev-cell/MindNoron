@@ -7,6 +7,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mind_noron/features/office/office_catalog.dart';
+import 'package:mind_noron/features/office/office_economy.dart';
 import 'package:mind_noron/features/office/office_map.dart';
 import 'package:mind_noron/features/office/office_models.dart';
 import 'package:mind_noron/features/office/office_painter.dart';
@@ -305,5 +307,37 @@ void main() {
     await _savePng(img, 'weather_rain');
     cache.dispose();
     expect(img.width, worldWidth * zoom);
+  });
+
+  test('build mode renders grid, placed items and ghost', () async {
+    final sim = OfficeSim(seed: 7);
+    sim.syncStaff(defaultStaff());
+    sim.placeInitial();
+    sim.syncLayout(const [
+      PlacedItem(itemId: 'sofa', tx: 24, ty: 5),
+      PlacedItem(itemId: 'plant', tx: 22, ty: 6),
+      PlacedItem(itemId: 'bookshelf', tx: 26, ty: 5),
+    ]);
+    const zoom = 2.0;
+    final cache = SpriteCache();
+    final painter = OfficePainter(
+      sim: sim,
+      cache: cache,
+      zoom: zoom,
+      origin: Offset.zero,
+      hourOverride: 13.0,
+      buildMode: true,
+      placingItem: catalogItem('bonsai'),
+      ghostTile: const Point(20, 6),
+    );
+    final img = _record(
+      (worldWidth * zoom).toInt(),
+      (worldHeight * zoom).toInt(),
+      (canvas) => painter.paint(
+          canvas, const Size(worldWidth * zoom, worldHeight * zoom)),
+    );
+    await _savePng(img, 'build_mode');
+    cache.dispose();
+    expect(sim.placedItems.length, 3);
   });
 }

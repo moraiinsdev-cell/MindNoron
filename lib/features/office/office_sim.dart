@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
+import 'office_catalog.dart';
+import 'office_economy.dart';
 import 'office_map.dart';
 import 'office_models.dart';
 import 'office_particles.dart';
@@ -241,6 +243,65 @@ class OfficeSim extends ChangeNotifier {
   late final particles = ParticleField(_rng);
   final floatingTexts = <FloatingText>[];
   final _usedChatSpots = <int>{};
+
+  /// Player-placed furniture (build mode). Kept in sync with the persisted
+  /// layout; drives both rendering and the dynamic collision overlay.
+  List<PlacedItem> placedItems = const [];
+
+  /// Reconciles placed furniture from the persisted layout and rebuilds the
+  /// walkability overlay so the AI routes around new pieces.
+  void syncLayout(List<PlacedItem> items) {
+    placedItems = items;
+    placedBlocked.clear();
+    for (final p in items) {
+      final item = catalogItem(p.itemId);
+      if (item == null || !item.blocks) continue;
+      final (w, h) = _footprint(item, p.rot);
+      for (var dy = 0; dy < h; dy++) {
+        for (var dx = 0; dx < w; dx++) {
+          placedBlocked.add(Point(p.tx + dx, p.ty + dy));
+        }
+      }
+    }
+    notifyListeners();
+  }
+
+  /// Footprint after rotation (90°/270° swap width and height).
+  static (int, int) _footprint(CatalogItem item, int rot) =>
+      rot.isOdd ? (item.th, item.tw) : (item.tw, item.th);
+
+  /// Whether [item] can be placed with its anchor at ([tx],[ty]): every
+  /// footprint tile must be open static floor, free of other placed pieces
+  /// and not under an employee, and clear of the front door.
+  bool canPlaceAt(CatalogItem item, int tx, int ty, {int rot = 0}) {
+    final (w, h) = _footprint(item, rot);
+    for (var dy = 0; dy < h; dy++) {
+      for (var dx = 0; dx < w; dx++) {
+        final x = tx + dx, y = ty + dy;
+        if (!isStaticWalkable(x, y)) return false;
+        if (placedBlocked.contains(Point(x, y))) return false;
+        if (x == doorTile.x && y == doorTile.y) return false;
+        if (employees.any((e) => tileAt(e.pos) == Point(x, y))) return false;
+      }
+    }
+    return true;
+  }
+
+  /// The placed item whose footprint covers [tile], if any (topmost wins).
+  PlacedItem? placedAt(Point<int> tile) {
+    for (final p in placedItems.reversed) {
+      final item = catalogItem(p.itemId);
+      if (item == null) continue;
+      final (w, h) = _footprint(item, p.rot);
+      if (tile.x >= p.tx &&
+          tile.x < p.tx + w &&
+          tile.y >= p.ty &&
+          tile.y < p.ty + h) {
+        return p;
+      }
+    }
+    return null;
+  }
 
   /// Current outdoor weather (cosmetic). Recomputed on a slow timer.
   OfficeWeather weather = OfficeWeather.clear;

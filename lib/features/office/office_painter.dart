@@ -3,6 +3,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import 'office_catalog.dart';
+import 'office_economy.dart';
 import 'office_lighting.dart';
 import 'office_map.dart';
 import 'office_particles.dart';
@@ -24,6 +26,9 @@ class OfficePainter extends CustomPainter {
     required this.zoom,
     required this.origin,
     this.hourOverride,
+    this.buildMode = false,
+    this.placingItem,
+    this.ghostTile,
   }) : super(repaint: sim);
 
   final OfficeSim sim;
@@ -34,6 +39,11 @@ class OfficePainter extends CustomPainter {
   /// Forces a specific hour-of-day for lighting (tests/previews). When null
   /// the real wall clock is used.
   final double? hourOverride;
+
+  /// Build-mode overlay state.
+  final bool buildMode;
+  final CatalogItem? placingItem;
+  final Point<int>? ghostTile;
 
   static ui.Picture? _staticLayer;
 
@@ -60,6 +70,7 @@ class OfficePainter extends CustomPainter {
     _paintDynamic(canvas);
     _paintButterflies(canvas);
     _paintParticles(canvas);
+    if (buildMode) _paintBuildOverlay(canvas);
     _paintLighting(canvas, sky);
     canvas.restore();
 
@@ -259,6 +270,14 @@ class OfficePainter extends CustomPainter {
       items.add((o.sortY, () => _paintObject(canvas, o)));
     }
 
+    // Player-placed furniture (build mode), y-sorted with everything else.
+    for (final p in sim.placedItems) {
+      final item = catalogItem(p.itemId);
+      if (item == null) continue;
+      final sortY = (p.ty + item.th) * 16.0;
+      items.add((sortY, () => _paintPlaced(canvas, p, item)));
+    }
+
     for (final e in sim.employees) {
       final sortY =
           e.activity == Activity.dragged ? double.infinity : e.pos.dy;
@@ -392,6 +411,60 @@ class OfficePainter extends CustomPainter {
           color.withValues(alpha: 0),
         ], const [0.0, 1.0]),
     );
+  }
+
+  /// Build-mode floor grid + a green/red placement ghost.
+  void _paintBuildOverlay(Canvas canvas) {
+    final line = Paint()
+      ..color = const Color(0x22FFFFFF)
+      ..strokeWidth = 0.5;
+    for (var x = 1; x < mapCols; x++) {
+      canvas.drawLine(Offset(x * 16.0, 32), Offset(x * 16.0, worldHeight - 12),
+          line);
+    }
+    for (var y = 2; y < mapRows; y++) {
+      canvas.drawLine(Offset(8, y * 16.0), Offset(worldWidth - 8, y * 16.0),
+          line);
+    }
+
+    final g = ghostTile;
+    final item = placingItem;
+    if (g != null && item != null) {
+      final ok = sim.canPlaceAt(item, g.x, g.y);
+      final rect = Rect.fromLTWH(
+          g.x * 16.0, g.y * 16.0, item.tw * 16.0, item.th * 16.0);
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..color = ok ? const Color(0x5552E07A) : const Color(0x55E05252),
+      );
+      // Sprite preview, semi-transparent.
+      final img = cache.imageFor('cat-${item.id}', () => item.sprite);
+      canvas.drawImageRect(
+        img,
+        Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
+        Rect.fromLTWH(
+          g.x * 16.0 + (item.tw * 16 - item.sprite.width) / 2,
+          (g.y + item.th) * 16.0 - item.sprite.height,
+          item.sprite.width.toDouble(),
+          item.sprite.height.toDouble(),
+        ),
+        Paint()
+          ..isAntiAlias = false
+          ..filterQuality = FilterQuality.none
+          ..color = const Color(0xCCFFFFFF),
+      );
+    }
+  }
+
+  void _paintPlaced(Canvas canvas, PlacedItem placed, CatalogItem item) {
+    final origin = Offset(
+      placed.tx * 16.0 + (item.tw * 16 - item.sprite.width) / 2,
+      (placed.ty + item.th) * 16.0 - item.sprite.height,
+    );
+    final img =
+        cache.imageFor('cat-${item.id}', () => item.sprite);
+    drawSprite(canvas, img, origin);
   }
 
   void _paintObject(Canvas canvas, OfficeObject o) {
@@ -718,5 +791,8 @@ class OfficePainter extends CustomPainter {
   bool shouldRepaint(OfficePainter oldDelegate) =>
       oldDelegate.zoom != zoom ||
       oldDelegate.origin != origin ||
-      oldDelegate.sim != sim;
+      oldDelegate.sim != sim ||
+      oldDelegate.buildMode != buildMode ||
+      oldDelegate.placingItem != placingItem ||
+      oldDelegate.ghostTile != ghostTile;
 }
