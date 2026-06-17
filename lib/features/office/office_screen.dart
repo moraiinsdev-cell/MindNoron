@@ -12,6 +12,7 @@ import 'office_map.dart';
 import 'office_models.dart';
 import 'office_painter.dart';
 import 'office_repository.dart';
+import 'office_sfx.dart';
 import 'office_sim.dart';
 import 'office_sprites.dart';
 import 'pixel_art.dart';
@@ -76,6 +77,9 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
     }
     final tasks = ref.watch(openTasksProvider).valueOrNull ?? const <Task>[];
     _sim.openTasks = [for (final t in tasks) (t.id, t.title)];
+
+    ref.read(officeSfxProvider).enabled =
+        ref.watch(officeSfxEnabledProvider).valueOrNull ?? true;
   }
 
   @override
@@ -326,6 +330,7 @@ class _CompanyOverview extends ConsumerWidget {
                   final hire = await ref
                       .read(officeRepositoryProvider)
                       .hire(Random());
+                  ref.read(officeSfxProvider).play(OfficeSfxCue.hire);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                       content: Text(

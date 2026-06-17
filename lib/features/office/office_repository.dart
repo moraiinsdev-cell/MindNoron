@@ -22,6 +22,7 @@ class OfficeRepository {
   static const _kStaff = 'officeStaffV2';
   static const _kEconomy = 'officeEconomyV1';
   static const _kLayout = 'officeLayoutV1';
+  static const _kSfx = 'officeSfxV1';
 
   Stream<List<EmployeeSpec>> watchStaff() =>
       _settings.watchValue(_kStaff).map(_decode);
@@ -96,6 +97,13 @@ class OfficeRepository {
 
   Future<void> saveLayout(List<PlacedItem> items) =>
       _settings.setValue(_kLayout, PlacedItem.encodeList(items));
+
+  // --- Sound toggle -------------------------------------------------------
+
+  Stream<bool> watchSfxEnabled() =>
+      _settings.watchValue(_kSfx).map((v) => v != 'false'); // default on
+
+  Future<void> setSfxEnabled(bool v) => _settings.setValue(_kSfx, '$v');
 }
 
 final officeRepositoryProvider = Provider<OfficeRepository>((ref) {
@@ -112,4 +120,8 @@ final officeEconomyProvider = StreamProvider<OfficeEconomy>((ref) {
 
 final officeLayoutProvider = StreamProvider<List<PlacedItem>>((ref) {
   return ref.watch(officeRepositoryProvider).watchLayout();
+});
+
+final officeSfxEnabledProvider = StreamProvider<bool>((ref) {
+  return ref.watch(officeRepositoryProvider).watchSfxEnabled();
 });
