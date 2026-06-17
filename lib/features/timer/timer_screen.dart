@@ -10,6 +10,7 @@ import '../../data/repositories/timer_repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
 import 'ambient_control.dart';
+import 'floating_timer.dart';
 import 'noron_backdrop.dart';
 import 'thinking_space.dart';
 import 'timer_controller.dart';
@@ -366,7 +367,13 @@ class _ActiveTimerState extends ConsumerState<_ActiveTimer>
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
+        TextButton.icon(
+          onPressed: () => enterFloatingTimer(ref),
+          icon: const Icon(Icons.picture_in_picture_alt, size: 18),
+          label: const Text('Float on top'),
+        ),
+        const SizedBox(height: 8),
         const AmbientControl(),
       ],
     );

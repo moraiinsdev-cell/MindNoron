@@ -6,6 +6,7 @@ import 'core/constants/app_constants.dart';
 import 'core/platform/window_service.dart';
 import 'core/theme/app_theme.dart';
 import 'data/repositories/settings_repository.dart';
+import 'features/timer/floating_timer.dart';
 import 'l10n/app_localizations.dart';
 import 'presentation/navigation/app_router.dart';
 
@@ -50,6 +51,15 @@ class _MindNoronAppState extends ConsumerState<MindNoronApp>
       locale: AppConstants.defaultLocale,
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
+      builder: (context, child) {
+        // When floating, replace the whole UI with the compact pinned timer.
+        return Consumer(
+          builder: (context, ref, _) {
+            final floating = ref.watch(floatingTimerProvider);
+            return floating ? const FocusPip() : (child ?? const SizedBox());
+          },
+        );
+      },
     );
   }
 }
