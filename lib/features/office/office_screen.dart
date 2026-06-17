@@ -40,7 +40,8 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
 
   String? _draggingId;
   bool _panning = false;
-  bool _hoveringEmployee = false;
+  EmployeeRuntime? _hoverEmp;
+  Offset _hoverCursor = Offset.zero;
 
   @override
   void initState() {
@@ -126,13 +127,21 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
                       ? SystemMouseCursors.grabbing
                       : _panning
                           ? SystemMouseCursors.move
-                          : _hoveringEmployee
+                          : _hoverEmp != null
                               ? SystemMouseCursors.grab
                               : MouseCursor.defer,
+                  onExit: (_) {
+                    if (_hoverEmp != null) setState(() => _hoverEmp = null);
+                  },
                   onHover: (event) {
+                    if (_draggingId != null) return;
                     final hit = _sim.hitTest(_toWorld(event.localPosition));
-                    if ((hit != null) != _hoveringEmployee) {
-                      setState(() => _hoveringEmployee = hit != null);
+                    if (hit != _hoverEmp ||
+                        (hit != null && event.localPosition != _hoverCursor)) {
+                      setState(() {
+                        _hoverEmp = hit;
+                        _hoverCursor = event.localPosition;
+                      });
                     }
                   },
                   child: GestureDetector(
@@ -194,6 +203,8 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
                     setState(() => _camera.reset());
                   }),
                 ),
+              if (_hoverEmp != null && _draggingId == null)
+                _hoverTooltip(Size(w, h)),
               Positioned(
                 left: 12,
                 bottom: 10,
@@ -230,6 +241,23 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
       case PokeKind.generic:
         sfx.play(OfficeSfxCue.click);
     }
+  }
+
+  Widget _hoverTooltip(Size canvas) {
+    const cardW = 196.0, cardH = 92.0;
+    var dx = _hoverCursor.dx + 16;
+    var dy = _hoverCursor.dy + 16;
+    if (dx + cardW > canvas.width) dx = _hoverCursor.dx - cardW - 12;
+    if (dy + cardH > canvas.height) dy = canvas.height - cardH - 8;
+    if (dx < 4) dx = 4;
+    if (dy < 4) dy = 4;
+    return Positioned(
+      left: dx,
+      top: dy,
+      child: IgnorePointer(
+        child: _HoverCard(sim: _sim, employee: _hoverEmp!, width: cardW),
+      ),
+    );
   }
 
   void _endDrag() {
@@ -674,6 +702,100 @@ class _EmployeeProfileState extends ConsumerState<_EmployeeProfile> {
     if (confirmed == true) {
       await ref.read(officeRepositoryProvider).fire(spec.id);
     }
+  }
+}
+
+/// Floating info card shown while hovering an employee on the canvas.
+class _HoverCard extends StatelessWidget {
+  const _HoverCard(
+      {required this.sim, required this.employee, required this.width});
+
+  final OfficeSim sim;
+  final EmployeeRuntime employee;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    final spec = employee.spec;
+    return Container(
+      width: width,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xF21C1A24),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        boxShadow: const [
+          BoxShadow(color: Color(0x66000000), blurRadius: 8, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  spec.name,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              Text(employee.moodEmoji, style: const TextStyle(fontSize: 14)),
+            ],
+          ),
+          Text(
+            sim.statusLine(employee),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 11,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const SizedBox(height: 6),
+          _MiniBar(label: '⚡', value: employee.energy),
+          const SizedBox(height: 3),
+          _MiniBar(label: '💬', value: employee.social),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniBar extends StatelessWidget {
+  const _MiniBar({required this.label, required this.value});
+  final String label;
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(label, style: const TextStyle(fontSize: 10)),
+        const SizedBox(width: 6),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: value.clamp(0.0, 1.0),
+              minHeight: 5,
+              backgroundColor: Colors.white.withValues(alpha: 0.14),
+              color: value > 0.5
+                  ? const Color(0xFF4D9E68)
+                  : value > 0.25
+                      ? const Color(0xFFC9A227)
+                      : const Color(0xFFD06464),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 
