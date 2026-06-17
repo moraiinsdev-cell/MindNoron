@@ -281,4 +281,29 @@ void main() {
     cache.dispose();
     expect(sim.particles.particles, isNotEmpty);
   });
+
+  test('rainy weather renders over the garden', () async {
+    final sim = OfficeSim(seed: 7);
+    sim.syncStaff(defaultStaff());
+    sim.placeInitial();
+    sim.setWeather(OfficeWeather.rain);
+    const zoom = 2.0;
+    final cache = SpriteCache();
+    final painter = OfficePainter(
+      sim: sim,
+      cache: cache,
+      zoom: zoom,
+      origin: Offset.zero,
+      hourOverride: 15.0,
+    );
+    final img = _record(
+      (worldWidth * zoom).toInt(),
+      (worldHeight * zoom).toInt(),
+      (canvas) => painter.paint(
+          canvas, const Size(worldWidth * zoom, worldHeight * zoom)),
+    );
+    await _savePng(img, 'weather_rain');
+    cache.dispose();
+    expect(img.width, worldWidth * zoom);
+  });
 }

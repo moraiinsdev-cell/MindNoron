@@ -157,6 +157,10 @@ class EmployeeRuntime {
 
 enum CatState { wandering, sitting, sleeping }
 
+/// Outdoor weather over the campus. Cosmetic — drives rain streaks over the
+/// garden and a slight mood shift; never affects the simulation.
+enum OfficeWeather { clear, rain }
+
 /// Pixel, the office cat. Fully autonomous; click her for a meow.
 class OfficeCat {
   Offset pos = Offset.zero;
@@ -219,6 +223,28 @@ class OfficeSim extends ChangeNotifier {
   final butterflies = <Butterfly>[];
   late final particles = ParticleField(_rng);
   final _usedChatSpots = <int>{};
+
+  /// Current outdoor weather (cosmetic). Recomputed on a slow timer.
+  OfficeWeather weather = OfficeWeather.clear;
+  double _weatherTimer = 90;
+
+  /// Forces a weather state (settings/tests).
+  void setWeather(OfficeWeather w) {
+    weather = w;
+    notifyListeners();
+  }
+
+  void _tickWeather(double dt) {
+    _weatherTimer -= dt;
+    if (_weatherTimer > 0) return;
+    // Mostly clear, with the occasional shower that lingers a while.
+    final wasRain = weather == OfficeWeather.rain;
+    weather =
+        _rng.nextDouble() < (wasRain ? 0.55 : 0.18) ? OfficeWeather.rain : OfficeWeather.clear;
+    _weatherTimer = wasRain
+        ? 60 + _rng.nextDouble() * 90
+        : 120 + _rng.nextDouble() * 240;
+  }
 
   String? selectedId;
   List<(String, String)> openTasks = const []; // (taskId, title)
@@ -349,6 +375,7 @@ class OfficeSim extends ChangeNotifier {
     _matchmakeChats();
     _tickCat(dt);
     _tickButterflies(dt);
+    _tickWeather(dt);
     particles.tick(dt);
     notifyListeners();
   }

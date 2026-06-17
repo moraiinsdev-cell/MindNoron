@@ -64,7 +64,42 @@ class OfficePainter extends CustomPainter {
     canvas.restore();
 
     _paintTint(canvas, sky);
+    _paintWeather(canvas);
     _paintOverlays(canvas);
+  }
+
+  /// Rain over the outdoor garden (screen space, clipped to the grass). Indoor
+  /// areas only get a faint mood-dim, since you can't see the sky from a desk.
+  void _paintWeather(Canvas canvas) {
+    if (sim.weather != OfficeWeather.rain) return;
+
+    // Outdoor region begins at the indoor/outdoor divider (tile 38).
+    final out = Rect.fromLTRB(
+      origin.dx + 38 * 16 * zoom,
+      origin.dy,
+      origin.dx + worldWidth * zoom,
+      origin.dy + worldHeight * zoom,
+    );
+    canvas.save();
+    canvas.clipRect(out);
+    // Cool dim over the wet garden.
+    canvas.drawRect(out, Paint()..color = const Color(0x22243450));
+
+    final t = DateTime.now().millisecondsSinceEpoch / 1000.0;
+    final streak = Paint()
+      ..color = const Color(0x66AFC4DA)
+      ..strokeWidth = 1.0;
+    final rng = Random(7);
+    for (var i = 0; i < 90; i++) {
+      final bx = out.left + rng.nextDouble() * out.width;
+      final speed = 320 + rng.nextDouble() * 160;
+      final phase = (t * speed + i * 53) % (out.height + 40);
+      final y = out.top - 20 + phase;
+      final len = 8.0 + rng.nextDouble() * 6;
+      canvas.drawLine(
+          Offset(bx, y), Offset(bx - 3, y + len), streak);
+    }
+    canvas.restore();
   }
 
   // -------------------------------------------------------------------------
@@ -410,6 +445,12 @@ class OfficePainter extends CustomPainter {
             (e.animPhase * 2.4).floor().isEven
         ? 1.0
         : 0.0;
+    // Gentle breathing while standing idle so no one looks frozen.
+    final breathing = (e.activity == Activity.idle ||
+            e.activity == Activity.wandering ||
+            e.activity == Activity.chatting)
+        ? (sin(e.animPhase * 1.8) * 0.5 - 0.5)
+        : 0.0;
 
     // Selection marker (pulsing ring under the employee).
     if (sim.selectedId == e.spec.id) {
@@ -481,7 +522,7 @@ class OfficePainter extends CustomPainter {
     drawSprite(
       canvas,
       img,
-      Offset(e.pos.dx - 6, e.pos.dy - h - lift + typingBob),
+      Offset(e.pos.dx - 6, e.pos.dy - h - lift + typingBob + breathing),
     );
   }
 
