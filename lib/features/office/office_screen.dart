@@ -38,6 +38,7 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
   late final Ticker _ticker;
   Duration _lastTick = Duration.zero;
   bool _placed = false;
+  int _floor = 0;
 
   // Camera owns the screen<->world transform (auto-fit + player zoom/pan).
   final OfficeCamera _camera = OfficeCamera();
@@ -78,10 +79,18 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
   Offset _toWorld(Offset local) => _camera.toWorld(local);
 
   void _syncFromProviders() {
-    final staff = ref.watch(officeStaffProvider).valueOrNull;
-    if (staff != null && staff.isNotEmpty) {
+    // Switching floors shows a different set of people; re-seat them.
+    final floor = ref.watch(currentFloorProvider);
+    if (floor != _floor) {
+      _floor = floor;
+      _placed = false;
+      _sim.select(null);
+    }
+    final allStaff = ref.watch(officeStaffProvider).valueOrNull;
+    if (allStaff != null) {
+      final staff = staffOnFloor(allStaff, floor);
       _sim.syncStaff(staff);
-      if (!_placed) {
+      if (!_placed && staff.isNotEmpty) {
         _placed = true;
         _sim.placeInitial();
       }
@@ -310,6 +319,7 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
                     setState(() => _camera.reset());
                   }),
                 ),
+              const Positioned(left: 12, top: 12, child: _FloorSelector()),
               if (_hoverEmp != null && _draggingId == null)
                 _hoverTooltip(Size(w, h)),
               Positioned(
@@ -408,6 +418,69 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
 }
 
 /// Small floating button that returns the camera to the fitted view.
+/// Elevator-style floor selector overlaid on the campus. Highest floor on top;
+/// tapping a floor switches which department (and staff) you're viewing.
+class _FloorSelector extends ConsumerWidget {
+  const _FloorSelector();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(currentFloorProvider);
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: Colors.black.withValues(alpha: 0.5),
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(5),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(bottom: 4, top: 1),
+              child: Icon(Icons.elevator_outlined,
+                  size: 15, color: Colors.white70),
+            ),
+            // Top floor first (reverse), like a real elevator panel.
+            for (var f = floorCount - 1; f >= 0; f--)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Tooltip(
+                  message: floorNames[f],
+                  child: InkWell(
+                    onTap: () =>
+                        ref.read(currentFloorProvider.notifier).state = f,
+                    borderRadius: BorderRadius.circular(8),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      width: 38,
+                      padding: const EdgeInsets.symmetric(vertical: 7),
+                      decoration: BoxDecoration(
+                        color: f == current
+                            ? cs.primary
+                            : Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        f == 0 ? 'G' : '${f + 1}F',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: f == current ? Colors.white : Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CameraResetButton extends StatelessWidget {
   const _CameraResetButton({required this.onTap});
 
@@ -489,6 +562,9 @@ class _CompanyOverview extends ConsumerWidget {
     final now = TimeOfDay.now();
     final staffCount = sim.employees.length;
     final coins = ref.watch(officeEconomyProvider).valueOrNull?.coins ?? 0;
+    final floor = ref.watch(currentFloorProvider);
+    final floorLabel =
+        'Floor ${floor + 1} · ${floorNames[floor.clamp(0, floorNames.length - 1)]}';
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -505,9 +581,10 @@ class _CompanyOverview extends ConsumerWidget {
                       style: theme.textTheme.titleLarge
                           ?.copyWith(fontWeight: FontWeight.w800)),
                   Text(
-                    'Shipping focus since day one',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.outline),
+                    floorLabel,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -563,7 +640,7 @@ class _CompanyOverview extends ConsumerWidget {
               : () async {
                   final hire = await ref
                       .read(officeRepositoryProvider)
-                      .hire(Random());
+                      .hire(Random(), floor: ref.read(currentFloorProvider));
                   ref.read(officeSfxProvider).play(OfficeSfxCue.hire);
                   sim.logEvent('👋 ${hire.name} joined as ${hire.role}');
                   if (context.mounted) {

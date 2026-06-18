@@ -227,11 +227,15 @@ void main() {
       expect(EmployeeSpec.decodeList('{"a":1}'), isEmpty);
     });
 
-    test('default staff have unique ids and fit the office', () {
+    test('default staff have unique ids and each floor fits the office', () {
       final staff = defaultStaff();
       expect(staff.map((e) => e.id).toSet().length, staff.length);
-      expect(staff.length, lessThanOrEqualTo(maxStaff));
-      expect(staff.length, lessThanOrEqualTo(officeDesks.length));
+      for (var f = 0; f < floorCount; f++) {
+        final onFloor = staffOnFloor(staff, f);
+        expect(onFloor, isNotEmpty, reason: 'floor $f has no staff');
+        expect(onFloor.length, lessThanOrEqualTo(maxStaff));
+        expect(onFloor.length, lessThanOrEqualTo(officeDesks.length));
+      }
     });
 
     test('new hires avoid existing names', () {
@@ -244,16 +248,19 @@ void main() {
   });
 
   group('simulation', () {
+    // One floor's worth of staff (the office screen shows a single floor).
+    final floorStaff = staffOnFloor(defaultStaff(), 0);
+
     OfficeSim boot() {
       final sim = OfficeSim(seed: 42);
-      sim.syncStaff(defaultStaff());
+      sim.syncStaff(floorStaff);
       sim.placeInitial();
       return sim;
     }
 
     test('everyone starts working at a desk', () {
       final sim = boot();
-      expect(sim.employees.length, defaultStaff().length);
+      expect(sim.employees.length, floorStaff.length);
       for (final e in sim.employees) {
         expect(e.activity, Activity.working);
         expect(e.deskIndex, greaterThanOrEqualTo(0));

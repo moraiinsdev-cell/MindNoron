@@ -109,6 +109,7 @@ class EmployeeSpec {
     required this.role,
     required this.personalityId,
     required this.look,
+    this.floor = 0,
     this.taskId,
   });
 
@@ -117,6 +118,9 @@ class EmployeeSpec {
   final String role;
   final String personalityId;
   final EmployeeLook look;
+
+  /// Which building floor this employee works on (0-based).
+  final int floor;
 
   /// Optional real MindNoron task this employee is "working on".
   final String? taskId;
@@ -128,6 +132,7 @@ class EmployeeSpec {
     String? role,
     String? personalityId,
     EmployeeLook? look,
+    int? floor,
     String? Function()? taskId,
   }) =>
       EmployeeSpec(
@@ -136,6 +141,7 @@ class EmployeeSpec {
         role: role ?? this.role,
         personalityId: personalityId ?? this.personalityId,
         look: look ?? this.look,
+        floor: floor ?? this.floor,
         taskId: taskId != null ? taskId() : this.taskId,
       );
 
@@ -145,6 +151,7 @@ class EmployeeSpec {
         'role': role,
         'personality': personalityId,
         'look': look.toJson(),
+        if (floor != 0) 'floor': floor,
         if (taskId != null) 'taskId': taskId,
       };
 
@@ -156,6 +163,7 @@ class EmployeeSpec {
         look: EmployeeLook.fromJson(
             (json['look'] as Map<dynamic, dynamic>?)?.cast<String, dynamic>() ??
                 const {}),
+        floor: (json['floor'] as num?)?.toInt() ?? 0,
         taskId: json['taskId'] as String?,
       );
 
@@ -178,14 +186,37 @@ class EmployeeSpec {
   }
 }
 
+/// The building's floors, ground (0) first. Each floor is its own department
+/// with its own staff; the office screen shows one floor at a time.
+const floorNames = <String>[
+  'Operations',
+  'Engineering',
+  'Creative Studio',
+  'Wellness',
+  'Sky Lounge',
+];
+
+/// A short tagline shown under the floor name in the selector.
+const floorTaglines = <String>[
+  'Ops, logistics & finance',
+  'Where the product gets built',
+  'Design, art & story',
+  'Gym, pool & recharge',
+  'Bar, cinema & arcade',
+];
+
+int get floorCount => floorNames.length;
+
 /// The founding team of MindNoron Inc. — a suspiciously familiar bunch of
-/// "entrepreneurs" who all somehow ended up working here.
+/// "entrepreneurs" — now spread across five floors of the tower.
 List<EmployeeSpec> defaultStaff() => const [
+      // --- Floor 0: Operations -------------------------------------------
       EmployeeSpec(
         id: 'emp-elon',
         name: 'Elon',
         role: 'CEO & Chief Rocket Officer',
         personalityId: 'visionary',
+        floor: 0,
         look: EmployeeLook(
             skin: 0, hairStyle: 0, hairColor: 1, shirt: 7, pants: 2),
       ),
@@ -194,22 +225,110 @@ List<EmployeeSpec> defaultStaff() => const [
         name: 'Jeff',
         role: 'Logistics & Same-Day Lead',
         personalityId: 'speedrunner',
+        floor: 0,
         look: EmployeeLook(
             skin: 1, hairStyle: 0, hairColor: 5, shirt: 1, pants: 0),
       ),
+      EmployeeSpec(
+        id: 'emp-warren',
+        name: 'Warren',
+        role: 'Finance Oracle',
+        personalityId: 'coffeeAddict',
+        floor: 0,
+        look: EmployeeLook(
+            skin: 0, hairStyle: 0, hairColor: 2, shirt: 0, pants: 1),
+      ),
+      EmployeeSpec(
+        id: 'emp-andy',
+        name: 'Andy',
+        role: 'Chief Operating Officer',
+        personalityId: 'perfectionist',
+        floor: 0,
+        look: EmployeeLook(
+            skin: 2, hairStyle: 0, hairColor: 1, shirt: 3, pants: 2),
+      ),
+      EmployeeSpec(
+        id: 'emp-sheryl',
+        name: 'Sheryl',
+        role: 'Operations Lead',
+        personalityId: 'socialButterfly',
+        floor: 0,
+        look: EmployeeLook(
+            skin: 1, hairStyle: 1, hairColor: 2, shirt: 5, pants: 0),
+      ),
+      EmployeeSpec(
+        id: 'emp-pat',
+        name: 'Pat',
+        role: 'Supply Chain Boss',
+        personalityId: 'speedrunner',
+        floor: 0,
+        look: EmployeeLook(
+            skin: 3, hairStyle: 2, hairColor: 0, shirt: 6, pants: 1),
+      ),
+
+      // --- Floor 1: Engineering ------------------------------------------
       EmployeeSpec(
         id: 'emp-bill',
         name: 'Bill',
         role: 'Chief Architect',
         personalityId: 'perfectionist',
+        floor: 1,
         look: EmployeeLook(
             skin: 0, hairStyle: 0, hairColor: 0, shirt: 3, pants: 1),
       ),
+      EmployeeSpec(
+        id: 'emp-jensen',
+        name: 'Jensen',
+        role: 'GPU Whisperer',
+        personalityId: 'nightOwl',
+        floor: 1,
+        look: EmployeeLook(
+            skin: 2, hairStyle: 2, hairColor: 0, shirt: 7, pants: 2),
+      ),
+      EmployeeSpec(
+        id: 'emp-demis',
+        name: 'Demis',
+        role: 'Head of Deep Thinking',
+        personalityId: 'zenMaster',
+        floor: 1,
+        look: EmployeeLook(
+            skin: 0, hairStyle: 0, hairColor: 0, shirt: 6, pants: 2),
+      ),
+      EmployeeSpec(
+        id: 'emp-linus',
+        name: 'Linus',
+        role: 'Kernel Maintainer',
+        personalityId: 'nightOwl',
+        floor: 1,
+        look: EmployeeLook(
+            skin: 0, hairStyle: 0, hairColor: 1, shirt: 2, pants: 0),
+      ),
+      EmployeeSpec(
+        id: 'emp-ada',
+        name: 'Ada',
+        role: 'Systems Engineer',
+        personalityId: 'perfectionist',
+        floor: 1,
+        look: EmployeeLook(
+            skin: 1, hairStyle: 1, hairColor: 4, shirt: 4, pants: 0),
+      ),
+      EmployeeSpec(
+        id: 'emp-grace',
+        name: 'Grace',
+        role: 'Compiler Wizard',
+        personalityId: 'zenMaster',
+        floor: 1,
+        look: EmployeeLook(
+            skin: 2, hairStyle: 1, hairColor: 0, shirt: 1, pants: 2),
+      ),
+
+      // --- Floor 2: Creative Studio --------------------------------------
       EmployeeSpec(
         id: 'emp-mark',
         name: 'Mark',
         role: 'Metaverse Engineer',
         personalityId: 'memeLord',
+        floor: 2,
         look: EmployeeLook(
             skin: 0, hairStyle: 2, hairColor: 0, shirt: 6, pants: 2),
       ),
@@ -218,30 +337,54 @@ List<EmployeeSpec> defaultStaff() => const [
         name: 'Tim',
         role: 'Design Director',
         personalityId: 'zenMaster',
+        floor: 2,
         look: EmployeeLook(
             skin: 1, hairStyle: 0, hairColor: 5, shirt: 4, pants: 0),
       ),
       EmployeeSpec(
-        id: 'emp-warren',
-        name: 'Warren',
-        role: 'Finance Oracle',
-        personalityId: 'coffeeAddict',
+        id: 'emp-reed',
+        name: 'Reed',
+        role: 'Chief Binge Officer',
+        personalityId: 'daydreamer',
+        floor: 2,
         look: EmployeeLook(
-            skin: 0, hairStyle: 0, hairColor: 2, shirt: 0, pants: 1),
+            skin: 0, hairStyle: 2, hairColor: 1, shirt: 0, pants: 1),
       ),
       EmployeeSpec(
-        id: 'emp-jensen',
-        name: 'Jensen',
-        role: 'GPU Whisperer',
-        personalityId: 'nightOwl',
+        id: 'emp-walt',
+        name: 'Walt',
+        role: 'Animation Lead',
+        personalityId: 'daydreamer',
+        floor: 2,
         look: EmployeeLook(
-            skin: 2, hairStyle: 2, hairColor: 0, shirt: 7, pants: 2),
+            skin: 1, hairStyle: 0, hairColor: 2, shirt: 5, pants: 1),
       ),
+      EmployeeSpec(
+        id: 'emp-hayao',
+        name: 'Hayao',
+        role: 'Art Director',
+        personalityId: 'zenMaster',
+        floor: 2,
+        look: EmployeeLook(
+            skin: 2, hairStyle: 0, hairColor: 0, shirt: 7, pants: 2),
+      ),
+      EmployeeSpec(
+        id: 'emp-stan',
+        name: 'Stan',
+        role: 'Story Editor',
+        personalityId: 'memeLord',
+        floor: 2,
+        look: EmployeeLook(
+            skin: 0, hairStyle: 2, hairColor: 3, shirt: 1, pants: 0),
+      ),
+
+      // --- Floor 3: Wellness ---------------------------------------------
       EmployeeSpec(
         id: 'emp-oprah',
         name: 'Oprah',
         role: 'Chief Vibes Officer',
         personalityId: 'socialButterfly',
+        floor: 3,
         look: EmployeeLook(
             skin: 3, hairStyle: 1, hairColor: 0, shirt: 5, pants: 0),
       ),
@@ -250,34 +393,107 @@ List<EmployeeSpec> defaultStaff() => const [
         name: 'Lisa',
         role: 'Chief Silicon Officer',
         personalityId: 'perfectionist',
+        floor: 3,
         look: EmployeeLook(
             skin: 1, hairStyle: 1, hairColor: 0, shirt: 2, pants: 0),
-      ),
-      EmployeeSpec(
-        id: 'emp-demis',
-        name: 'Demis',
-        role: 'Head of Deep Thinking',
-        personalityId: 'zenMaster',
-        look: EmployeeLook(
-            skin: 0, hairStyle: 0, hairColor: 0, shirt: 6, pants: 2),
-      ),
-      EmployeeSpec(
-        id: 'emp-reed',
-        name: 'Reed',
-        role: 'Chief Binge Officer',
-        personalityId: 'daydreamer',
-        look: EmployeeLook(
-            skin: 0, hairStyle: 2, hairColor: 1, shirt: 0, pants: 1),
       ),
       EmployeeSpec(
         id: 'emp-brian',
         name: 'Brian',
         role: 'Head of Belonging',
         personalityId: 'socialButterfly',
+        floor: 3,
         look: EmployeeLook(
             skin: 2, hairStyle: 0, hairColor: 3, shirt: 4, pants: 0),
       ),
+      EmployeeSpec(
+        id: 'emp-serena',
+        name: 'Serena',
+        role: 'Head of Fitness',
+        personalityId: 'speedrunner',
+        floor: 3,
+        look: EmployeeLook(
+            skin: 3, hairStyle: 1, hairColor: 0, shirt: 6, pants: 0),
+      ),
+      EmployeeSpec(
+        id: 'emp-simone',
+        name: 'Simone',
+        role: 'Yoga Master',
+        personalityId: 'zenMaster',
+        floor: 3,
+        look: EmployeeLook(
+            skin: 2, hairStyle: 1, hairColor: 1, shirt: 7, pants: 0),
+      ),
+      EmployeeSpec(
+        id: 'emp-usain',
+        name: 'Usain',
+        role: 'Track Coach',
+        personalityId: 'speedrunner',
+        floor: 3,
+        look: EmployeeLook(
+            skin: 3, hairStyle: 0, hairColor: 0, shirt: 3, pants: 1),
+      ),
+
+      // --- Floor 4: Sky Lounge -------------------------------------------
+      EmployeeSpec(
+        id: 'emp-gordon',
+        name: 'Gordon',
+        role: 'Executive Chef',
+        personalityId: 'perfectionist',
+        floor: 4,
+        look: EmployeeLook(
+            skin: 0, hairStyle: 0, hairColor: 2, shirt: 7, pants: 2),
+      ),
+      EmployeeSpec(
+        id: 'emp-martha',
+        name: 'Martha',
+        role: 'Hospitality Lead',
+        personalityId: 'socialButterfly',
+        floor: 4,
+        look: EmployeeLook(
+            skin: 1, hairStyle: 1, hairColor: 2, shirt: 5, pants: 0),
+      ),
+      EmployeeSpec(
+        id: 'emp-wolfgang',
+        name: 'Wolfgang',
+        role: 'Head Mixologist',
+        personalityId: 'coffeeAddict',
+        floor: 4,
+        look: EmployeeLook(
+            skin: 0, hairStyle: 0, hairColor: 1, shirt: 1, pants: 2),
+      ),
+      EmployeeSpec(
+        id: 'emp-dwayne',
+        name: 'Dwayne',
+        role: 'Chief Host',
+        personalityId: 'socialButterfly',
+        floor: 4,
+        look: EmployeeLook(
+            skin: 2, hairStyle: 0, hairColor: 0, shirt: 4, pants: 1),
+      ),
+      EmployeeSpec(
+        id: 'emp-vera',
+        name: 'Vera',
+        role: 'Concierge',
+        personalityId: 'daydreamer',
+        floor: 4,
+        look: EmployeeLook(
+            skin: 1, hairStyle: 1, hairColor: 4, shirt: 6, pants: 0),
+      ),
+      EmployeeSpec(
+        id: 'emp-keith',
+        name: 'Keith',
+        role: 'Sommelier',
+        personalityId: 'coffeeAddict',
+        floor: 4,
+        look: EmployeeLook(
+            skin: 3, hairStyle: 2, hairColor: 0, shirt: 0, pants: 2),
+      ),
     ];
+
+/// Staff on a given floor.
+List<EmployeeSpec> staffOnFloor(List<EmployeeSpec> all, int floor) =>
+    [for (final e in all) if (e.floor == floor) e];
 
 /// Walk-in candidates — the rest of the billionaire cinematic universe.
 const hireNamePool = <String>[
@@ -298,8 +514,10 @@ const hireRolePool = <String>[
   'Disruption Lead',
 ];
 
-/// Builds a fresh hire with a random identity (avoiding names already used).
-EmployeeSpec rollNewHire(Random rng, List<EmployeeSpec> current) {
+/// Builds a fresh hire with a random identity (avoiding names already used),
+/// placed on [floor].
+EmployeeSpec rollNewHire(Random rng, List<EmployeeSpec> current,
+    {int floor = 0}) {
   final used = current.map((e) => e.name).toSet();
   final names = hireNamePool.where((n) => !used.contains(n)).toList();
   final name = names.isEmpty
@@ -311,6 +529,7 @@ EmployeeSpec rollNewHire(Random rng, List<EmployeeSpec> current) {
     role: hireRolePool[rng.nextInt(hireRolePool.length)],
     personalityId:
         Personality.all[rng.nextInt(Personality.all.length)].id,
+    floor: floor,
     look: EmployeeLook.random(rng),
   );
 }

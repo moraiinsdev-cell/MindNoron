@@ -54,7 +54,8 @@ void main() {
 
     // Company overview: header + all founding staff listed.
     expect(find.text('MindNoron Inc.'), findsOneWidget);
-    for (final name in ['Elon', 'Jeff', 'Bill', 'Oprah']) {
+    // The ground floor (Operations) staff.
+    for (final name in ['Elon', 'Jeff', 'Warren', 'Andy']) {
       expect(find.textContaining(name), findsWidgets,
           reason: '$name missing from the staff list');
     }

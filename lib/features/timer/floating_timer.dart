@@ -9,6 +9,7 @@ import '../../core/enums.dart';
 import '../../core/platform/window_service.dart';
 import '../office/office_camera.dart';
 import '../office/office_map.dart';
+import '../office/office_models.dart';
 import '../office/office_painter.dart';
 import '../office/office_repository.dart';
 import '../office/office_sim.dart';
@@ -79,12 +80,16 @@ class _FocusPipState extends ConsumerState<FocusPip>
   }
 
   void _syncFromProviders() {
-    final staff = ref.watch(officeStaffProvider).valueOrNull;
-    if (staff != null && staff.isNotEmpty) {
-      _sim.syncStaff(staff);
-      if (!_placed) {
-        _placed = true;
-        _sim.placeInitial();
+    final floor = ref.watch(currentFloorProvider);
+    final all = ref.watch(officeStaffProvider).valueOrNull;
+    if (all != null) {
+      final staff = staffOnFloor(all, floor);
+      if (staff.isNotEmpty) {
+        _sim.syncStaff(staff);
+        if (!_placed) {
+          _placed = true;
+          _sim.placeInitial();
+        }
       }
     }
     final layout = ref.watch(officeLayoutProvider).valueOrNull;

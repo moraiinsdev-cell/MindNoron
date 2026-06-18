@@ -19,8 +19,8 @@ class OfficeRepository {
   final SettingsRepository _settings;
 
   /// Bumping a key reseeds saved data with the latest defaults.
-  /// v3: the founding roster grew to a dozen.
-  static const _kStaff = 'officeStaffV3';
+  /// v4: the roster spread across five floors (~30 staff).
+  static const _kStaff = 'officeStaffV4';
   static const _kEconomy = 'officeEconomyV1';
   /// v2: ships a fully furnished "MAX level" campus by default.
   static const _kLayout = 'officeLayoutV2';
@@ -49,9 +49,9 @@ class OfficeRepository {
   Future<void> pinTask(String id, String? taskId) =>
       _update(id, (e) => e.copyWith(taskId: () => taskId));
 
-  Future<EmployeeSpec> hire(Random rng) async {
+  Future<EmployeeSpec> hire(Random rng, {int floor = 0}) async {
     final staff = await getStaff();
-    final hire = rollNewHire(rng, staff);
+    final hire = rollNewHire(rng, staff, floor: floor);
     await _save([...staff, hire]);
     return hire;
   }
@@ -119,6 +119,9 @@ class OfficeRepository {
 final officeRepositoryProvider = Provider<OfficeRepository>((ref) {
   return OfficeRepository(ref.watch(settingsRepositoryProvider));
 });
+
+/// Which building floor the office view is currently showing (0-based).
+final currentFloorProvider = StateProvider<int>((ref) => 0);
 
 final officeStaffProvider = StreamProvider<List<EmployeeSpec>>((ref) {
   return ref.watch(officeRepositoryProvider).watchStaff();
