@@ -190,6 +190,29 @@ Set<Point<int>> _buildInteriorWalls() {
   run(10, 15, 10, 21, const {});
   // Gym: top wall with a door near the corridor.
   run(2, 22, 12, 22, {const Point(11, 22), const Point(12, 22)});
+
+  // --- Department partitions (gaps are doorways) --------------------------
+  // TASKS: right wall onto the central corridor.
+  run(17, 3, 17, 14, {const Point(17, 8), const Point(17, 9)});
+  // ANALYTICS | CALENDAR divider.
+  run(24, 2, 24, 7, {const Point(24, 4), const Point(24, 5)});
+  // LIBRARY: right wall onto the corridor.
+  run(20, 15, 20, 21, {const Point(20, 18), const Point(20, 19)});
+  // CAFÉ: top wall under the corridor.
+  run(15, 23, 26, 23, {const Point(20, 23), const Point(21, 23)});
+
+  // --- Entertainment wing walls ------------------------------------------
+  // North wall separating the sun deck from the arcade.
+  run(39, 21, 54, 21, {const Point(45, 21), const Point(46, 21)});
+  // Wall between the arcade and the cinema/bar below.
+  run(39, 28, 54, 28, {
+    const Point(43, 28),
+    const Point(44, 28),
+    const Point(51, 28),
+    const Point(52, 28),
+  });
+  // Cinema | bar divider.
+  run(48, 29, 48, 34, {const Point(48, 32), const Point(48, 33)});
   return walls;
 }
 
