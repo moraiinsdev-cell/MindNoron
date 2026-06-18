@@ -128,6 +128,14 @@ const rooms = <Room>[
       Color(0xFFD4CDB8)),
   Room('POOL', Rect.fromLTRB(39, 2, 55, 35), Color(0xFF8FBE7A),
       Color(0xFF85B470)),
+  // Entertainment wing carved out of the south garden (drawn after POOL so
+  // their floors override the grass). Open-plan, like the other modules.
+  Room('ARCADE', Rect.fromLTRB(39, 22, 55, 28), Color(0xFF3A3550),
+      Color(0xFF332E48)),
+  Room('CINEMA', Rect.fromLTRB(39, 28, 48, 35), Color(0xFF4A2F3A),
+      Color(0xFF422833)),
+  Room('BAR', Rect.fromLTRB(48, 28, 55, 35), Color(0xFF6E5440),
+      Color(0xFF644A38)),
 ];
 
 /// Swimming pool water (tiles, exclusive right/bottom).
@@ -295,9 +303,26 @@ final officeObjects = <OfficeObject>[
   OfficeObject(plantSprite, tx: 53, ty: 2, tw: 1, th: 1),
   OfficeObject(plantSprite, tx: 53, ty: 22, tw: 1, th: 1),
   OfficeObject(bonsaiSprite, tx: 47, ty: 26, tw: 1, th: 1),
-  OfficeObject(bonsaiSprite, tx: 51, ty: 29, tw: 1, th: 1),
-  OfficeObject(plantSprite, tx: 40, ty: 32, tw: 1, th: 1),
   OfficeObject(plantSprite, tx: 46, ty: 32, tw: 1, th: 1),
+
+  // ARCADE: a row of cabinets, a jukebox and a billiards table.
+  OfficeObject(arcadeCabinetSprite, tx: 40, ty: 23, tw: 1, th: 1),
+  OfficeObject(arcadeCabinetSprite, tx: 42, ty: 23, tw: 1, th: 1),
+  OfficeObject(arcadeCabinetSprite, tx: 44, ty: 23, tw: 1, th: 1),
+  OfficeObject(jukeboxSprite, tx: 46, ty: 23, tw: 1, th: 1),
+  OfficeObject(poolTableSprite, tx: 49, ty: 24, tw: 2, th: 1),
+  OfficeObject(plantSprite, tx: 53, ty: 23, tw: 1, th: 1),
+
+  // CINEMA: the big screen with a couple of sofas facing it.
+  OfficeObject(tvScreenSprite, tx: 41, ty: 29, tw: 2, th: 1),
+  OfficeObject(sofaSprite, tx: 41, ty: 32, tw: 2, th: 1),
+  OfficeObject(sofaSprite, tx: 44, ty: 32, tw: 2, th: 1),
+
+  // BAR: the counter plus a couple of high tables.
+  OfficeObject(barCounterSprite, tx: 49, ty: 29, tw: 2, th: 1),
+  OfficeObject(cafeTableSprite, tx: 49, ty: 32, tw: 1, th: 1),
+  OfficeObject(cafeTableSprite, tx: 52, ty: 32, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 53, ty: 30, tw: 1, th: 1),
 ];
 
 /// Flat props painted with the floor (walk-over-able): mats, cushions,
@@ -401,6 +426,8 @@ const chatSpots = <ChatSpot>[
   ChatSpot(Point(44, 18), Point(46, 18), true), // poolside
   ChatSpot(Point(4, 27), Point(6, 27), true), // gym
   ChatSpot(Point(30, 30), Point(32, 30), true), // entrance hall
+  ChatSpot(Point(48, 25), Point(50, 25), true), // by the pool table
+  ChatSpot(Point(52, 33), Point(54, 33), true), // bar
 ];
 
 /// Idle stroll destinations all over the campus.
@@ -420,8 +447,10 @@ const wanderSpots = <Point<int>>[
   Point(41, 4), // garden north
   Point(53, 8), // pool east edge
   Point(44, 20), // deck
-  Point(48, 28), // zen garden
-  Point(41, 30), // garden south
+  Point(41, 26), // arcade
+  Point(47, 25), // by the pool table
+  Point(44, 34), // cinema
+  Point(51, 33), // bar
 ];
 
 // ---------------------------------------------------------------------------

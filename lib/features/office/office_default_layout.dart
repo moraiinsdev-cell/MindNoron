@@ -88,16 +88,14 @@ List<PlacedItem> defaultLayout() => const [
       PlacedItem(itemId: 'umbrella', tx: 50, ty: 19),
       PlacedItem(itemId: 'plant', tx: 40, ty: 18),
 
-      // --- GARDEN south: café tables, lounge furniture & landscaping ------
-      PlacedItem(itemId: 'cafeTable', tx: 42, ty: 24),
-      PlacedItem(itemId: 'loungeTable', tx: 45, ty: 24),
-      PlacedItem(itemId: 'armchair', tx: 49, ty: 25),
-      PlacedItem(itemId: 'bonsai', tx: 41, ty: 28),
-      PlacedItem(itemId: 'cafeTable', tx: 43, ty: 29),
-      PlacedItem(itemId: 'cafeTable', tx: 48, ty: 30),
-      PlacedItem(itemId: 'plant', tx: 54, ty: 24),
-      PlacedItem(itemId: 'bonsai', tx: 53, ty: 30),
-      PlacedItem(itemId: 'plant', tx: 39, ty: 32),
-      PlacedItem(itemId: 'plant', tx: 45, ty: 33),
-      PlacedItem(itemId: 'plant', tx: 50, ty: 33),
+      // --- ENTERTAINMENT wing: removable extras dressing the new rooms ----
+      // (the arcade cabinets, pool table, cinema screen and bar counter are
+      // permanent fixtures in office_map.dart; these are the soft decor.)
+      PlacedItem(itemId: 'plant', tx: 40, ty: 26), // arcade
+      PlacedItem(itemId: 'bonsai', tx: 39, ty: 30), // cinema corner
+      PlacedItem(itemId: 'cushion', tx: 43, ty: 34), // cinema floor seating
+      PlacedItem(itemId: 'cushion', tx: 45, ty: 34),
+      PlacedItem(itemId: 'stool', tx: 50, ty: 32), // bar stools
+      PlacedItem(itemId: 'stool', tx: 53, ty: 32),
+      PlacedItem(itemId: 'plant', tx: 53, ty: 33), // bar
     ];
