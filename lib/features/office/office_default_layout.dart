@@ -98,4 +98,38 @@ List<PlacedItem> defaultLayout() => const [
       PlacedItem(itemId: 'stool', tx: 50, ty: 32), // bar stools
       PlacedItem(itemId: 'stool', tx: 53, ty: 32),
       PlacedItem(itemId: 'plant', tx: 53, ty: 33), // bar
+
+      // --- Second pass: denser greenery & props to fill the open floors ---
+      PlacedItem(itemId: 'plant', tx: 16, ty: 8), // tasks aisle
+      // GYM
+      PlacedItem(itemId: 'plant', tx: 2, ty: 28),
+      PlacedItem(itemId: 'plant', tx: 2, ty: 30),
+      PlacedItem(itemId: 'plant', tx: 12, ty: 28),
+      PlacedItem(itemId: 'bonsai', tx: 8, ty: 26),
+      PlacedItem(itemId: 'dumbbells', tx: 8, ty: 33),
+      // CAFÉ
+      PlacedItem(itemId: 'plant', tx: 15, ty: 30),
+      PlacedItem(itemId: 'plant', tx: 26, ty: 30),
+      PlacedItem(itemId: 'plant', tx: 17, ty: 34),
+      PlacedItem(itemId: 'plant', tx: 24, ty: 34),
+      // FOCUS / LIBRARY / INBOX
+      PlacedItem(itemId: 'cushion', tx: 2, ty: 20),
+      PlacedItem(itemId: 'cushion', tx: 8, ty: 18),
+      PlacedItem(itemId: 'bonsai', tx: 19, ty: 21),
+      PlacedItem(itemId: 'plant', tx: 22, ty: 18),
+      // LOUNGE
+      PlacedItem(itemId: 'cushion', tx: 30, ty: 24),
+      PlacedItem(itemId: 'cushion', tx: 36, ty: 24),
+      // GARDEN north + sides
+      PlacedItem(itemId: 'bonsai', tx: 41, ty: 3),
+      PlacedItem(itemId: 'plant', tx: 45, ty: 3),
+      PlacedItem(itemId: 'bonsai', tx: 50, ty: 3),
+      PlacedItem(itemId: 'plant', tx: 54, ty: 5),
+      PlacedItem(itemId: 'plant', tx: 39, ty: 16),
+      PlacedItem(itemId: 'bonsai', tx: 54, ty: 16),
+      PlacedItem(itemId: 'plant', tx: 40, ty: 20),
+      PlacedItem(itemId: 'plant', tx: 53, ty: 20),
+      // POOLSIDE extras
+      PlacedItem(itemId: 'lounger', tx: 41, ty: 19),
+      PlacedItem(itemId: 'umbrella', tx: 43, ty: 21),
     ];

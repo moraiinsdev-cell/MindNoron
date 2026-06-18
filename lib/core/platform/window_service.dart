@@ -40,10 +40,18 @@ class WindowService {
   /// mini office and countdown stay visible over other apps. Reversed by
   /// [exitFloating].
   static Future<void> enterFloating() async {
+    // A maximized (or fullscreen) window ignores setSize on Windows, so it must
+    // be returned to a normal state first — otherwise the "float" stays huge.
+    if (await windowManager.isFullScreen()) {
+      await windowManager.setFullScreen(false);
+    }
+    if (await windowManager.isMaximized()) {
+      await windowManager.unmaximize();
+    }
     await windowManager.setMinimumSize(const Size(260, 188));
-    await windowManager.setResizable(false);
     await windowManager.setSize(_floatingSize);
     await windowManager.setAlignment(Alignment.topRight);
+    await windowManager.setResizable(false);
     await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
     await windowManager.setAlwaysOnTop(true);
     await windowManager.show();
@@ -54,8 +62,8 @@ class WindowService {
     await windowManager.setAlwaysOnTop(false);
     await windowManager.setTitleBarStyle(TitleBarStyle.normal);
     await windowManager.setResizable(true);
-    await windowManager.setSize(AppConstants.defaultWindowSize);
     await windowManager.setMinimumSize(AppConstants.minWindowSize);
+    await windowManager.setSize(AppConstants.defaultWindowSize);
     await windowManager.center();
     await windowManager.show();
     await windowManager.focus();

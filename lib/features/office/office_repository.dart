@@ -18,11 +18,12 @@ class OfficeRepository {
 
   final SettingsRepository _settings;
 
-  /// v2: the founding roster switched from placeholder names to the
-  /// billionaire cast; bumping the key reseeds rosters saved under v1.
-  static const _kStaff = 'officeStaffV2';
+  /// Bumping a key reseeds saved data with the latest defaults.
+  /// v3: the founding roster grew to a dozen.
+  static const _kStaff = 'officeStaffV3';
   static const _kEconomy = 'officeEconomyV1';
-  static const _kLayout = 'officeLayoutV1';
+  /// v2: ships a fully furnished "MAX level" campus by default.
+  static const _kLayout = 'officeLayoutV2';
   static const _kSfx = 'officeSfxV1';
 
   Stream<List<EmployeeSpec>> watchStaff() =>

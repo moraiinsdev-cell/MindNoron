@@ -78,7 +78,7 @@ class _FocusPipState extends ConsumerState<FocusPip>
     super.dispose();
   }
 
-  void _syncFromProviders(bool focusing) {
+  void _syncFromProviders() {
     final staff = ref.watch(officeStaffProvider).valueOrNull;
     if (staff != null && staff.isNotEmpty) {
       _sim.syncStaff(staff);
@@ -89,7 +89,6 @@ class _FocusPipState extends ConsumerState<FocusPip>
     }
     final layout = ref.watch(officeLayoutProvider).valueOrNull;
     if (layout != null) _sim.syncLayout(layout);
-    _sim.setFocusMode(focusing);
   }
 
   @override
@@ -105,19 +104,21 @@ class _FocusPipState extends ConsumerState<FocusPip>
     final remaining = snap.remaining(now);
     final progress = snap.progress(now);
 
-    _syncFromProviders(active && snap.isRunning && !isBreak);
+    _syncFromProviders();
 
     return Scaffold(
       backgroundColor: const Color(0xFF15131A),
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onPanStart: (_) => windowManager.startDragging(),
+        onDoubleTap: () => exitFloatingTimer(ref),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(10),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Live mini office.
+              // Live mini office — kept bright (fixed midday light, no deep-work
+              // dim) so the campus stays readable at this tiny size.
               LayoutBuilder(
                 builder: (context, constraints) {
                   _camera.fit(
@@ -131,7 +132,7 @@ class _FocusPipState extends ConsumerState<FocusPip>
                       cache: _cache,
                       zoom: _camera.zoom,
                       origin: _camera.origin,
-                      focusMode: _sim.focusMode,
+                      hourOverride: 13.0,
                     ),
                   );
                 },
@@ -147,10 +148,11 @@ class _FocusPipState extends ConsumerState<FocusPip>
                 ),
               ),
 
-              // Window controls (top-right).
+              // Window controls (top-right). Expand is a labelled chip so it's
+              // obvious how to get the full app back (double-click also works).
               Positioned(
-                top: 4,
-                right: 4,
+                top: 5,
+                right: 5,
                 child: Row(
                   children: [
                     if (active)
@@ -160,11 +162,8 @@ class _FocusPipState extends ConsumerState<FocusPip>
                         onTap:
                             snap.isRunning ? controller.pause : controller.resume,
                       ),
-                    _PipButton(
-                      icon: Icons.open_in_full,
-                      tooltip: 'Back to app',
-                      onTap: () => exitFloatingTimer(ref),
-                    ),
+                    const SizedBox(width: 4),
+                    _ExpandChip(onTap: () => exitFloatingTimer(ref)),
                   ],
                 ),
               ),
@@ -260,6 +259,45 @@ class _CountPill extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A clearly labelled "expand back to the app" chip.
+class _ExpandChip extends StatelessWidget {
+  const _ExpandChip({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Back to app (double-click anywhere)',
+      child: Material(
+        color: const Color(0xE6141019),
+        shape: const StadiumBorder(
+          side: BorderSide(color: Color(0x33FFFFFF)),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const StadiumBorder(),
+          child: const Padding(
+            padding: EdgeInsets.fromLTRB(8, 5, 10, 5),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.open_in_full, size: 13, color: Colors.white),
+                SizedBox(width: 5),
+                Text('Expand',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
         ),
       ),
     );
