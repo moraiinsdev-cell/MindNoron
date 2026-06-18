@@ -119,61 +119,70 @@ void main() {
   });
 
   group('campus map', () {
-    test('all key spots are walkable', () {
-      final spots = <String, Point<int>>{
-        for (final d in officeDesks) 'desk ${d.index} seat': d.seatTile,
-        'coffee': coffeeSpot,
-        'vending': vendingSpot,
-        'water': waterSpot,
-        'snack': snackSpot,
-        'swim entry': swimEntry,
-        for (var i = 0; i < sofaSeats.length; i++)
-          'sofa $i approach': sofaSeats[i].approach,
-        for (var i = 0; i < deckSeats.length; i++)
-          'deck $i approach': deckSeats[i].approach,
-        for (var i = 0; i < cushionSeats.length; i++)
-          'cushion $i': cushionSeats[i].approach,
-        for (var i = 0; i < readSeats.length; i++)
-          'read seat $i approach': readSeats[i].approach,
-        for (var i = 0; i < workoutSpots.length; i++)
-          'workout $i': workoutSpots[i],
-        for (var i = 0; i < cafeSpots.length; i++) 'café $i': cafeSpots[i],
-        for (var i = 0; i < readStandSpots.length; i++)
-          'read stand $i': readStandSpots[i],
-        for (var i = 0; i < chatSpots.length; i++) ...{
-          'chat $i A': chatSpots[i].a,
-          'chat $i B': chatSpots[i].b,
-        },
-        for (var i = 0; i < wanderSpots.length; i++)
-          'wander $i': wanderSpots[i],
-        'door': doorTile,
-      };
-      for (final entry in spots.entries) {
-        expect(isWalkable(entry.value.x, entry.value.y), isTrue,
-            reason: '${entry.key} at ${entry.value} is blocked');
+    test('all key spots are walkable on every floor', () {
+      addTearDown(() => setActiveFloor(0));
+      for (var f = 0; f < floorCount; f++) {
+        setActiveFloor(f);
+        final spots = <String, Point<int>>{
+          for (final d in officeDesks) 'desk ${d.index} seat': d.seatTile,
+          'coffee': coffeeSpot,
+          'vending': vendingSpot,
+          'water': waterSpot,
+          'snack': snackSpot,
+          'swim entry': swimEntry,
+          for (var i = 0; i < sofaSeats.length; i++)
+            'sofa $i approach': sofaSeats[i].approach,
+          for (var i = 0; i < deckSeats.length; i++)
+            'deck $i approach': deckSeats[i].approach,
+          for (var i = 0; i < cushionSeats.length; i++)
+            'cushion $i': cushionSeats[i].approach,
+          for (var i = 0; i < readSeats.length; i++)
+            'read seat $i approach': readSeats[i].approach,
+          for (var i = 0; i < workoutSpots.length; i++)
+            'workout $i': workoutSpots[i],
+          for (var i = 0; i < cafeSpots.length; i++) 'café $i': cafeSpots[i],
+          for (var i = 0; i < readStandSpots.length; i++)
+            'read stand $i': readStandSpots[i],
+          for (var i = 0; i < chatSpots.length; i++) ...{
+            'chat $i A': chatSpots[i].a,
+            'chat $i B': chatSpots[i].b,
+          },
+          for (var i = 0; i < wanderSpots.length; i++)
+            'wander $i': wanderSpots[i],
+          'door': doorTile,
+        };
+        for (final entry in spots.entries) {
+          expect(isWalkable(entry.value.x, entry.value.y), isTrue,
+              reason: 'floor $f: ${entry.key} at ${entry.value} is blocked');
+        }
       }
     });
 
-    test('every spot is reachable from the front door', () {
-      final targets = [
-        for (final d in officeDesks) d.seatTile,
-        coffeeSpot,
-        vendingSpot,
-        waterSpot,
-        snackSpot,
-        swimEntry,
-        for (final s in sofaSeats) s.approach,
-        for (final s in deckSeats) s.approach,
-        for (final s in cushionSeats) s.approach,
-        for (final s in readSeats) s.approach,
-        ...workoutSpots,
-        ...cafeSpots,
-        ...readStandSpots,
-        for (final s in chatSpots) ...[s.a, s.b],
-        ...wanderSpots,
-      ];
-      for (final t in targets) {
-        expect(findPath(doorTile, t), isNotNull, reason: '$t unreachable');
+    test('every spot is reachable from the front door on every floor', () {
+      addTearDown(() => setActiveFloor(0));
+      for (var f = 0; f < floorCount; f++) {
+        setActiveFloor(f);
+        final targets = [
+          for (final d in officeDesks) d.seatTile,
+          coffeeSpot,
+          vendingSpot,
+          waterSpot,
+          snackSpot,
+          swimEntry,
+          for (final s in sofaSeats) s.approach,
+          for (final s in deckSeats) s.approach,
+          for (final s in cushionSeats) s.approach,
+          for (final s in readSeats) s.approach,
+          ...workoutSpots,
+          ...cafeSpots,
+          ...readStandSpots,
+          for (final s in chatSpots) ...[s.a, s.b],
+          ...wanderSpots,
+        ];
+        for (final t in targets) {
+          expect(findPath(doorTile, t), isNotNull,
+              reason: 'floor $f: $t unreachable');
+        }
       }
     });
 

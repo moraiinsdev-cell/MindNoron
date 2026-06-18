@@ -317,7 +317,9 @@ Set<Point<int>> _buildInteriorWalls() {
 // Furniture layout
 // ---------------------------------------------------------------------------
 
-const officeDesks = <DeskSpot>[
+// The claimable desks in the TASKS bullpen vary per floor: work floors keep a
+// full bullpen, leisure floors thin it right down (those staff lounge instead).
+const _floor0Desks = <DeskSpot>[
   DeskSpot(0, 3, 4),
   DeskSpot(1, 7, 4),
   DeskSpot(2, 11, 4),
@@ -332,11 +334,101 @@ const officeDesks = <DeskSpot>[
   DeskSpot(11, 14, 12),
 ];
 
-final officeObjects = <OfficeObject>[
-  // TASKS dept: the working desks.
-  for (final d in officeDesks)
-    OfficeObject(deskSprite, tx: d.tx, ty: d.ty, tw: 2, th: 1, isDesk: true),
+// Creative: a smaller studio bullpen.
+const _floor2Desks = <DeskSpot>[
+  DeskSpot(0, 3, 4),
+  DeskSpot(1, 7, 4),
+  DeskSpot(2, 11, 4),
+  DeskSpot(3, 14, 4),
+  DeskSpot(4, 3, 8),
+  DeskSpot(5, 7, 8),
+];
 
+// Wellness: just a reception desk or two.
+const _floor3Desks = <DeskSpot>[
+  DeskSpot(0, 14, 4),
+  DeskSpot(1, 14, 8),
+];
+
+// Sky Lounge: a few VIP desks.
+const _floor4Desks = <DeskSpot>[
+  DeskSpot(0, 3, 4),
+  DeskSpot(1, 7, 4),
+  DeskSpot(2, 11, 4),
+];
+
+const _floorDesks = <List<DeskSpot>>[
+  _floor0Desks, // Operations
+  _floor0Desks, // Engineering — also a full bullpen
+  _floor2Desks, // Creative Studio
+  _floor3Desks, // Wellness
+  _floor4Desks, // Sky Lounge
+];
+
+List<DeskSpot> get officeDesks =>
+    _floorDesks[activeFloor.clamp(0, _floorDesks.length - 1)];
+
+// Furniture that fills the TASKS bullpen *beyond* the desks, themed per floor.
+// (Floor 0 leaves it to the desks.) These sit in the bullpen interior, which is
+// free of shared activity spots, so they never trap the simulation.
+final _floor1Tasks = <OfficeObject>[
+  // Engineering: a server farm threaded between the desk rows.
+  OfficeObject(serverRackSprite, tx: 3, ty: 6, tw: 1, th: 1),
+  OfficeObject(serverRackSprite, tx: 7, ty: 6, tw: 1, th: 1),
+  OfficeObject(serverRackSprite, tx: 11, ty: 6, tw: 1, th: 1),
+  OfficeObject(serverRackSprite, tx: 3, ty: 10, tw: 1, th: 1),
+  OfficeObject(serverRackSprite, tx: 7, ty: 10, tw: 1, th: 1),
+  OfficeObject(serverRackSprite, tx: 11, ty: 10, tw: 1, th: 1),
+  OfficeObject(filingCabinetSprite, tx: 16, ty: 6, tw: 1, th: 1),
+  OfficeObject(filingCabinetSprite, tx: 16, ty: 10, tw: 1, th: 1),
+];
+final _floor2Tasks = <OfficeObject>[
+  // Creative: drafting nooks + a small library where the back desks were.
+  OfficeObject(bookshelfSprite, tx: 3, ty: 12, tw: 1, th: 1),
+  OfficeObject(bookshelfSprite, tx: 4, ty: 12, tw: 1, th: 1),
+  OfficeObject(loungeTableSprite, tx: 7, ty: 12, tw: 1, th: 1),
+  OfficeObject(armchairSprite, tx: 9, ty: 12, tw: 1, th: 1),
+  OfficeObject(paperStackSprite, tx: 11, ty: 12, tw: 1, th: 1),
+  OfficeObject(bonsaiSprite, tx: 14, ty: 12, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 16, ty: 11, tw: 1, th: 1),
+];
+final _floor3Tasks = <OfficeObject>[
+  // Wellness: a studio of treadmills, weights and greenery.
+  OfficeObject(treadmillSprite, tx: 3, ty: 4, tw: 1, th: 2),
+  OfficeObject(treadmillSprite, tx: 7, ty: 4, tw: 1, th: 2),
+  OfficeObject(treadmillSprite, tx: 11, ty: 4, tw: 1, th: 2),
+  OfficeObject(dumbbellRackSprite, tx: 3, ty: 8, tw: 1, th: 1),
+  OfficeObject(dumbbellRackSprite, tx: 7, ty: 8, tw: 1, th: 1),
+  OfficeObject(dumbbellRackSprite, tx: 11, ty: 8, tw: 1, th: 1),
+  OfficeObject(bonsaiSprite, tx: 3, ty: 12, tw: 1, th: 1),
+  OfficeObject(bonsaiSprite, tx: 7, ty: 12, tw: 1, th: 1),
+  OfficeObject(bonsaiSprite, tx: 11, ty: 12, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 9, ty: 6, tw: 1, th: 1),
+];
+final _floor4Tasks = <OfficeObject>[
+  // Sky Lounge: VIP sofas, a bar and arcades where the bullpen was.
+  OfficeObject(sofaSprite, tx: 3, ty: 8, tw: 2, th: 1),
+  OfficeObject(sofaSprite, tx: 7, ty: 8, tw: 2, th: 1),
+  OfficeObject(armchairSprite, tx: 11, ty: 8, tw: 1, th: 1),
+  OfficeObject(barCounterSprite, tx: 3, ty: 12, tw: 2, th: 1),
+  OfficeObject(arcadeCabinetSprite, tx: 7, ty: 12, tw: 1, th: 1),
+  OfficeObject(jukeboxSprite, tx: 9, ty: 12, tw: 1, th: 1),
+  OfficeObject(cafeTableSprite, tx: 12, ty: 12, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 15, ty: 8, tw: 1, th: 1),
+];
+
+const _noTasks = <OfficeObject>[];
+final _floorTasks = <List<OfficeObject>>[
+  _noTasks,
+  _floor1Tasks,
+  _floor2Tasks,
+  _floor3Tasks,
+  _floor4Tasks,
+];
+
+/// Furniture shared by every floor: the spot-anchored pieces (so the
+/// simulation's seats/spots always line up) plus the rooftop garden.
+final _sharedObjects = <OfficeObject>[
   // ANALYTICS: server racks + storage.
   OfficeObject(serverRackSprite, tx: 18, ty: 2, tw: 1, th: 1),
   OfficeObject(serverRackSprite, tx: 19, ty: 2, tw: 1, th: 1),
@@ -446,6 +538,19 @@ final officeObjects = <OfficeObject>[
   OfficeObject(cafeTableSprite, tx: 52, ty: 32, tw: 1, th: 1),
   OfficeObject(plantSprite, tx: 53, ty: 30, tw: 1, th: 1),
 ];
+
+/// All furniture for floor [f]: its desks, its themed bullpen fill, then the
+/// shared spot-anchored pieces and garden.
+List<OfficeObject> _objectsForFloor(int f) => [
+      for (final d in _floorDesks[f])
+        OfficeObject(deskSprite, tx: d.tx, ty: d.ty, tw: 2, th: 1, isDesk: true),
+      ..._floorTasks[f],
+      ..._sharedObjects,
+    ];
+
+/// Furniture for the currently-active floor.
+List<OfficeObject> get officeObjects =>
+    _objectsForFloor(activeFloor.clamp(0, _floorDesks.length - 1));
 
 /// Flat props painted with the floor (walk-over-able): mats, cushions,
 /// stools, gold, the pool ladder.
@@ -627,9 +732,15 @@ bool isPoolTile(Point<int> tile) =>
 // Collision + pathfinding
 // ---------------------------------------------------------------------------
 
-final List<List<bool>> _walkable = _buildWalkable();
+// One walkability grid per floor (their furniture differs).
+final List<List<List<bool>>> _floorWalkable = [
+  for (var f = 0; f < _floorDesks.length; f++) _buildWalkable(f),
+];
 
-List<List<bool>> _buildWalkable() {
+List<List<bool>> get _walkable =>
+    _floorWalkable[activeFloor.clamp(0, _floorWalkable.length - 1)];
+
+List<List<bool>> _buildWalkable(int floor) {
   final grid = List.generate(mapRows, (_) => List.filled(mapCols, true));
   // Outer walls: 2-tile-tall top wall band, 1-tile border elsewhere.
   for (var x = 0; x < mapCols; x++) {
@@ -650,7 +761,7 @@ List<List<bool>> _buildWalkable() {
       grid[y][x] = false;
     }
   }
-  for (final o in officeObjects) {
+  for (final o in _objectsForFloor(floor)) {
     if (!o.blocks) continue;
     for (var dy = 0; dy < o.th; dy++) {
       for (var dx = 0; dx < o.tw; dx++) {
