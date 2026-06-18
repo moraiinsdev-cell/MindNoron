@@ -208,6 +208,8 @@ const officeDesks = <DeskSpot>[
   DeskSpot(7, 3, 12),
   DeskSpot(8, 7, 12),
   DeskSpot(9, 11, 12),
+  DeskSpot(10, 14, 8),
+  DeskSpot(11, 14, 12),
 ];
 
 final officeObjects = <OfficeObject>[

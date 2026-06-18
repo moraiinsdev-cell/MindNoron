@@ -16,7 +16,9 @@ import 'package:mind_noron/features/office/office_screen.dart';
 void main() {
   testWidgets('office screen runs live: staff list, profile, simulation',
       (tester) async {
-    tester.view.physicalSize = const Size(1280, 800);
+    // Tall enough that the whole company panel (now a dozen staff plus the
+    // hire button and activity feed) lays out without scrolling.
+    tester.view.physicalSize = const Size(1280, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);

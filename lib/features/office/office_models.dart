@@ -245,6 +245,38 @@ List<EmployeeSpec> defaultStaff() => const [
         look: EmployeeLook(
             skin: 3, hairStyle: 1, hairColor: 0, shirt: 5, pants: 0),
       ),
+      EmployeeSpec(
+        id: 'emp-lisa',
+        name: 'Lisa',
+        role: 'Chief Silicon Officer',
+        personalityId: 'perfectionist',
+        look: EmployeeLook(
+            skin: 1, hairStyle: 1, hairColor: 0, shirt: 2, pants: 0),
+      ),
+      EmployeeSpec(
+        id: 'emp-demis',
+        name: 'Demis',
+        role: 'Head of Deep Thinking',
+        personalityId: 'zenMaster',
+        look: EmployeeLook(
+            skin: 0, hairStyle: 0, hairColor: 0, shirt: 6, pants: 2),
+      ),
+      EmployeeSpec(
+        id: 'emp-reed',
+        name: 'Reed',
+        role: 'Chief Binge Officer',
+        personalityId: 'daydreamer',
+        look: EmployeeLook(
+            skin: 0, hairStyle: 2, hairColor: 1, shirt: 0, pants: 1),
+      ),
+      EmployeeSpec(
+        id: 'emp-brian',
+        name: 'Brian',
+        role: 'Head of Belonging',
+        personalityId: 'socialButterfly',
+        look: EmployeeLook(
+            skin: 2, hairStyle: 0, hairColor: 3, shirt: 4, pants: 0),
+      ),
     ];
 
 /// Walk-in candidates — the rest of the billionaire cinematic universe.

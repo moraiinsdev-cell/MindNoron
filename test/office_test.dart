@@ -253,13 +253,13 @@ void main() {
 
     test('everyone starts working at a desk', () {
       final sim = boot();
-      expect(sim.employees.length, 8);
+      expect(sim.employees.length, defaultStaff().length);
       for (final e in sim.employees) {
         expect(e.activity, Activity.working);
         expect(e.deskIndex, greaterThanOrEqualTo(0));
       }
       final desks = sim.employees.map((e) => e.deskIndex).toSet();
-      expect(desks.length, 8);
+      expect(desks.length, sim.employees.length);
     });
 
     test('exhausted employees head for a break', () {
@@ -401,7 +401,7 @@ void main() {
       final firedId = staff.first.id;
       sim.selectedId = firedId;
       sim.syncStaff(staff.skip(1).toList());
-      expect(sim.employees.length, 7);
+      expect(sim.employees.length, staff.length - 1);
       expect(sim.byId(firedId), isNull);
       expect(sim.selectedId, isNull);
     });
@@ -410,7 +410,7 @@ void main() {
       final sim = boot();
       final staff = [...defaultStaff(), rollNewHire(Random(1), defaultStaff())];
       sim.syncStaff(staff);
-      expect(sim.employees.length, 9);
+      expect(sim.employees.length, staff.length);
       final hire = sim.employees.last;
       expect(tileAt(hire.pos), doorTile);
     });
