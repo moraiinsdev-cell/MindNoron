@@ -507,8 +507,11 @@ final _sharedObjects = <OfficeObject>[
   OfficeObject(plantSprite, tx: 27, ty: 2, tw: 1, th: 1),
   OfficeObject(plantSprite, tx: 18, ty: 12, tw: 1, th: 1),
   OfficeObject(plantSprite, tx: 21, ty: 22, tw: 1, th: 1),
+];
 
-  // Outdoor: deck + garden.
+/// The poolside sun deck + north-garden greenery. Shared by every floor (it
+/// anchors the deck loungers/swim spots and reads as the building's terrace).
+final _deckGarden = <OfficeObject>[
   OfficeObject(loungerSprite, tx: 43, ty: 16, tw: 1, th: 2),
   OfficeObject(loungerSprite, tx: 46, ty: 16, tw: 1, th: 2),
   OfficeObject(loungerSprite, tx: 49, ty: 16, tw: 1, th: 2),
@@ -516,36 +519,101 @@ final _sharedObjects = <OfficeObject>[
   OfficeObject(plantSprite, tx: 40, ty: 2, tw: 1, th: 1),
   OfficeObject(plantSprite, tx: 53, ty: 2, tw: 1, th: 1),
   OfficeObject(plantSprite, tx: 53, ty: 22, tw: 1, th: 1),
-  OfficeObject(bonsaiSprite, tx: 47, ty: 26, tw: 1, th: 1),
-  OfficeObject(plantSprite, tx: 46, ty: 32, tw: 1, th: 1),
+];
 
-  // ARCADE: a row of cabinets, a jukebox and a billiards table.
+// The entertainment wing (ARCADE / CINEMA / BAR rooms, rows 22-34) is themed
+// per floor. Pieces avoid the shared garden wander/chat spots.
+final _floor0Ent = <OfficeObject>[
   OfficeObject(arcadeCabinetSprite, tx: 40, ty: 23, tw: 1, th: 1),
   OfficeObject(arcadeCabinetSprite, tx: 42, ty: 23, tw: 1, th: 1),
   OfficeObject(arcadeCabinetSprite, tx: 44, ty: 23, tw: 1, th: 1),
   OfficeObject(jukeboxSprite, tx: 46, ty: 23, tw: 1, th: 1),
   OfficeObject(poolTableSprite, tx: 49, ty: 24, tw: 2, th: 1),
   OfficeObject(plantSprite, tx: 53, ty: 23, tw: 1, th: 1),
-
-  // CINEMA: the big screen with a couple of sofas facing it.
   OfficeObject(tvScreenSprite, tx: 41, ty: 29, tw: 2, th: 1),
   OfficeObject(sofaSprite, tx: 41, ty: 32, tw: 2, th: 1),
   OfficeObject(sofaSprite, tx: 44, ty: 32, tw: 2, th: 1),
-
-  // BAR: the counter plus a couple of high tables.
   OfficeObject(barCounterSprite, tx: 49, ty: 29, tw: 2, th: 1),
   OfficeObject(cafeTableSprite, tx: 49, ty: 32, tw: 1, th: 1),
   OfficeObject(cafeTableSprite, tx: 52, ty: 32, tw: 1, th: 1),
   OfficeObject(plantSprite, tx: 53, ty: 30, tw: 1, th: 1),
 ];
+// Engineering: a LAN/demo zone — arcades, a pool table and server racks.
+final _floor1Ent = <OfficeObject>[
+  OfficeObject(arcadeCabinetSprite, tx: 40, ty: 23, tw: 1, th: 1),
+  OfficeObject(arcadeCabinetSprite, tx: 42, ty: 23, tw: 1, th: 1),
+  OfficeObject(poolTableSprite, tx: 49, ty: 24, tw: 2, th: 1),
+  OfficeObject(serverRackSprite, tx: 44, ty: 23, tw: 1, th: 1),
+  OfficeObject(serverRackSprite, tx: 46, ty: 23, tw: 1, th: 1),
+  OfficeObject(tvScreenSprite, tx: 41, ty: 29, tw: 2, th: 1),
+  OfficeObject(sofaSprite, tx: 41, ty: 32, tw: 2, th: 1),
+  OfficeObject(serverRackSprite, tx: 45, ty: 32, tw: 1, th: 1),
+  OfficeObject(barCounterSprite, tx: 49, ty: 29, tw: 2, th: 1),
+  OfficeObject(cafeTableSprite, tx: 52, ty: 32, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 53, ty: 23, tw: 1, th: 1),
+];
+// Creative: a sculpture garden + screening room + bar.
+final _floor2Ent = <OfficeObject>[
+  OfficeObject(bonsaiSprite, tx: 40, ty: 23, tw: 1, th: 1),
+  OfficeObject(bonsaiSprite, tx: 43, ty: 23, tw: 1, th: 1),
+  OfficeObject(paperStackSprite, tx: 46, ty: 23, tw: 1, th: 1),
+  OfficeObject(bookshelfSprite, tx: 49, ty: 24, tw: 1, th: 1),
+  OfficeObject(bookshelfSprite, tx: 50, ty: 24, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 53, ty: 23, tw: 1, th: 1),
+  OfficeObject(tvScreenSprite, tx: 41, ty: 29, tw: 2, th: 1),
+  OfficeObject(sofaSprite, tx: 41, ty: 32, tw: 2, th: 1),
+  OfficeObject(armchairSprite, tx: 45, ty: 32, tw: 1, th: 1),
+  OfficeObject(barCounterSprite, tx: 49, ty: 29, tw: 2, th: 1),
+  OfficeObject(cafeTableSprite, tx: 52, ty: 32, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 53, ty: 30, tw: 1, th: 1),
+];
+// Wellness: a steam-room/yoga/smoothie spa — greenery and loungers.
+final _floor3Ent = <OfficeObject>[
+  OfficeObject(bonsaiSprite, tx: 40, ty: 23, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 42, ty: 23, tw: 1, th: 1),
+  OfficeObject(bonsaiSprite, tx: 44, ty: 23, tw: 1, th: 1),
+  OfficeObject(loungerSprite, tx: 49, ty: 23, tw: 1, th: 2),
+  OfficeObject(loungerSprite, tx: 51, ty: 23, tw: 1, th: 2),
+  OfficeObject(plantSprite, tx: 53, ty: 23, tw: 1, th: 1),
+  OfficeObject(bonsaiSprite, tx: 41, ty: 29, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 44, ty: 29, tw: 1, th: 1),
+  OfficeObject(loungerSprite, tx: 41, ty: 32, tw: 1, th: 2),
+  OfficeObject(barCounterSprite, tx: 49, ty: 29, tw: 2, th: 1),
+  OfficeObject(cafeTableSprite, tx: 52, ty: 32, tw: 1, th: 1),
+  OfficeObject(plantSprite, tx: 53, ty: 30, tw: 1, th: 1),
+];
+// Sky Lounge: a casino/theatre/skybar — arcades, screens, bars everywhere.
+final _floor4Ent = <OfficeObject>[
+  OfficeObject(arcadeCabinetSprite, tx: 40, ty: 23, tw: 1, th: 1),
+  OfficeObject(arcadeCabinetSprite, tx: 42, ty: 23, tw: 1, th: 1),
+  OfficeObject(arcadeCabinetSprite, tx: 44, ty: 23, tw: 1, th: 1),
+  OfficeObject(jukeboxSprite, tx: 46, ty: 23, tw: 1, th: 1),
+  OfficeObject(poolTableSprite, tx: 49, ty: 24, tw: 2, th: 1),
+  OfficeObject(barCounterSprite, tx: 52, ty: 23, tw: 2, th: 1),
+  OfficeObject(tvScreenSprite, tx: 41, ty: 29, tw: 2, th: 1),
+  OfficeObject(sofaSprite, tx: 41, ty: 32, tw: 2, th: 1),
+  OfficeObject(sofaSprite, tx: 44, ty: 32, tw: 2, th: 1),
+  OfficeObject(barCounterSprite, tx: 49, ty: 29, tw: 2, th: 1),
+  OfficeObject(cafeTableSprite, tx: 49, ty: 32, tw: 1, th: 1),
+  OfficeObject(cafeTableSprite, tx: 52, ty: 32, tw: 1, th: 1),
+];
+final _floorEnt = <List<OfficeObject>>[
+  _floor0Ent,
+  _floor1Ent,
+  _floor2Ent,
+  _floor3Ent,
+  _floor4Ent,
+];
 
-/// All furniture for floor [f]: its desks, its themed bullpen fill, then the
-/// shared spot-anchored pieces and garden.
+/// All furniture for floor [f]: its desks, its themed bullpen fill, the shared
+/// left-side spot anchors + deck, then the floor's entertainment wing.
 List<OfficeObject> _objectsForFloor(int f) => [
       for (final d in _floorDesks[f])
         OfficeObject(deskSprite, tx: d.tx, ty: d.ty, tw: 2, th: 1, isDesk: true),
       ..._floorTasks[f],
       ..._sharedObjects,
+      ..._deckGarden,
+      ..._floorEnt[f],
     ];
 
 /// Furniture for the currently-active floor.
