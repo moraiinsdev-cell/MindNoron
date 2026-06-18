@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/settings_repository.dart';
+import 'office_default_layout.dart';
 import 'office_economy.dart';
 import 'office_models.dart';
 
@@ -90,10 +91,18 @@ class OfficeRepository {
   // --- Build-mode furniture layout ----------------------------------------
 
   Stream<List<PlacedItem>> watchLayout() =>
-      _settings.watchValue(_kLayout).map(PlacedItem.decodeList);
+      _settings.watchValue(_kLayout).map(_decodeLayout);
 
   Future<List<PlacedItem>> getLayout() async =>
-      PlacedItem.decodeList(await _settings.readValue(_kLayout));
+      _decodeLayout(await _settings.readValue(_kLayout));
+
+  /// Falls back to the curated [defaultLayout] (a fully furnished, "MAX level"
+  /// campus) until the player saves their own layout in build mode — the same
+  /// reseed pattern as [_decode] for the roster.
+  List<PlacedItem> _decodeLayout(String? raw) {
+    final items = PlacedItem.decodeList(raw);
+    return items.isEmpty ? defaultLayout() : items;
+  }
 
   Future<void> saveLayout(List<PlacedItem> items) =>
       _settings.setValue(_kLayout, PlacedItem.encodeList(items));

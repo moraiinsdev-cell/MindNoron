@@ -8,6 +8,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mind_noron/features/office/office_catalog.dart';
+import 'package:mind_noron/features/office/office_default_layout.dart';
 import 'package:mind_noron/features/office/office_economy.dart';
 import 'package:mind_noron/features/office/office_map.dart';
 import 'package:mind_noron/features/office/office_models.dart';
@@ -339,6 +340,31 @@ void main() {
     await _savePng(img, 'build_mode');
     cache.dispose();
     expect(sim.placedItems.length, 3);
+  });
+
+  test('default max-level layout renders without obvious overlaps', () async {
+    final sim = OfficeSim(seed: 7);
+    sim.syncStaff(defaultStaff());
+    sim.placeInitial();
+    sim.syncLayout(defaultLayout());
+    const zoom = 2.0;
+    final cache = SpriteCache();
+    final painter = OfficePainter(
+      sim: sim,
+      cache: cache,
+      zoom: zoom,
+      origin: Offset.zero,
+      hourOverride: 13.0,
+    );
+    final img = _record(
+      (worldWidth * zoom).toInt(),
+      (worldHeight * zoom).toInt(),
+      (canvas) => painter.paint(
+          canvas, const Size(worldWidth * zoom, worldHeight * zoom)),
+    );
+    await _savePng(img, 'default_layout');
+    cache.dispose();
+    expect(sim.placedItems, isNotEmpty);
   });
 
   test('focus mode renders deep-work overlay', () async {
