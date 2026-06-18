@@ -105,7 +105,7 @@ class Room {
 const floorBase = Color(0xFFD8D3CA);
 const floorAlt = Color(0xFFCFC9BD);
 
-const rooms = <Room>[
+const _baseRooms = <Room>[
   Room('TASKS', Rect.fromLTRB(2, 3, 17, 15), Color(0xFF8C9CB4),
       Color(0xFF8294AE)),
   Room('ANALYTICS', Rect.fromLTRB(18, 2, 24, 7), Color(0xFFA8B0B8),
@@ -137,6 +137,103 @@ const rooms = <Room>[
   Room('BAR', Rect.fromLTRB(48, 28, 55, 35), Color(0xFF6E5440),
       Color(0xFF644A38)),
 ];
+
+// ---------------------------------------------------------------------------
+// Per-floor theming
+// ---------------------------------------------------------------------------
+// Floors share the building shell but each gets its own colour wash and room
+// names so they read as distinct departments. (Giving each floor a genuinely
+// different room *layout* is a larger follow-up.)
+
+/// Which floor the map currently represents. Set by the office screen before
+/// painting; defaults to the ground floor so everything else (and the tests)
+/// see the original campus.
+int activeFloor = 0;
+
+void setActiveFloor(int f) {
+  activeFloor = f.clamp(0, _floorRoomLabels.length - 1);
+}
+
+/// Accent each floor's rooms are tinted toward (null = ground floor as-is).
+const _floorRoomAccent = <Color?>[
+  null, // Operations
+  Color(0xFF4A6CC0), // Engineering — cool blue
+  Color(0xFFC0894A), // Creative Studio — warm amber
+  Color(0xFF3FA56E), // Wellness — green
+  Color(0xFF8A5BC0), // Sky Lounge — violet
+];
+
+/// Per-floor room renames (base label → themed label).
+const _floorRoomLabels = <Map<String, String>>[
+  <String, String>{}, // Operations: original names
+  {
+    'TASKS': 'DEV BAYS',
+    'ANALYTICS': 'DATA',
+    'CALENDAR': 'STAND-UP',
+    'FINANCE': 'BUDGET',
+    'FOCUS': 'DEEP WORK',
+    'LIBRARY': 'DOCS',
+    'INBOX': 'TICKETS',
+    'LOUNGE': 'BREAKOUT',
+    'CAFÉ': 'CANTEEN',
+    'ARCADE': 'GAME RM',
+    'CINEMA': 'DEMOS',
+    'BAR': 'TAPROOM',
+  },
+  {
+    'TASKS': 'STUDIO',
+    'ANALYTICS': 'RENDER',
+    'CALENDAR': 'PITCH',
+    'FINANCE': 'GRANTS',
+    'FOCUS': 'QUIET',
+    'LIBRARY': 'ARCHIVE',
+    'INBOX': 'BRIEFS',
+    'CINEMA': 'SCREENING',
+  },
+  {
+    'TASKS': 'STUDIO',
+    'ANALYTICS': 'VITALS',
+    'CALENDAR': 'CLASSES',
+    'FINANCE': 'SPA',
+    'FOCUS': 'ZEN',
+    'LIBRARY': 'SAUNA',
+    'INBOX': 'TOWELS',
+    'LOUNGE': 'RELAX',
+    'CAFÉ': 'JUICE BAR',
+    'ARCADE': 'STEAM RM',
+    'CINEMA': 'YOGA',
+    'BAR': 'SMOOTHIES',
+  },
+  {
+    'TASKS': 'VIP DESKS',
+    'ANALYTICS': 'DJ BOOTH',
+    'CALENDAR': 'EVENTS',
+    'FINANCE': 'VAULT',
+    'FOCUS': 'CIGAR RM',
+    'LIBRARY': 'WHISKY',
+    'INBOX': 'COAT RM',
+    'LOUNGE': 'SKY LOUNGE',
+    'CAFÉ': 'KITCHEN',
+    'ARCADE': 'CASINO',
+    'CINEMA': 'THEATRE',
+    'BAR': 'SKYBAR',
+  },
+];
+
+Color _shiftRoom(Color c, Color accent) => Color.lerp(c, accent, 0.30)!;
+
+/// The rooms for the currently-active floor: same rects, themed colours/labels.
+List<Room> get rooms {
+  final f = activeFloor.clamp(0, _floorRoomLabels.length - 1);
+  final accent = _floorRoomAccent[f];
+  if (accent == null) return _baseRooms;
+  final labels = _floorRoomLabels[f];
+  return [
+    for (final r in _baseRooms)
+      Room(labels[r.label] ?? r.label, r.tiles, _shiftRoom(r.base, accent),
+          _shiftRoom(r.alt, accent)),
+  ];
+}
 
 /// Swimming pool water (tiles, exclusive right/bottom).
 const poolTiles = Rect.fromLTRB(42, 6, 52, 15);

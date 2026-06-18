@@ -32,10 +32,11 @@ class OfficeScreen extends ConsumerStatefulWidget {
 }
 
 class _OfficeScreenState extends ConsumerState<OfficeScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final OfficeSim _sim;
   late final SpriteCache _cache;
   late final Ticker _ticker;
+  late final AnimationController _floorAnim;
   Duration _lastTick = Duration.zero;
   bool _placed = false;
   int _floor = 0;
@@ -60,6 +61,8 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
     _sim = OfficeSim();
     _cache = SpriteCache();
     _ticker = createTicker(_onTick)..start();
+    _floorAnim = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 450));
   }
 
   void _onTick(Duration elapsed) {
@@ -70,6 +73,7 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
 
   @override
   void dispose() {
+    _floorAnim.dispose();
     _ticker.dispose();
     _sim.dispose();
     _cache.dispose();
@@ -79,12 +83,16 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
   Offset _toWorld(Offset local) => _camera.toWorld(local);
 
   void _syncFromProviders() {
-    // Switching floors shows a different set of people; re-seat them.
+    // Switching floors shows a different department; re-theme the map, drop
+    // the cached static layer and re-seat that floor's people.
     final floor = ref.watch(currentFloorProvider);
+    setActiveFloor(floor);
     if (floor != _floor) {
       _floor = floor;
       _placed = false;
       _sim.select(null);
+      OfficePainter.invalidateStaticLayer();
+      _floorAnim.forward(from: 0);
     }
     final allStaff = ref.watch(officeStaffProvider).valueOrNull;
     if (allStaff != null) {
@@ -171,13 +179,21 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
           const VerticalDivider(width: 1),
           SizedBox(
             width: 300,
-            child: _OfficePanel(
-              sim: _sim,
-              cache: _cache,
-              buildMode: _buildMode,
-              placingId: _placingId,
-              onToggleBuild: _toggleBuild,
-              onPick: (id) => setState(() => _placingId = id),
+            child: Column(
+              children: [
+                const _FloorBar(),
+                const Divider(height: 1),
+                Expanded(
+                  child: _OfficePanel(
+                    sim: _sim,
+                    cache: _cache,
+                    buildMode: _buildMode,
+                    placingId: _placingId,
+                    onToggleBuild: _toggleBuild,
+                    onPick: (id) => setState(() => _placingId = id),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -319,7 +335,23 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
                     setState(() => _camera.reset());
                   }),
                 ),
-              const Positioned(left: 12, top: 12, child: _FloorSelector()),
+              // Quick fade-through-black when changing floors.
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: AnimatedBuilder(
+                    animation: _floorAnim,
+                    builder: (context, _) {
+                      final t = _floorAnim.value;
+                      final o = (t <= 0 || t >= 1) ? 0.0 : sin(pi * t);
+                      return o == 0
+                          ? const SizedBox.shrink()
+                          : Container(
+                              color: const Color(0xFF0B0A12)
+                                  .withValues(alpha: o * 0.9));
+                    },
+                  ),
+                ),
+              ),
               if (_hoverEmp != null && _draggingId == null)
                 _hoverTooltip(Size(w, h)),
               Positioned(
@@ -418,33 +450,27 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
 }
 
 /// Small floating button that returns the camera to the fitted view.
-/// Elevator-style floor selector overlaid on the campus. Highest floor on top;
-/// tapping a floor switches which department (and staff) you're viewing.
-class _FloorSelector extends ConsumerWidget {
-  const _FloorSelector();
+/// A compact floor switcher in the panel header (off the campus, so it never
+/// covers the office). Tapping a floor changes which department you're viewing.
+class _FloorBar extends ConsumerWidget {
+  const _FloorBar();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final current = ref.watch(currentFloorProvider);
     final cs = Theme.of(context).colorScheme;
-    return Material(
-      color: Colors.black.withValues(alpha: 0.5),
-      borderRadius: BorderRadius.circular(12),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(5),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(bottom: 4, top: 1),
-              child: Icon(Icons.elevator_outlined,
-                  size: 15, color: Colors.white70),
-            ),
-            // Top floor first (reverse), like a real elevator panel.
-            for (var f = floorCount - 1; f >= 0; f--)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+      child: Row(
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(right: 6),
+            child: Icon(Icons.apartment, size: 16, color: Colors.white54),
+          ),
+          for (var f = 0; f < floorCount; f++)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
                 child: Tooltip(
                   message: floorNames[f],
                   child: InkWell(
@@ -453,12 +479,11 @@ class _FloorSelector extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(8),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
-                      width: 38,
-                      padding: const EdgeInsets.symmetric(vertical: 7),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                       decoration: BoxDecoration(
                         color: f == current
                             ? cs.primary
-                            : Colors.white.withValues(alpha: 0.08),
+                            : Colors.white.withValues(alpha: 0.07),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -474,8 +499,8 @@ class _FloorSelector extends ConsumerWidget {
                   ),
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }

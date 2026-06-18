@@ -81,6 +81,7 @@ class _FocusPipState extends ConsumerState<FocusPip>
 
   void _syncFromProviders() {
     final floor = ref.watch(currentFloorProvider);
+    setActiveFloor(floor);
     final all = ref.watch(officeStaffProvider).valueOrNull;
     if (all != null) {
       final staff = staffOnFloor(all, floor);

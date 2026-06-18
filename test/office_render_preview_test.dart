@@ -372,6 +372,37 @@ void main() {
     expect(sim.placedItems, isNotEmpty);
   });
 
+  test('per-floor themes render distinctly', () async {
+    final sim = OfficeSim(seed: 7);
+    sim.syncStaff(staffOnFloor(defaultStaff(), 0));
+    sim.placeInitial();
+    sim.syncLayout(defaultLayout());
+    const zoom = 2.0;
+    final cache = SpriteCache();
+    for (var f = 0; f < floorCount; f++) {
+      setActiveFloor(f);
+      OfficePainter.invalidateStaticLayer();
+      final painter = OfficePainter(
+        sim: sim,
+        cache: cache,
+        zoom: zoom,
+        origin: Offset.zero,
+        hourOverride: 13.0,
+      );
+      final img = _record(
+        (worldWidth * zoom).toInt(),
+        (worldHeight * zoom).toInt(),
+        (canvas) => painter.paint(
+            canvas, const Size(worldWidth * zoom, worldHeight * zoom)),
+      );
+      await _savePng(img, 'floor_$f');
+    }
+    setActiveFloor(0);
+    OfficePainter.invalidateStaticLayer();
+    cache.dispose();
+    expect(floorCount, 5);
+  });
+
   test('focus mode renders deep-work overlay', () async {
     final sim = OfficeSim(seed: 7);
     sim.syncStaff(defaultStaff());
