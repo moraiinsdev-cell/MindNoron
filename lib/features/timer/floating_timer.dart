@@ -1,16 +1,25 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../core/enums.dart';
 import '../../core/platform/window_service.dart';
+import '../office/office_camera.dart';
+import '../office/office_map.dart';
+import '../office/office_painter.dart';
+import '../office/office_repository.dart';
+import '../office/office_sim.dart';
+import '../office/pixel_art.dart';
 import 'timer_controller.dart';
 import 'timer_engine.dart';
 
 /// Whether the app is collapsed into the compact, always-on-top float widget.
 final floatingTimerProvider = StateProvider<bool>((ref) => false);
 
-/// Collapses the window into the pinned countdown.
+/// Collapses the window into the pinned mini office.
 Future<void> enterFloatingTimer(WidgetRef ref) async {
   if (ref.read(floatingTimerProvider)) return;
   ref.read(floatingTimerProvider.notifier).state = true;
@@ -24,14 +33,67 @@ Future<void> exitFloatingTimer(WidgetRef ref) async {
   await WindowService.exitFloating();
 }
 
-/// The compact always-on-top countdown shown while the window is floating.
-/// The whole surface is a drag handle (moves the OS window); buttons pause/
-/// resume the session and expand back to the full app.
-class FocusPip extends ConsumerWidget {
+/// The compact always-on-top widget shown while the window is floating: a live
+/// mini view of MindNoron Inc. with the focus countdown overlaid. The whole
+/// surface is a drag handle (moves the OS window); the buttons pause/resume
+/// the session and expand back to the full app.
+///
+/// Because [OfficeScreen] is unmounted while floating, this widget owns its own
+/// simulation, sprite cache and ticker (the same pattern as the office screen).
+class FocusPip extends ConsumerStatefulWidget {
   const FocusPip({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FocusPip> createState() => _FocusPipState();
+}
+
+class _FocusPipState extends ConsumerState<FocusPip>
+    with SingleTickerProviderStateMixin {
+  late final OfficeSim _sim;
+  late final SpriteCache _cache;
+  late final Ticker _ticker;
+  final OfficeCamera _camera = OfficeCamera();
+  Duration _lastTick = Duration.zero;
+  bool _placed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _sim = OfficeSim();
+    _cache = SpriteCache();
+    _ticker = createTicker(_onTick)..start();
+  }
+
+  void _onTick(Duration elapsed) {
+    final dt = (elapsed - _lastTick).inMicroseconds / 1e6;
+    _lastTick = elapsed;
+    _sim.tick(min(dt, 0.1)); // clamp huge frame gaps (window was hidden)
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    _sim.dispose();
+    _cache.dispose();
+    super.dispose();
+  }
+
+  void _syncFromProviders(bool focusing) {
+    final staff = ref.watch(officeStaffProvider).valueOrNull;
+    if (staff != null && staff.isNotEmpty) {
+      _sim.syncStaff(staff);
+      if (!_placed) {
+        _placed = true;
+        _sim.placeInitial();
+      }
+    }
+    final layout = ref.watch(officeLayoutProvider).valueOrNull;
+    if (layout != null) _sim.syncLayout(layout);
+    _sim.setFocusMode(focusing);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final snap = ref.watch(timerControllerProvider);
     final now = ref.watch(nowTickerProvider).valueOrNull ?? DateTime.now();
     final controller = ref.read(timerControllerProvider.notifier);
@@ -43,79 +105,161 @@ class FocusPip extends ConsumerWidget {
     final remaining = snap.remaining(now);
     final progress = snap.progress(now);
 
+    _syncFromProviders(active && snap.isRunning && !isBreak);
+
     return Scaffold(
       backgroundColor: const Color(0xFF15131A),
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onPanStart: (_) => windowManager.startDragging(),
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: accent.withValues(alpha: 0.55)),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          padding: const EdgeInsets.fromLTRB(14, 8, 6, 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisAlignment: MainAxisAlignment.center,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Stack(
+            fit: StackFit.expand,
             children: [
-              Row(
-                children: [
-                  Icon(isBreak ? Icons.self_improvement : Icons.bolt,
-                      size: 13, color: accent),
-                  const SizedBox(width: 5),
-                  Text(
-                    active ? snap.type.label.toUpperCase() : 'NO SESSION',
-                    style: TextStyle(
-                      color: accent,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.5,
+              // Live mini office.
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  _camera.fit(
+                    Size(constraints.maxWidth, constraints.maxHeight),
+                    worldWidth.toDouble(),
+                    worldHeight.toDouble(),
+                  );
+                  return CustomPaint(
+                    painter: OfficePainter(
+                      sim: _sim,
+                      cache: _cache,
+                      zoom: _camera.zoom,
+                      origin: _camera.origin,
+                      focusMode: _sim.focusMode,
                     ),
-                  ),
-                  const Spacer(),
-                  _PipButton(
-                    icon: Icons.open_in_full,
-                    tooltip: 'Back to app',
-                    onTap: () => exitFloatingTimer(ref),
-                  ),
-                ],
+                  );
+                },
               ),
-              Text(
-                active ? formatTimer(remaining) : '--:--',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 30,
-                  fontWeight: FontWeight.w700,
-                  height: 1.0,
-                  fontFeatures: [FontFeature.tabularFigures()],
+
+              // Accent frame.
+              IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: accent.withValues(alpha: 0.55)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
-              const SizedBox(height: 6),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(3),
-                child: LinearProgressIndicator(
-                  value: active ? progress : 0,
-                  minHeight: 4,
-                  backgroundColor: Colors.white.withValues(alpha: 0.12),
-                  valueColor: AlwaysStoppedAnimation(accent),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  if (active)
+
+              // Window controls (top-right).
+              Positioned(
+                top: 4,
+                right: 4,
+                child: Row(
+                  children: [
+                    if (active)
+                      _PipButton(
+                        icon: snap.isRunning ? Icons.pause : Icons.play_arrow,
+                        tooltip: snap.isRunning ? 'Pause' : 'Resume',
+                        onTap:
+                            snap.isRunning ? controller.pause : controller.resume,
+                      ),
                     _PipButton(
-                      icon: snap.isRunning ? Icons.pause : Icons.play_arrow,
-                      tooltip: snap.isRunning ? 'Pause' : 'Resume',
-                      onTap: snap.isRunning
-                          ? controller.pause
-                          : controller.resume,
+                      icon: Icons.open_in_full,
+                      tooltip: 'Back to app',
+                      onTap: () => exitFloatingTimer(ref),
                     ),
-                ],
+                  ],
+                ),
+              ),
+
+              // Countdown pill (bottom-left).
+              Positioned(
+                left: 8,
+                bottom: 10,
+                child: _CountPill(
+                  accent: accent,
+                  isBreak: isBreak,
+                  label: active ? snap.type.label.toUpperCase() : 'NO SESSION',
+                  time: active ? formatTimer(remaining) : '--:--',
+                ),
+              ),
+
+              // Progress bar pinned to the bottom edge.
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: IgnorePointer(
+                  child: LinearProgressIndicator(
+                    value: active ? progress : 0,
+                    minHeight: 3,
+                    backgroundColor: Colors.black.withValues(alpha: 0.25),
+                    valueColor: AlwaysStoppedAnimation(accent),
+                  ),
+                ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The frosted countdown badge laid over the mini office.
+class _CountPill extends StatelessWidget {
+  const _CountPill({
+    required this.accent,
+    required this.isBreak,
+    required this.label,
+    required this.time,
+  });
+
+  final Color accent;
+  final bool isBreak;
+  final String label;
+  final String time;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(8, 5, 10, 6),
+        decoration: BoxDecoration(
+          color: const Color(0xE0141019),
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(color: accent.withValues(alpha: 0.5)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(isBreak ? Icons.self_improvement : Icons.bolt,
+                    size: 11, color: accent),
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 1),
+            Text(
+              time,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 26,
+                fontWeight: FontWeight.w700,
+                height: 1.0,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -134,12 +278,16 @@ class _PipButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Tooltip(
       message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
-        child: Padding(
-          padding: const EdgeInsets.all(5),
-          child: Icon(icon, size: 16, color: Colors.white70),
+      child: Material(
+        color: const Color(0xB3141019),
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: Padding(
+            padding: const EdgeInsets.all(5),
+            child: Icon(icon, size: 15, color: Colors.white70),
+          ),
         ),
       ),
     );

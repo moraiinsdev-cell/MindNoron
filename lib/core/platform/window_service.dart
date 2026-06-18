@@ -32,13 +32,15 @@ class WindowService {
     await windowManager.focus();
   }
 
-  /// Compact, always-on-top "float" size for the focus countdown.
-  static const _floatingSize = Size(248, 118);
+  /// Compact, always-on-top "float" size for the mini office + countdown.
+  /// The campus aspect ratio is ~1.55; this leaves room for the count pill.
+  static const _floatingSize = Size(320, 232);
 
   /// Shrinks the window into a small, borderless, always-on-top widget so the
-  /// countdown stays visible over other apps. Reversed by [exitFloating].
+  /// mini office and countdown stay visible over other apps. Reversed by
+  /// [exitFloating].
   static Future<void> enterFloating() async {
-    await windowManager.setMinimumSize(const Size(200, 96));
+    await windowManager.setMinimumSize(const Size(260, 188));
     await windowManager.setResizable(false);
     await windowManager.setSize(_floatingSize);
     await windowManager.setAlignment(Alignment.topRight);
