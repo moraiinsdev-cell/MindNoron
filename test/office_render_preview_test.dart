@@ -124,6 +124,11 @@ void main() {
       'lamp': lampSprite,
       'calendar': wallCalendarSprite,
       'ladder': poolLadderSprite,
+      'arcade': arcadeCabinetSprite,
+      'jukebox': jukeboxSprite,
+      'pool': poolTableSprite,
+      'cinema': tvScreenSprite,
+      'bar': barCounterSprite,
     };
     var x = 2.0;
     final positions = <String, double>{};

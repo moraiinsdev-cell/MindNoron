@@ -1181,6 +1181,143 @@ final wallCalendarSprite = PixelSprite(const [
 });
 
 // ---------------------------------------------------------------------------
+// Entertainment props: arcade, jukebox, pool table, cinema screen, bar
+// ---------------------------------------------------------------------------
+
+/// Arcade cabinet (1 tile), 16x17 — lit screen, button panel, speaker grille.
+final arcadeCabinetSprite = PixelSprite(const [
+  '..oooooooooooo..',
+  '.oRRRRRRRRRRRRo.',
+  '.oRssssssssssRo.',
+  '.oRsSSSSSSSSsRo.',
+  '.oRsSyyrSgSSsRo.',
+  '.oRsSSbSSyySsRo.',
+  '.oRsSSSSSSSSsRo.',
+  '.oRssssssssssRo.',
+  '.oRRRRRRRRRRRRo.',
+  '.oRRBBBBBBBBRRo.',
+  '.oRRBgyrbygBRRo.',
+  '.oRRBBBBBBBBRRo.',
+  '.oRRRRRRRRRRRRo.',
+  '.oRRRwwwwwwRRRo.',
+  '.oRRRRRRRRRRRRo.',
+  '.oooooooooooooo.',
+  '..oo........oo..',
+], const {
+  'o': Color(0xFF15131A),
+  'R': Color(0xFF4A2E8C), // purple cabinet
+  's': Color(0xFF0C0C14), // bezel
+  'S': Color(0xFF1F2B5C), // screen
+  'y': Color(0xFFE8C84A),
+  'r': Color(0xFFE05548),
+  'g': Color(0xFF5BD06A),
+  'b': Color(0xFF5B8AD0),
+  'B': Color(0xFF2A2440), // button panel
+  'w': Color(0xFF7A7490), // speaker grille
+});
+
+/// Retro jukebox (1 tile), 14x13 — glowing arch, speaker, light buttons.
+final jukeboxSprite = PixelSprite(const [
+  '....oooooo....',
+  '..ooGGGGGGoo..',
+  '.oGGyrgbyrGGo.',
+  '.oGGGGGGGGGGo.',
+  '.oRRRRRRRRRRo.',
+  '.oRwwwwwwwwRo.',
+  '.oRwSSSSSSwRo.',
+  '.oRwwwwwwwwRo.',
+  '.oRRRRRRRRRRo.',
+  '.oRyrgbyrgbRo.',
+  '.oRRRRRRRRRRo.',
+  '.oooooooooooo.',
+  '..oo......oo..',
+], const {
+  'o': Color(0xFF2A1C30),
+  'G': Color(0xFFE8C84A), // arch glow
+  'y': Color(0xFFE8C84A),
+  'r': Color(0xFFE05548),
+  'g': Color(0xFF5BD06A),
+  'b': Color(0xFF5B8AD0),
+  'R': Color(0xFF8C3A4A), // red body
+  'w': Color(0xFF3A2A40), // speaker frame
+  'S': Color(0xFF6A5A80), // speaker mesh
+});
+
+/// Billiards table (2 tiles wide), 32x12 — felt, corner pockets, racked balls.
+final poolTableSprite = PixelSprite(const [
+  '.oooooooooooooooooooooooooooooo.',
+  'oWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWo',
+  'oWpffffffffffffffffffffffffffpWo',
+  'oWffffffffffffffffffffffffffffWo',
+  'oWffffffrfffffffffffffyffffffffWo',
+  'oWfffffffffffffffwffffffffffffWo',
+  'oWfffffffbffffffffffffffffffffWo',
+  'oWffffffffffffffffffffffffffffWo',
+  'oWpffffffffffffffffffffffffffpWo',
+  'oWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWo',
+  '.oooooooooooooooooooooooooooooo.',
+  '..oo......................oo....',
+], const {
+  'o': Color(0xFF2A1C12),
+  'W': Color(0xFF7A4E2C), // wood rail
+  'f': Color(0xFF2E8D4E), // felt
+  'p': Color(0xFF120F0C), // pocket
+  'r': Color(0xFFE05548),
+  'y': Color(0xFFE8C84A),
+  'b': Color(0xFF5B8AD0),
+  'w': Color(0xFFF2EDE0), // cue ball
+});
+
+/// Big cinema screen (2 tiles wide), 32x13 — a colorful frame still on a stand.
+final tvScreenSprite = PixelSprite(const [
+  'oooooooooooooooooooooooooooooooo',
+  'oSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSo.',
+  'oSSSSyySSSSSSSSSSSSSSSSSSSwwSSSSo',
+  'oSSSyyySSSSSSrrSSSSSSSSSSwwwwSSSo',
+  'oSSSSSSSSSSrrrrSSSSSSSSSSSwwSSSSo',
+  'oSSSSSSSSSSrrSSSSggSSSSSSSSSSSSSo',
+  'oSSSSSSSSSSSSSgggggSSSSSSSSSSSSSo',
+  'oSSbbSSSSSSSSSSSSSSSSSSSSSSbbSSSo',
+  'oSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSo',
+  'oooooooooooooooooooooooooooooooo',
+  '..............oooo..............',
+  '...........oooooooooo...........',
+], const {
+  'o': Color(0xFF15151C),
+  'S': Color(0xFF243466), // screen
+  'y': Color(0xFFE8C84A),
+  'r': Color(0xFFE05548),
+  'g': Color(0xFF5BD06A),
+  'b': Color(0xFF5B8AD0),
+  'w': Color(0xFFF2EDE0),
+});
+
+/// Bar counter (2 tiles wide), 32x11 — back shelf of bottles + a wood counter.
+final barCounterSprite = PixelSprite(const [
+  'oooooooooooooooooooooooooooooooo',
+  'okkkkkkkkkkkkkkkkkkkkkkkkkkkkkkko',
+  'okrkgkbkykrkgkbkykrkgkbkykrkgkbo',
+  'okkkkkkkkkkkkkkkkkkkkkkkkkkkkkkko',
+  'oWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWo',
+  'oWwwwwwwwwwwwwwwwwwwwwwwwwwwwwwWo',
+  'oWwGwwwwwGwwwwwGwwwwwGwwwwwGwwwWo',
+  'oWwwwwwwwwwwwwwwwwwwwwwwwwwwwwwWo',
+  'oWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWo',
+  '.oooooooooooooooooooooooooooooo.',
+  '..oo......................oo....',
+], const {
+  'o': Color(0xFF1C120A),
+  'k': Color(0xFF2A1E14), // back shelf
+  'r': Color(0xFFD24A3E),
+  'g': Color(0xFF5BD06A),
+  'b': Color(0xFF5B8AD0),
+  'y': Color(0xFFE8C84A),
+  'W': Color(0xFF7A4E2C), // counter wood
+  'w': Color(0xFF9A6A3A), // counter face
+  'G': Color(0xFFC9A227), // brass trim
+});
+
+// ---------------------------------------------------------------------------
 // Pixel the office cat (orange tabby)
 // ---------------------------------------------------------------------------
 

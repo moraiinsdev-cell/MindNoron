@@ -54,6 +54,17 @@ final officeCatalog = <CatalogItem>[
       price: 95, emoji: '🥤'),
   CatalogItem('server', 'Server rack', serverRackSprite, price: 70, emoji: '🖥️'),
   CatalogItem('safe', 'Safe', safeSprite, price: 120, emoji: '🔒'),
+
+  // Entertainment.
+  CatalogItem('arcade', 'Arcade cabinet', arcadeCabinetSprite,
+      price: 110, emoji: '🕹️'),
+  CatalogItem('jukebox', 'Jukebox', jukeboxSprite, price: 90, emoji: '🎵'),
+  CatalogItem('poolTable', 'Pool table', poolTableSprite,
+      price: 140, tw: 2, emoji: '🎱'),
+  CatalogItem('cinemaScreen', 'Cinema screen', tvScreenSprite,
+      price: 130, tw: 2, emoji: '📺'),
+  CatalogItem('barCounter', 'Bar counter', barCounterSprite,
+      price: 150, tw: 2, emoji: '🍸'),
 ];
 
 CatalogItem? catalogItem(String id) {
