@@ -191,7 +191,7 @@ class EmployeeSpec {
 const floorNames = <String>[
   'Operations',
   'Engineering',
-  'Creative Studio',
+  'Creative & Ideas',
   'Wellness',
   'Sky Lounge',
 ];
@@ -199,8 +199,8 @@ const floorNames = <String>[
 /// A short tagline shown under the floor name in the selector.
 const floorTaglines = <String>[
   'Ops, logistics & finance',
-  'Where the product gets built',
-  'Design, art & story',
+  'Dev bays, R&D & demos',
+  'Marketing, brainstorm & R&D',
   'Gym, pool & recharge',
   'Bar, cinema & arcade',
 ];

@@ -182,7 +182,7 @@ const _floorRoomLabels = <Map<String, String>>[
   },
   {
     'TASKS': 'STUDIO',
-    'ANALYTICS': 'RENDER',
+    'ANALYTICS': 'MARKETING',
     'CALENDAR': 'PITCH',
     'FINANCE': 'GRANTS',
     'FOCUS': 'QUIET',
@@ -222,16 +222,75 @@ const _floorRoomLabels = <Map<String, String>>[
 
 Color _shiftRoom(Color c, Color accent) => Color.lerp(c, accent, 0.30)!;
 
-/// The rooms for the currently-active floor: same rects, themed colours/labels.
+/// Rooms present on every floor (everything except the work-hall). The
+/// work-hall — the big TASKS bullpen — is carved up per floor instead (see
+/// [_floorBullpenRooms]). Keeping these rects fixed means the shared
+/// seats/spots/furniture always line up across floors.
+final List<Room> _sharedRooms = [
+  for (final r in _baseRooms)
+    if (r.label != 'TASKS') r,
+];
+
+/// The rooms that fill the work-hall (the old TASKS bullpen, tiles 2..16 ×
+/// 3..14) on each floor. Every floor partitions the hall differently — and the
+/// idea floors add real idea-rooms (BRAINSTORM, R&D) — so the floors read as
+/// genuinely different spaces rather than one shared shell. The partition walls
+/// that match these splits live in [_bullpenWalls].
+const _floorBullpenRooms = <List<Room>>[
+  // Floor 0 — Operations: one open bullpen (the original layout).
+  [
+    Room('TASKS', Rect.fromLTRB(2, 3, 17, 15), Color(0xFF8C9CB4),
+        Color(0xFF8294AE)),
+  ],
+  // Floor 1 — Engineering: dev bays beside a research lab.
+  [
+    Room('DEV BAYS', Rect.fromLTRB(2, 3, 9, 15), Color(0xFF8C9CB4),
+        Color(0xFF8294AE)),
+    Room('R&D', Rect.fromLTRB(9, 3, 17, 15), Color(0xFF6FA59C),
+        Color(0xFF659B92)),
+  ],
+  // Floor 2 — Creative & Ideas: a studio over a brainstorm room + a lab.
+  [
+    Room('STUDIO', Rect.fromLTRB(2, 3, 17, 10), Color(0xFFB89A6E),
+        Color(0xFFAE9064)),
+    Room('BRAINSTORM', Rect.fromLTRB(2, 10, 10, 15), Color(0xFFA98FC4),
+        Color(0xFF9F85BA)),
+    Room('R&D', Rect.fromLTRB(10, 10, 17, 15), Color(0xFF6FA59C),
+        Color(0xFF659B92)),
+  ],
+  // Floor 3 — Wellness: a calm studio next to a retreat.
+  [
+    Room('ZEN STUDIO', Rect.fromLTRB(2, 3, 12, 15), Color(0xFF8FB48A),
+        Color(0xFF85AA80)),
+    Room('RETREAT', Rect.fromLTRB(12, 3, 17, 15), Color(0xFF9FB6A8),
+        Color(0xFF95AC9E)),
+  ],
+  // Floor 4 — Sky Lounge: VIP desks over a members' lounge.
+  [
+    Room('VIP DESKS', Rect.fromLTRB(2, 3, 17, 6), Color(0xFFC9B070),
+        Color(0xFFBFA666)),
+    Room('VIP LOUNGE', Rect.fromLTRB(2, 6, 17, 15), Color(0xFF8A78B4),
+        Color(0xFF806EAA)),
+  ],
+];
+
+/// The rooms for the currently-active floor: the floor's bullpen split + the
+/// shared rooms, tinted toward the floor accent and renamed per floor.
 List<Room> get rooms {
-  final f = activeFloor.clamp(0, _floorRoomLabels.length - 1);
+  final f = activeFloor.clamp(0, _floorBullpenRooms.length - 1);
   final accent = _floorRoomAccent[f];
-  if (accent == null) return _baseRooms;
   final labels = _floorRoomLabels[f];
+  Room themed(Room r, String label) {
+    if (accent == null) {
+      return label == r.label ? r : Room(label, r.tiles, r.base, r.alt);
+    }
+    return Room(label, r.tiles, _shiftRoom(r.base, accent),
+        _shiftRoom(r.alt, accent));
+  }
+
   return [
-    for (final r in _baseRooms)
-      Room(labels[r.label] ?? r.label, r.tiles, _shiftRoom(r.base, accent),
-          _shiftRoom(r.alt, accent)),
+    for (final r in _floorBullpenRooms[f]) themed(r, r.label),
+    for (final r in _sharedRooms) themed(r, labels[r.label] ?? r.label),
   ];
 }
 
@@ -257,10 +316,59 @@ const wallBase = Color(0xFFC9C0B2);
 // Interior walls
 // ---------------------------------------------------------------------------
 
-/// Blocked + painted as partitions. Horizontal segments read as low walls.
-final Set<Point<int>> interiorWallTiles = _buildInteriorWalls();
+/// The building shell — interior walls shared by every floor. Per-floor
+/// work-hall partitions are layered on top (see [_bullpenWalls]).
+final Set<Point<int>> _baseWalls = _buildBaseWalls();
 
-Set<Point<int>> _buildInteriorWalls() {
+/// Interior walls for each floor: the shared shell plus that floor's bullpen
+/// partitions.
+final List<Set<Point<int>>> _floorWalls = [
+  for (var f = 0; f < _floorBullpenRooms.length; f++)
+    {..._baseWalls, ..._bullpenWalls(f)},
+];
+
+/// Blocked + painted as partitions for the currently-active floor. Horizontal
+/// segments read as low walls.
+Set<Point<int>> get interiorWallTiles =>
+    _floorWalls[activeFloor.clamp(0, _floorWalls.length - 1)];
+
+/// Per-floor partitions inside the work-hall (tiles 2..16 × 3..14). Each floor
+/// carves the hall up differently; every wall leaves a door gap so the
+/// sub-rooms stay reachable. Lines are chosen to avoid desk seats.
+Set<Point<int>> _bullpenWalls(int f) {
+  final w = <Point<int>>{};
+  switch (f) {
+    case 1: // Engineering: dev bays | R&D, vertical wall at x=9 (door rows 8-9).
+      for (var y = 3; y <= 14; y++) {
+        if (y == 8 || y == 9) continue;
+        w.add(Point(9, y));
+      }
+    case 2: // Creative: studio over brainstorm | lab.
+      // Horizontal wall under the studio at row 10 (door cols 8-9).
+      for (var x = 2; x <= 16; x++) {
+        if (x == 8 || x == 9) continue;
+        w.add(Point(x, 10));
+      }
+      // Vertical wall splitting brainstorm | lab at x=10 (door rows 12-13).
+      for (var y = 10; y <= 14; y++) {
+        if (y == 12 || y == 13) continue;
+        w.add(Point(10, y));
+      }
+    case 3: // Wellness: zen studio | retreat, vertical wall at x=12 (door 8-9).
+      for (var y = 3; y <= 14; y++) {
+        if (y == 8 || y == 9) continue;
+        w.add(Point(12, y));
+      }
+    case 4: // Sky Lounge: VIP desks over the lounge, wall at row 6 (door 8-9).
+      for (var x = 2; x <= 16; x++) {
+        if (x == 8 || x == 9) continue;
+        w.add(Point(x, 6));
+      }
+  }
+  return w;
+}
+
+Set<Point<int>> _buildBaseWalls() {
   final walls = <Point<int>>{};
   void run(int x0, int y0, int x1, int y1, Set<Point<int>> skip) {
     for (var y = y0; y <= y1; y++) {
@@ -820,7 +928,7 @@ List<List<bool>> _buildWalkable(int floor) {
     grid[y][0] = false;
     grid[y][mapCols - 1] = false;
   }
-  for (final w in interiorWallTiles) {
+  for (final w in _floorWalls[floor.clamp(0, _floorWalls.length - 1)]) {
     grid[w.y][w.x] = false;
   }
   // Pool water: no walking on water (swimming is handled separately).
