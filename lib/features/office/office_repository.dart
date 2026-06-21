@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/settings_repository.dart';
 import 'office_default_layout.dart';
 import 'office_economy.dart';
+import 'office_idea_engine.dart';
 import 'office_models.dart';
 
 /// Persists the MindNoron Inc. roster in the settings key/value table —
@@ -25,6 +26,10 @@ class OfficeRepository {
   /// v2: ships a fully furnished "MAX level" campus by default.
   static const _kLayout = 'officeLayoutV2';
   static const _kSfx = 'officeSfxV1';
+  static const _kIdeas = 'officeIdeasV1';
+
+  /// Keep at most this many ideas on disk (newest kept).
+  static const _ideaCap = 200;
 
   Stream<List<EmployeeSpec>> watchStaff() =>
       _settings.watchValue(_kStaff).map(_decode);
@@ -108,6 +113,45 @@ class OfficeRepository {
   Future<void> saveLayout(List<PlacedItem> items) =>
       _settings.setValue(_kLayout, PlacedItem.encodeList(items));
 
+  // --- Generated ideas (offline idea engine output) -----------------------
+
+  Stream<List<GeneratedIdea>> watchIdeas() =>
+      _settings.watchValue(_kIdeas).map(GeneratedIdea.decodeList);
+
+  Future<List<GeneratedIdea>> getIdeas() async =>
+      GeneratedIdea.decodeList(await _settings.readValue(_kIdeas));
+
+  Future<void> _saveIdeas(List<GeneratedIdea> ideas) {
+    final capped =
+        ideas.length > _ideaCap ? ideas.sublist(0, _ideaCap) : ideas;
+    return _settings.setValue(_kIdeas, GeneratedIdea.encodeList(capped));
+  }
+
+  /// Prepends freshly generated ideas (newest first) and trims to the cap.
+  Future<void> addIdeas(List<GeneratedIdea> fresh) async {
+    if (fresh.isEmpty) return;
+    final existing = await getIdeas();
+    await _saveIdeas([...fresh, ...existing]);
+  }
+
+  Future<void> setIdeaStarred(String id, bool starred) =>
+      _mutateIdea(id, (i) => i.copyWith(starred: starred));
+
+  /// Removes an idea from the board (a soft "not interested").
+  Future<void> dismissIdea(String id) async {
+    final ideas = await getIdeas();
+    await _saveIdeas(ideas.where((i) => i.id != id).toList());
+  }
+
+  Future<void> _mutateIdea(
+      String id, GeneratedIdea Function(GeneratedIdea) change) async {
+    final ideas = await getIdeas();
+    await _saveIdeas([
+      for (final i in ideas)
+        if (i.id == id) change(i) else i
+    ]);
+  }
+
   // --- Sound toggle -------------------------------------------------------
 
   Stream<bool> watchSfxEnabled() =>
@@ -137,4 +181,9 @@ final officeLayoutProvider = StreamProvider<List<PlacedItem>>((ref) {
 
 final officeSfxEnabledProvider = StreamProvider<bool>((ref) {
   return ref.watch(officeRepositoryProvider).watchSfxEnabled();
+});
+
+/// Ideas produced by the office's idea-rooms, newest first.
+final officeIdeasProvider = StreamProvider<List<GeneratedIdea>>((ref) {
+  return ref.watch(officeRepositoryProvider).watchIdeas();
 });

@@ -259,6 +259,44 @@ class OfficeSim extends ChangeNotifier {
     notifyListeners();
   }
 
+  // --- Office clock (drives hourly idea production) ------------------------
+
+  /// One "office hour" compressed into this many real seconds, so the office
+  /// feels productive while the app is open. The idea-rooms ship fresh ideas
+  /// each office-hour via [onOfficeHour].
+  static const officeHourSeconds = 180.0;
+  double _officeClock = 0;
+  int officeHour = 0;
+
+  /// Fired once per office-hour. The screen uses this to generate + persist a
+  /// fresh batch of ideas (offline) and have an idea-room "ship" them.
+  void Function(int hour)? onOfficeHour;
+
+  void _tickOfficeClock(double dt) {
+    if (onOfficeHour == null || employees.isEmpty) return;
+    _officeClock += dt;
+    while (_officeClock >= officeHourSeconds) {
+      _officeClock -= officeHourSeconds;
+      officeHour++;
+      onOfficeHour?.call(officeHour);
+    }
+  }
+
+  /// An idea-room shipped a fresh idea: a 💡 over a worker plus an activity-log
+  /// line. Visual only — never touches the activity state machine.
+  void shipIdea(String emoji, String oneLiner) {
+    final e = employees.isEmpty ? null : _randomEmployee();
+    if (e != null) {
+      e.say('💡', 2.4);
+      floating(Offset(e.pos.dx, e.pos.dy - 22), '💡',
+          ttl: 1.8, color: const Color(0xFFFFE08A));
+    }
+    final short =
+        oneLiner.length > 40 ? '${oneLiner.substring(0, 40)}…' : oneLiner;
+    logEvent('$emoji Ý tưởng mới: $short');
+    notifyListeners();
+  }
+
   /// Player-placed furniture (build mode). Kept in sync with the persisted
   /// layout; drives both rendering and the dynamic collision overlay.
   List<PlacedItem> placedItems = const [];
@@ -557,6 +595,7 @@ class OfficeSim extends ChangeNotifier {
     _tickButterflies(dt);
     _tickWeather(dt);
     _tickEvents(dt);
+    _tickOfficeClock(dt);
     particles.tick(dt);
     if (floatingTexts.isNotEmpty) {
       for (final f in floatingTexts) {

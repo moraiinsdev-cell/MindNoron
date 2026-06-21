@@ -7,11 +7,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/enums.dart';
 import '../../data/database/app_database.dart';
+import '../../data/repositories/notes_repository.dart';
 import '../../data/repositories/task_repository.dart';
 import '../timer/timer_controller.dart';
 import 'office_camera.dart';
 import 'office_catalog.dart';
 import 'office_economy.dart';
+import 'office_idea_engine.dart';
 import 'office_map.dart';
 import 'office_models.dart';
 import 'office_painter.dart';
@@ -50,10 +52,18 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
   Offset _hoverCursor = Offset.zero;
   bool _coinBusy = false;
 
+  // Offline idea engine: the idea-rooms ship fresh ideas each office-hour.
+  final IdeaEngine _ideaEngine = IdeaEngine();
+  bool _ideaBusy = false;
+  bool _ideasSeeded = false;
+
   // Build / decorate mode.
   bool _buildMode = false;
   String? _placingId;
   Point<int>? _ghostTile;
+
+  // Ideas board view (the side panel shows generated ideas).
+  bool _showIdeas = false;
 
   @override
   void initState() {
@@ -63,6 +73,7 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
     _ticker = createTicker(_onTick)..start();
     _floorAnim = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 450));
+    _sim.onOfficeHour = _onOfficeHour;
   }
 
   void _onTick(Duration elapsed) {
@@ -112,6 +123,17 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
     // Award coins for tasks completed in the real app (idempotent).
     final completed = ref.watch(recentlyCompletedProvider).valueOrNull;
     if (completed != null) _reconcileCoins(completed);
+
+    // Seed a few starter ideas the first time the board is empty, so the
+    // "Ideas" panel isn't blank while waiting for the first office-hour.
+    final ideas = ref.watch(officeIdeasProvider).valueOrNull;
+    if (!_ideasSeeded &&
+        ideas != null &&
+        ideas.isEmpty &&
+        _sim.employees.isNotEmpty) {
+      _ideasSeeded = true;
+      _generateIdeas(3, ship: false);
+    }
 
     // Player-placed furniture layout.
     final layout = ref.watch(officeLayoutProvider).valueOrNull;
@@ -166,6 +188,42 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
     }
   }
 
+  /// Each office-hour the idea-rooms produce 1–2 fresh ideas.
+  void _onOfficeHour(int hour) {
+    _generateIdeas(1 + Random().nextInt(2));
+  }
+
+  /// Generates [count] offline ideas from curated banks + the player's real
+  /// task/note titles, persists them, and (optionally) has an idea-room
+  /// visibly "ship" each one.
+  Future<void> _generateIdeas(int count, {bool ship = true}) async {
+    if (_ideaBusy) return;
+    _ideaBusy = true;
+    try {
+      final repo = ref.read(officeRepositoryProvider);
+      final taskTitles = [for (final (_, t) in _sim.openTasks) t];
+      final notes = ref.read(allNotesProvider).valueOrNull ?? const <Note>[];
+      final noteTitles = [for (final n in notes) n.title];
+      final existing = await repo.getIdeas();
+      final recent = {for (final i in existing.take(60)) i.title};
+      final fresh = _ideaEngine.generateBatch(
+        count,
+        recentTitles: recent,
+        taskTitles: taskTitles,
+        noteTitles: noteTitles,
+      );
+      if (fresh.isEmpty) return;
+      await repo.addIdeas(fresh);
+      if (ship && mounted) {
+        for (final idea in fresh) {
+          _sim.shipIdea(idea.category.emoji, idea.title);
+        }
+      }
+    } finally {
+      _ideaBusy = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     _syncFromProviders();
@@ -188,8 +246,11 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
                     sim: _sim,
                     cache: _cache,
                     buildMode: _buildMode,
+                    showIdeas: _showIdeas,
                     placingId: _placingId,
                     onToggleBuild: _toggleBuild,
+                    onToggleIdeas: _toggleIdeas,
+                    onGenerateIdeas: () => _generateIdeas(3),
                     onPick: (id) => setState(() => _placingId = id),
                   ),
                 ),
@@ -207,8 +268,19 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
       _placingId = null;
       _ghostTile = null;
       if (_buildMode) {
+        _showIdeas = false;
         _sim.select(null);
         _hoverEmp = null;
+      }
+    });
+  }
+
+  void _toggleIdeas() {
+    setState(() {
+      _showIdeas = !_showIdeas;
+      if (_showIdeas) {
+        _buildMode = false;
+        _sim.select(null);
       }
     });
   }
@@ -537,16 +609,22 @@ class _OfficePanel extends ConsumerWidget {
     required this.sim,
     required this.cache,
     required this.buildMode,
+    required this.showIdeas,
     required this.placingId,
     required this.onToggleBuild,
+    required this.onToggleIdeas,
+    required this.onGenerateIdeas,
     required this.onPick,
   });
 
   final OfficeSim sim;
   final SpriteCache cache;
   final bool buildMode;
+  final bool showIdeas;
   final String? placingId;
   final VoidCallback onToggleBuild;
+  final VoidCallback onToggleIdeas;
+  final VoidCallback onGenerateIdeas;
   final ValueChanged<String?> onPick;
 
   @override
@@ -559,13 +637,22 @@ class _OfficePanel extends ConsumerWidget {
         onPick: onPick,
       );
     }
+    if (showIdeas) {
+      return _IdeasPanel(
+        onClose: onToggleIdeas,
+        onGenerate: onGenerateIdeas,
+      );
+    }
     return AnimatedBuilder(
       animation: sim,
       builder: (context, _) {
         final selected = sim.selected;
         return selected == null
             ? _CompanyOverview(
-                sim: sim, cache: cache, onToggleBuild: onToggleBuild)
+                sim: sim,
+                cache: cache,
+                onToggleBuild: onToggleBuild,
+                onShowIdeas: onToggleIdeas)
             : _EmployeeProfile(sim: sim, cache: cache, employee: selected);
       },
     );
@@ -574,11 +661,15 @@ class _OfficePanel extends ConsumerWidget {
 
 class _CompanyOverview extends ConsumerWidget {
   const _CompanyOverview(
-      {required this.sim, required this.cache, required this.onToggleBuild});
+      {required this.sim,
+      required this.cache,
+      required this.onToggleBuild,
+      required this.onShowIdeas});
 
   final OfficeSim sim;
   final SpriteCache cache;
   final VoidCallback onToggleBuild;
+  final VoidCallback onShowIdeas;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -587,6 +678,8 @@ class _CompanyOverview extends ConsumerWidget {
     final now = TimeOfDay.now();
     final staffCount = sim.employees.length;
     final coins = ref.watch(officeEconomyProvider).valueOrNull?.coins ?? 0;
+    final ideaCount =
+        ref.watch(officeIdeasProvider).valueOrNull?.length ?? 0;
     final floor = ref.watch(currentFloorProvider);
     final floorLabel =
         'Floor ${floor + 1} · ${floorNames[floor.clamp(0, floorNames.length - 1)]}';
@@ -650,6 +743,19 @@ class _CompanyOverview extends ConsumerWidget {
             _StatChip(label: 'On break', value: '$breaks', emoji: '☕'),
             _StatChip(label: 'Chatting', value: '$chats', emoji: '💬'),
           ],
+        ),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFFB07A1E),
+            foregroundColor: Colors.white,
+            minimumSize: const Size.fromHeight(44),
+          ),
+          onPressed: onShowIdeas,
+          icon: const Text('💡', style: TextStyle(fontSize: 16)),
+          label: Text(ideaCount > 0
+              ? 'Bảng Ý tưởng ($ideaCount)'
+              : 'Bảng Ý tưởng'),
         ),
         const SizedBox(height: 20),
         Text('Staff ($staffCount)',
@@ -1396,4 +1502,210 @@ class _PortraitPainter extends CustomPainter {
   @override
   bool shouldRepaint(_PortraitPainter oldDelegate) =>
       oldDelegate.look != look;
+}
+
+// ---------------------------------------------------------------------------
+// Ideas board: the offline idea-rooms' output, reviewable any time.
+// ---------------------------------------------------------------------------
+
+class _IdeasPanel extends ConsumerStatefulWidget {
+  const _IdeasPanel({required this.onClose, required this.onGenerate});
+
+  final VoidCallback onClose;
+  final VoidCallback onGenerate;
+
+  @override
+  ConsumerState<_IdeasPanel> createState() => _IdeasPanelState();
+}
+
+class _IdeasPanelState extends ConsumerState<_IdeasPanel> {
+  IdeaCategory? _filter; // null = all categories
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final all = ref.watch(officeIdeasProvider).valueOrNull ?? const [];
+    final ideas = [
+      for (final i in all)
+        if (_filter == null || i.category == _filter) i
+    ]..sort((a, b) {
+        if (a.starred != b.starred) return a.starred ? -1 : 1;
+        return b.createdAt.compareTo(a.createdAt);
+      });
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Row(
+          children: [
+            IconButton(
+              tooltip: 'Quay lại',
+              icon: const Icon(Icons.arrow_back, size: 20),
+              onPressed: widget.onClose,
+            ),
+            const SizedBox(width: 2),
+            const Text('💡', style: TextStyle(fontSize: 20)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text('Bảng Ý tưởng',
+                  style: theme.textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w800)),
+            ),
+            IconButton(
+              tooltip: 'Tạo thêm ý tưởng',
+              icon: const Icon(Icons.auto_awesome, size: 20),
+              onPressed: widget.onGenerate,
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Các phòng ý tưởng tự sinh ý tưởng mỗi giờ làm việc. Dùng dữ '
+          'liệu việc & ghi chú của bạn để gợi ý sát hơn.',
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: theme.colorScheme.outline),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            ChoiceChip(
+              label: const Text('Tất cả'),
+              selected: _filter == null,
+              onSelected: (_) => setState(() => _filter = null),
+            ),
+            for (final c in IdeaCategory.values)
+              ChoiceChip(
+                avatar: Text(c.emoji, style: const TextStyle(fontSize: 13)),
+                label: Text(c.label),
+                selected: _filter == c,
+                onSelected: (_) => setState(() => _filter = c),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (ideas.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Column(
+              children: [
+                const Text('💭', style: TextStyle(fontSize: 32)),
+                const SizedBox(height: 8),
+                Text(
+                  'Chưa có ý tưởng nào. Bấm ✨ để tạo ngay, hoặc cứ để '
+                  'văn phòng chạy — mỗi giờ làm việc sẽ có ý tưởng mới.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          )
+        else
+          for (final idea in ideas)
+            _IdeaCard(
+              idea: idea,
+              onStar: () => ref
+                  .read(officeRepositoryProvider)
+                  .setIdeaStarred(idea.id, !idea.starred),
+              onDismiss: () =>
+                  ref.read(officeRepositoryProvider).dismissIdea(idea.id),
+            ),
+      ],
+    );
+  }
+}
+
+class _IdeaCard extends StatelessWidget {
+  const _IdeaCard(
+      {required this.idea, required this.onStar, required this.onDismiss});
+
+  final GeneratedIdea idea;
+  final VoidCallback onStar;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Theme(
+        // Strip the default ExpansionTile divider lines.
+        data: theme.copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          title: Text(
+            idea.title,
+            style: theme.textTheme.bodyMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              children: [
+                Text('${idea.category.emoji} ${idea.category.label}',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.primary)),
+                const SizedBox(width: 8),
+                _ScorePill(score: idea.score),
+              ],
+            ),
+          ),
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(idea.pitch, style: theme.textTheme.bodySmall),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                TextButton.icon(
+                  onPressed: onStar,
+                  icon: Icon(
+                    idea.starred ? Icons.star : Icons.star_border,
+                    size: 18,
+                    color: idea.starred ? const Color(0xFFD9A521) : null,
+                  ),
+                  label: Text(idea.starred ? 'Đã lưu' : 'Lưu'),
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  style: TextButton.styleFrom(
+                      foregroundColor: theme.colorScheme.outline),
+                  onPressed: onDismiss,
+                  icon: const Icon(Icons.close, size: 18),
+                  label: const Text('Bỏ'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ScorePill extends StatelessWidget {
+  const _ScorePill({required this.score});
+  final int score;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = score >= 80
+        ? const Color(0xFF4D9E68)
+        : score >= 65
+            ? const Color(0xFFC9A227)
+            : const Color(0xFF9A8C7A);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text('★ $score',
+          style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+    );
+  }
 }
