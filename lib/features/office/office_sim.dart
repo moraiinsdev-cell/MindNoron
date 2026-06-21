@@ -293,7 +293,7 @@ class OfficeSim extends ChangeNotifier {
     }
     final short =
         oneLiner.length > 40 ? '${oneLiner.substring(0, 40)}…' : oneLiner;
-    logEvent('$emoji Ý tưởng mới: $short');
+    logEvent('$emoji New idea: $short');
     notifyListeners();
   }
 

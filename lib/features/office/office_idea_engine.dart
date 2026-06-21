@@ -6,12 +6,12 @@ import 'dart:math';
 enum IdeaCategory { product, marketing, mindnoron, fromWork }
 
 extension IdeaCategoryX on IdeaCategory {
-  /// Short Vietnamese label for the UI.
+  /// Short label for the UI.
   String get label => switch (this) {
-        IdeaCategory.product => 'Sản phẩm',
+        IdeaCategory.product => 'Product',
         IdeaCategory.marketing => 'Marketing',
         IdeaCategory.mindnoron => 'MindNoron',
-        IdeaCategory.fromWork => 'Việc của tôi',
+        IdeaCategory.fromWork => 'My work',
       };
 
   String get emoji => switch (this) {
@@ -125,10 +125,10 @@ class GeneratedIdea {
 }
 
 /// A purely offline, deterministic-per-seed idea generator. It does NOT call
-/// any network/LLM — it composes curated Vietnamese word-banks with coherent
-/// templates so each idea reads like a concrete, developable concept rather
-/// than random filler, and personalises [IdeaCategory.fromWork] with the
-/// player's real task/note titles.
+/// any network/LLM — it composes curated word-banks with coherent templates so
+/// each idea reads like a concrete, developable concept rather than random
+/// filler, and personalises [IdeaCategory.fromWork] with the player's real
+/// task/note titles.
 class IdeaEngine {
   IdeaEngine([Random? rng]) : _rng = rng ?? Random();
 
@@ -138,138 +138,137 @@ class IdeaEngine {
   // --- shared banks --------------------------------------------------------
 
   static const _audiences = [
-    'freelancer', 'sinh viên', 'chủ shop online nhỏ', 'nhà sáng tạo nội dung',
-    'đội ngũ làm việc từ xa', 'người mới tập gym', 'phụ huynh bận rộn',
-    'lập trình viên indie', 'người học ngoại ngữ', 'nhà đầu tư cá nhân F0',
-    'quản lý dự án', 'chủ quán cà phê', 'người theo lối sống tối giản',
-    'người sáng tạo bán khoá học',
+    'freelancers', 'students', 'small online-shop owners', 'content creators',
+    'remote teams', 'gym beginners', 'busy parents', 'indie developers',
+    'language learners', 'first-time retail investors', 'project managers',
+    'café owners', 'minimalists', 'course creators',
   ];
 
   static const _pains = [
-    'mất quá nhiều thời gian làm thủ công',
-    'khó giữ thói quen đều đặn',
-    'thông tin nằm rải rác nhiều nơi',
-    'khó ra quyết định nhanh',
-    'dễ mất động lực giữa chừng',
-    'khó theo dõi tiến độ thực tế',
-    'công cụ hiện có quá đắt hoặc quá rườm rà',
-    'quá tải thông báo và việc vặt',
-    'khó cộng tác khi mỗi người một nơi',
+    'waste too much time on manual work',
+    'struggle to keep habits consistent',
+    'have information scattered across many places',
+    'find it hard to decide quickly',
+    'lose motivation halfway through',
+    'can\'t track real progress',
+    'find existing tools too expensive or bloated',
+    'are overloaded with notifications and busywork',
+    'find it hard to collaborate when apart',
   ];
 
   static const _formats = [
-    'một app desktop gọn nhẹ',
-    'một tiện ích chạy nền tự động',
-    'một bản tin (newsletter) cá nhân hoá',
-    'một bảng điều khiển trực quan',
-    'một bộ mẫu (template) bán sẵn',
-    'một trợ lý nhắc việc thông minh',
-    'một công cụ "một-cú-click"',
-    'một cộng đồng có cấu trúc rõ ràng',
-    'một trò chơi hoá thói quen',
+    'a lightweight desktop app',
+    'a background utility that runs automatically',
+    'a personalised newsletter',
+    'a clean visual dashboard',
+    'a pack of ready-made templates',
+    'a smart reminder assistant',
+    'a one-click tool',
+    'a well-structured community',
+    'a habit-gamifying app',
   ];
 
   static const _angles = [
-    'ưu tiên offline & quyền riêng tư',
-    'cá nhân hoá theo chính dữ liệu của bạn',
-    'gamification để giữ động lực',
-    'tự động hoá phần việc lặp lại',
-    'micro-SaaS giá rẻ, trả-một-lần',
-    'tích hợp lịch & nhắc nhở thông minh',
-    'thiết kế tối giản, không gây xao nhãng',
-    'chia sẻ tiến độ với cộng đồng để có trách nhiệm',
+    'offline-first & privacy-respecting',
+    'personalised from your own data',
+    'gamified to keep motivation up',
+    'automates the repetitive parts',
+    'a cheap, pay-once micro-SaaS',
+    'smart calendar & reminder integration',
+    'minimal, distraction-free design',
+    'shares progress with a community for accountability',
   ];
 
   static const _channels = [
-    'video ngắn TikTok/Reels',
-    'SEO theo từ khoá ngách',
-    'cộng đồng Discord/Zalo',
+    'short-form video (TikTok/Reels)',
+    'niche-keyword SEO',
+    'a Discord/community server',
     'Product Hunt & Reddit',
-    'hợp tác micro-influencer',
-    'chương trình giới thiệu (referral)',
-    'email nuôi dưỡng khách',
-    'build-in-public trên X/Threads',
-    'hội nhóm Facebook chuyên ngành',
+    'micro-influencer partnerships',
+    'a referral program',
+    'an email nurture sequence',
+    'build-in-public on X/Threads',
+    'specialised Facebook groups',
   ];
 
   static const _validations = [
-    'làm landing page thu email trong 1 ngày',
-    'phỏng vấn 5 người dùng mục tiêu',
-    'dựng bản mẫu bấm-được bằng no-code',
-    'bán trước 10 suất early-bird',
-    'đăng demo xin phản hồi từ cộng đồng',
+    'ship a landing page to collect emails in a day',
+    'interview 5 target users',
+    'build a clickable no-code prototype',
+    'pre-sell 10 early-bird spots',
+    'post a demo and ask the community for feedback',
   ];
 
   // --- marketing banks -----------------------------------------------------
 
   static const _tactics = [
-    'chuỗi nội dung "trước / sau"',
-    'thử thách 7 ngày có check-in',
-    'giveaway yêu cầu chia sẻ',
-    'case study người dùng thật',
-    'so sánh thẳng thắn với đối thủ',
-    'nhật ký build-in-public',
-    'mini-tool miễn phí làm mồi',
-    'chương trình đại sứ thương hiệu',
-    'series livestream hỏi-đáp',
-    'ưu đãi early-bird giới hạn số lượng',
+    'a "before / after" content series',
+    'a 7-day challenge with daily check-ins',
+    'a giveaway that rewards sharing',
+    'a real user case study',
+    'an honest head-to-head with a competitor',
+    'a build-in-public devlog',
+    'a free mini-tool as a lead magnet',
+    'a brand-ambassador program',
+    'a live Q&A series',
+    'a limited early-bird offer',
   ];
 
   static const _hooks = [
-    'nhấn vào một nỗi đau rất cụ thể',
-    'khoe kết quả đo lường được',
-    'kể câu chuyện chuyển đổi của một người',
-    'tạo cảm giác khan hiếm có thật',
-    'mời tham gia thay vì rao bán',
+    'lead with one very specific pain point',
+    'show a measurable result',
+    'tell one person\'s transformation story',
+    'create genuine scarcity',
+    'invite people in instead of selling at them',
   ];
 
   static const _metrics = [
-    'tỉ lệ đăng ký email',
-    'tỉ lệ dùng thử → trả phí',
-    'chi phí có một khách (CAC)',
-    'tỉ lệ giữ chân tuần đầu',
-    'lượt chia sẻ tự nhiên',
+    'email sign-up rate',
+    'trial → paid conversion',
+    'cost per acquired customer (CAC)',
+    'week-one retention',
+    'organic shares',
   ];
 
   // --- MindNoron banks -----------------------------------------------------
 
   static const _modules = [
-    'Tasks', 'Lịch', 'Tài chính', 'Pomodoro / Focus', 'Ghi chú', 'Thói quen',
-    'Inbox', 'Nhật ký', 'Văn phòng ảo', 'Chi tiêu', 'Dashboard',
+    'Tasks', 'Calendar', 'Finance', 'Pomodoro / Focus', 'Notes', 'Habits',
+    'Inbox', 'Journal', 'Virtual office', 'Expenses', 'Dashboard',
   ];
 
   static const _improvements = [
-    'thêm chế độ xem theo tuần',
-    'tự động gợi ý thứ tự ưu tiên',
-    'biểu đồ xu hướng theo thời gian',
-    'bộ mẫu nhanh để tạo trong 1 chạm',
-    'nhắc nhở thông minh dựa trên thói quen',
-    'liên kết chéo giữa các module',
-    'báo cáo tổng kết tự động cuối tuần',
-    'chế độ tập trung sâu, ẩn mọi thứ khác',
-    'thưởng xu khi hoàn thành để tạo động lực',
-    'một widget mini luôn hiển thị trên màn hình',
+    'add a weekly view',
+    'auto-suggest a priority order',
+    'a trend chart over time',
+    'quick templates to create in one tap',
+    'smart reminders based on habits',
+    'cross-links between modules',
+    'an automatic weekend recap',
+    'a deeper focus mode that hides everything else',
+    'reward coins on completion to build momentum',
+    'a mini widget that\'s always on screen',
   ];
 
   static const _benefits = [
-    'tiết kiệm thời gian thao tác',
-    'giữ động lực lâu hơn',
-    'ra quyết định nhanh hơn',
-    'giảm xao nhãng',
-    'nhìn bức tranh tổng thể rõ hơn',
+    'save time on busywork',
+    'stay motivated longer',
+    'decide faster',
+    'cut distractions',
+    'see the big picture more clearly',
   ];
 
   // --- fromWork banks ------------------------------------------------------
 
   static const _workAngles = [
-    'chia nhỏ thành 3 bước làm được ngay',
-    'biến thành một thói quen lặp lại hằng tuần',
-    'ghi lại bài học ngay sau khi xong',
-    'tìm cách tự động hoá phần lặp đi lặp lại',
-    'đặt một mốc thời gian kèm phần thưởng',
-    'rủ một người cùng làm để có trách nhiệm',
-    'viết lại thành ghi chú có thể chia sẻ',
-    'chọn một con số duy nhất để đo kết quả',
+    'break it into 3 steps you can do right now',
+    'turn it into a weekly recurring habit',
+    'capture the lesson right after you finish',
+    'find a way to automate the repetitive part',
+    'set a deadline with a reward attached',
+    'pull in a partner so you stay accountable',
+    'rewrite it as a shareable note',
+    'pick a single number to measure the result',
   ];
 
   T _pick<T>(List<T> xs) => xs[_rng.nextInt(xs.length)];
@@ -345,14 +344,14 @@ class IdeaEngine {
     final angle = _pick(_angles);
     final channel = _pick(_channels);
     final next = _pick(_validations);
-    final title = '${_capitalize(format)} cho $audience — $angle';
+    final title = '${_capitalize(format)} for $audience — $angle';
     final pitch = _block({
-      'Vấn đề': '$audience đang $pain.',
-      'Đối tượng': audience,
-      'Giải pháp': '$format giúp họ giải quyết điều đó',
-      'Điểm khác biệt': angle,
-      'Kênh tiếp cận': channel,
-      'Bước tiếp theo': next,
+      'Problem': '$audience $pain.',
+      'Audience': audience,
+      'Solution': '$format that solves exactly that',
+      'Edge': angle,
+      'Channel': channel,
+      'Next step': next,
     });
     return (title, pitch, _score(base: 64, bonus: 12));
   }
@@ -363,14 +362,14 @@ class IdeaEngine {
     final channel = _pick(_channels);
     final hook = _pick(_hooks);
     final metric = _pick(_metrics);
-    final title = '${_capitalize(tactic)} trên $channel cho $audience';
+    final title = '${_capitalize(tactic)} on $channel for $audience';
     final pitch = _block({
-      'Chiến thuật': tactic,
-      'Đối tượng': audience,
-      'Kênh': channel,
-      'Thông điệp': 'Hãy $hook.',
-      'Đo bằng': metric,
-      'Làm ngay': 'Lên 5 nội dung mẫu và đăng thử trong tuần này.',
+      'Tactic': tactic,
+      'Audience': audience,
+      'Channel': channel,
+      'Message': 'Lead by: $hook.',
+      'Measure with': metric,
+      'Do now': 'Draft 5 sample posts and ship a test this week.',
     });
     return (title, pitch, _score(base: 60, bonus: 14));
   }
@@ -382,10 +381,10 @@ class IdeaEngine {
     final title = 'MindNoron · $module: ${_capitalize(improvement)}';
     final pitch = _block({
       'Module': module,
-      'Đề xuất': _capitalize(improvement),
-      'Lợi ích': 'Giúp người dùng $benefit.',
-      'Độ ưu tiên': _pick(const ['Cao', 'Trung bình', 'Thử nghiệm']),
-      'Bước tiếp theo': 'Phác thảo nhanh giao diện rồi làm bản thử nhỏ.',
+      'Proposal': _capitalize(improvement),
+      'Benefit': 'Helps users $benefit.',
+      'Priority': _pick(const ['High', 'Medium', 'Experiment']),
+      'Next step': 'Sketch the UI quickly, then build a small spike.',
     });
     return (title, pitch, _score(base: 58, bonus: 16));
   }
@@ -403,12 +402,12 @@ class IdeaEngine {
     final seed = _pick(pool);
     final angle = _pick(_workAngles);
     final short = seed.length > 42 ? '${seed.substring(0, 42)}…' : seed;
-    final title = 'Từ "$short": ${_capitalize(angle)}';
+    final title = 'From "$short": ${_capitalize(angle)}';
     final pitch = _block({
-      'Dựa trên': seed,
-      'Gợi ý': _capitalize(angle),
-      'Vì sao': 'Biến việc đang dở dang thành bước đi cụ thể, đo được.',
-      'Làm ngay': 'Dành 15 phút phác thảo và đặt hạn cho bước đầu tiên.',
+      'Based on': seed,
+      'Suggestion': _capitalize(angle),
+      'Why': 'Turns a half-finished task into a concrete, measurable step.',
+      'Do now': 'Spend 15 minutes sketching it and set a deadline for step 1.',
     });
     // Personalised ideas are the most actionable → score them higher.
     return (title, pitch, _score(base: 72, bonus: 12));

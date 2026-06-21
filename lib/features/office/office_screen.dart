@@ -753,9 +753,7 @@ class _CompanyOverview extends ConsumerWidget {
           ),
           onPressed: onShowIdeas,
           icon: const Text('💡', style: TextStyle(fontSize: 16)),
-          label: Text(ideaCount > 0
-              ? 'Bảng Ý tưởng ($ideaCount)'
-              : 'Bảng Ý tưởng'),
+          label: Text(ideaCount > 0 ? 'Ideas board ($ideaCount)' : 'Ideas board'),
         ),
         const SizedBox(height: 20),
         Text('Staff ($staffCount)',
@@ -1539,7 +1537,7 @@ class _IdeasPanelState extends ConsumerState<_IdeasPanel> {
         Row(
           children: [
             IconButton(
-              tooltip: 'Quay lại',
+              tooltip: 'Back',
               icon: const Icon(Icons.arrow_back, size: 20),
               onPressed: widget.onClose,
             ),
@@ -1547,12 +1545,12 @@ class _IdeasPanelState extends ConsumerState<_IdeasPanel> {
             const Text('💡', style: TextStyle(fontSize: 20)),
             const SizedBox(width: 6),
             Expanded(
-              child: Text('Bảng Ý tưởng',
+              child: Text('Ideas board',
                   style: theme.textTheme.titleLarge
                       ?.copyWith(fontWeight: FontWeight.w800)),
             ),
             IconButton(
-              tooltip: 'Tạo thêm ý tưởng',
+              tooltip: 'Generate more ideas',
               icon: const Icon(Icons.auto_awesome, size: 20),
               onPressed: widget.onGenerate,
             ),
@@ -1560,8 +1558,8 @@ class _IdeasPanelState extends ConsumerState<_IdeasPanel> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Các phòng ý tưởng tự sinh ý tưởng mỗi giờ làm việc. Dùng dữ '
-          'liệu việc & ghi chú của bạn để gợi ý sát hơn.',
+          'The idea-rooms generate fresh ideas every work-hour, drawing on '
+          'your real tasks & notes to keep them relevant.',
           style: theme.textTheme.bodySmall
               ?.copyWith(color: theme.colorScheme.outline),
         ),
@@ -1571,7 +1569,7 @@ class _IdeasPanelState extends ConsumerState<_IdeasPanel> {
           runSpacing: 6,
           children: [
             ChoiceChip(
-              label: const Text('Tất cả'),
+              label: const Text('All'),
               selected: _filter == null,
               onSelected: (_) => setState(() => _filter = null),
             ),
@@ -1593,8 +1591,8 @@ class _IdeasPanelState extends ConsumerState<_IdeasPanel> {
                 const Text('💭', style: TextStyle(fontSize: 32)),
                 const SizedBox(height: 8),
                 Text(
-                  'Chưa có ý tưởng nào. Bấm ✨ để tạo ngay, hoặc cứ để '
-                  'văn phòng chạy — mỗi giờ làm việc sẽ có ý tưởng mới.',
+                  'No ideas yet. Tap ✨ to generate some now, or just let the '
+                  'office run — a fresh idea lands every work-hour.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall,
                 ),
@@ -1667,7 +1665,7 @@ class _IdeaCard extends StatelessWidget {
                     size: 18,
                     color: idea.starred ? const Color(0xFFD9A521) : null,
                   ),
-                  label: Text(idea.starred ? 'Đã lưu' : 'Lưu'),
+                  label: Text(idea.starred ? 'Saved' : 'Save'),
                 ),
                 const Spacer(),
                 TextButton.icon(
@@ -1675,7 +1673,7 @@ class _IdeaCard extends StatelessWidget {
                       foregroundColor: theme.colorScheme.outline),
                   onPressed: onDismiss,
                   icon: const Icon(Icons.close, size: 18),
-                  label: const Text('Bỏ'),
+                  label: const Text('Dismiss'),
                 ),
               ],
             ),
