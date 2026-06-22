@@ -129,35 +129,65 @@ class OfficePainter extends CustomPainter {
   /// Rain over the outdoor garden (screen space, clipped to the grass). Indoor
   /// areas only get a faint mood-dim, since you can't see the sky from a desk.
   void _paintWeather(Canvas canvas) {
-    if (sim.weather != OfficeWeather.rain) return;
-
-    // Outdoor region begins at the indoor/outdoor divider (tile 38).
-    final out = Rect.fromLTRB(
-      origin.dx + 38 * 16 * zoom,
-      origin.dy,
-      origin.dx + worldWidth * zoom,
-      origin.dy + worldHeight * zoom,
-    );
-    canvas.save();
-    canvas.clipRect(out);
-    // Cool dim over the wet garden.
-    canvas.drawRect(out, Paint()..color = const Color(0x22243450));
-
     final t = DateTime.now().millisecondsSinceEpoch / 1000.0;
-    final streak = Paint()
-      ..color = const Color(0x66AFC4DA)
-      ..strokeWidth = 1.0;
-    final rng = Random(7);
-    for (var i = 0; i < 90; i++) {
-      final bx = out.left + rng.nextDouble() * out.width;
-      final speed = 320 + rng.nextDouble() * 160;
-      final phase = (t * speed + i * 53) % (out.height + 40);
-      final y = out.top - 20 + phase;
-      final len = 8.0 + rng.nextDouble() * 6;
-      canvas.drawLine(
-          Offset(bx, y), Offset(bx - 3, y + len), streak);
+
+    if (sim.weather == OfficeWeather.rain) {
+      // Outdoor region begins at the indoor/outdoor divider (tile 38).
+      final out = Rect.fromLTRB(
+        origin.dx + 38 * 16 * zoom,
+        origin.dy,
+        origin.dx + worldWidth * zoom,
+        origin.dy + worldHeight * zoom,
+      );
+      canvas.save();
+      canvas.clipRect(out);
+      // Cool dim over the wet garden.
+      canvas.drawRect(out, Paint()..color = const Color(0x22243450));
+
+      final streak = Paint()
+        ..color = const Color(0x66AFC4DA)
+        ..strokeWidth = 1.0;
+      final rng = Random(7);
+      for (var i = 0; i < 90; i++) {
+        final bx = out.left + rng.nextDouble() * out.width;
+        final speed = 320 + rng.nextDouble() * 160;
+        final phase = (t * speed + i * 53) % (out.height + 40);
+        final y = out.top - 20 + phase;
+        final len = 8.0 + rng.nextDouble() * 6;
+        canvas.drawLine(Offset(bx, y), Offset(bx - 3, y + len), streak);
+      }
+
+      // Ripples expanding on the wet ground.
+      final ripple = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0;
+      final w = out.width.toInt().clamp(1, 1 << 20);
+      final h = (out.height.toInt() - 40).clamp(1, 1 << 20);
+      for (var i = 0; i < 16; i++) {
+        final rx = out.left + ((i * 97 + 13) % w);
+        final ry = out.top + 30 + ((i * 53 + 29) % h);
+        final phase = (t * 1.5 + i * 0.37) % 1.0;
+        final rad = phase * 7.0 * zoom;
+        ripple.color =
+            const Color(0xFFBFD4E4).withValues(alpha: (1 - phase) * 0.32);
+        canvas.drawOval(
+            Rect.fromCenter(
+                center: Offset(rx, ry), width: rad * 2, height: rad),
+            ripple);
+      }
+      canvas.restore();
     }
-    canvas.restore();
+
+    // Lightning: a brief full-scene flash during storms.
+    if (sim.lightning > 0.01) {
+      final rect = Rect.fromLTWH(
+          origin.dx, origin.dy, worldWidth * zoom, worldHeight * zoom);
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..color = Color.fromRGBO(216, 226, 255, sim.lightning * 0.30),
+      );
+    }
   }
 
   // -------------------------------------------------------------------------

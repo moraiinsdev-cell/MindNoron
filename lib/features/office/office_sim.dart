@@ -381,6 +381,11 @@ class OfficeSim extends ChangeNotifier {
   OfficeWeather weather = OfficeWeather.clear;
   double _weatherTimer = 90;
 
+  /// Lightning flash intensity (0..1), bumped to 1 during storms then decays;
+  /// the painter renders a brief full-scene flash.
+  double lightning = 0;
+  double _lightningTimer = 8;
+
   /// Forces a weather state (settings/tests).
   void setWeather(OfficeWeather w) {
     weather = w;
@@ -430,7 +435,7 @@ class OfficeSim extends ChangeNotifier {
   /// floating labels and particles; never touches the activity state machine.
   void triggerRandomEvent() {
     if (employees.isEmpty) return;
-    switch (_rng.nextInt(5)) {
+    switch (_rng.nextInt(9)) {
       case 0: // rubber-duck debugging
         final e = _randomEmployee();
         e.say('rubber duck time 🦆', 3);
@@ -452,7 +457,24 @@ class OfficeSim extends ChangeNotifier {
       case 4: // spontaneous brainstorm
         final e = _randomEmployee();
         e.say('💡', 2.2);
+        particles.spark(Offset(e.pos.dx, e.pos.dy - 14), count: 6);
         logEvent('💡 ${e.spec.name} had a lightbulb moment');
+      case 5: // a paper aeroplane sails across the room
+        final e = _randomEmployee();
+        floating(Offset(e.pos.dx, e.pos.dy - 18), '✈️', ttl: 2.6, rise: 8);
+        logEvent('✈️ A paper plane sailed across the office');
+      case 6: // a plant puts out new growth in the garden
+        final at = tileCenter(const Point(44, 6));
+        floating(at, '🌱', ttl: 2.4);
+        logEvent('🌱 A garden plant sprouted new leaves');
+      case 7: // someone stretches at their desk
+        final e = _randomEmployee();
+        e.say(hourOfDay >= 19 || hourOfDay < 6 ? '🥱' : '🙆', 2.2);
+        logEvent('🙆 ${e.spec.name} took a stretch break');
+      case 8: // the printer jams (of course)
+        floating(tileCenter(const Point(22, 5)), '🖨️💢', ttl: 2.2);
+        _nudge(tileCenter(const Point(22, 5)), '😩', range: 120);
+        logEvent('🖨️ The printer jammed again');
     }
     notifyListeners();
   }
@@ -474,6 +496,15 @@ class OfficeSim extends ChangeNotifier {
   }
 
   void _tickWeather(double dt) {
+    // Storm lightning: occasional flashes while it rains.
+    if (lightning > 0) lightning = max(0, lightning - dt * 3.4);
+    if (weather == OfficeWeather.rain) {
+      _lightningTimer -= dt;
+      if (_lightningTimer <= 0) {
+        _lightningTimer = 7 + _rng.nextDouble() * 16;
+        lightning = 1.0;
+      }
+    }
     _weatherTimer -= dt;
     if (_weatherTimer > 0) return;
     // Mostly clear, with the occasional shower that lingers a while.
@@ -710,8 +741,9 @@ class OfficeSim extends ChangeNotifier {
   }
 
   /// Adds a floating label over the world.
-  void floating(Offset pos, String text, {Color? color, double ttl = 1.4}) {
-    floatingTexts.add(FloatingText(pos, text, ttl, color: color));
+  void floating(Offset pos, String text,
+      {Color? color, double ttl = 1.4, double rise = 14}) {
+    floatingTexts.add(FloatingText(pos, text, ttl, color: color, rise: rise));
   }
 
   static const _pokeLines = ['hmm?', '✨', 'ooh', '👀', 'shiny', '*tap*'];
