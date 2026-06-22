@@ -26,7 +26,9 @@ class OfficeRepository {
   /// v2: ships a fully furnished "MAX level" campus by default.
   static const _kLayout = 'officeLayoutV2';
   static const _kSfx = 'officeSfxV1';
-  static const _kIdeas = 'officeIdeasV1';
+  // v2: curated, coherent idea library (v1 produced incoherent slot-filled
+  // combinations). Bumping clears the old meaningless ideas.
+  static const _kIdeas = 'officeIdeasV2';
 
   /// Keep at most this many ideas on disk (newest kept).
   static const _ideaCap = 200;
