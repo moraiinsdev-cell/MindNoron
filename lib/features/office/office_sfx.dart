@@ -31,7 +31,19 @@ enum OfficeSfxCue {
   splash(WaveForm.sin, 300, 170, 0.18),
 
   /// Muted poof for placing/removing furniture.
-  poof(WaveForm.triangle, 240, 140, 0.15);
+  poof(WaveForm.triangle, 240, 140, 0.15),
+
+  /// Soft tick when picking/selecting an employee.
+  select(WaveForm.sin, 760, 50, 0.12),
+
+  /// Airy swish when an employee is dropped.
+  whoosh(WaveForm.fSaw, 300, 110, 0.13),
+
+  /// Bright sparkle when an idea-room ships an idea.
+  idea(WaveForm.fSquare, 1180, 150, 0.20),
+
+  /// Low rumble for a lightning flash.
+  thunder(WaveForm.sin, 66, 650, 0.34);
 
   const OfficeSfxCue(this.wave, this.freq, this.ms, this.volume);
 

@@ -57,6 +57,9 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
   bool _ideaBusy = false;
   bool _ideasSeeded = false;
 
+  // Edge-detect lightning so thunder fires once per flash.
+  double _prevLightning = 0;
+
   // Build / decorate mode.
   bool _buildMode = false;
   String? _placingId;
@@ -80,6 +83,11 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
     final dt = (elapsed - _lastTick).inMicroseconds / 1e6;
     _lastTick = elapsed;
     _sim.tick(min(dt, 0.1)); // clamp huge frame gaps (window was hidden)
+    // Thunder on the rising edge of a lightning flash.
+    if (_sim.lightning > 0.6 && _prevLightning <= 0.6) {
+      ref.read(officeSfxProvider).play(OfficeSfxCue.thunder);
+    }
+    _prevLightning = _sim.lightning;
   }
 
   @override
@@ -218,6 +226,7 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
         for (final idea in fresh) {
           _sim.shipIdea(idea.category.emoji, idea.title);
         }
+        ref.read(officeSfxProvider).play(OfficeSfxCue.idea);
       }
     } finally {
       _ideaBusy = false;
@@ -349,6 +358,7 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
                       final hit = _sim.hitTest(world);
                       if (hit != null) {
                         _sim.select(hit.spec.id);
+                        ref.read(officeSfxProvider).play(OfficeSfxCue.select);
                         return;
                       }
                       if (_sim.hitTestCat(world)) {
@@ -367,6 +377,7 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
                       if (hit != null) {
                         _draggingId = hit.spec.id;
                         _sim.beginDrag(hit.spec.id);
+                        ref.read(officeSfxProvider).play(OfficeSfxCue.select);
                         setState(() {});
                       } else if (_camera.canPan) {
                         setState(() => _panning = true);
@@ -515,6 +526,7 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
     final id = _draggingId;
     if (id != null) {
       _sim.drop(id);
+      ref.read(officeSfxProvider).play(OfficeSfxCue.whoosh);
       setState(() => _draggingId = null);
     } else if (_panning) {
       setState(() => _panning = false);
