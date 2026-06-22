@@ -113,6 +113,7 @@ class EmployeeRuntime {
   double energy; // 0..1, drains while working
   double social; // 0..1, drains over time; chats refill it
   double activityTimer = 0; // counts down inside timed activities
+  double landSquash = 0; // 1 right after a drop landing → 0 (squash & stretch)
   double leisureTimer; // until the next gym/pool/library urge
   double chatCooldown = 0;
   double coffeeCooldown = 0;
@@ -278,6 +279,15 @@ class OfficeSim extends ChangeNotifier {
   /// Continuous hour-of-day (0..24) used for lighting. Starts mid-morning so a
   /// freshly opened office reads as daytime, then rolls forward.
   double get hourOfDay => (8.0 + (_dayClock / dayLengthSeconds) * 24.0) % 24.0;
+
+  // --- Screen shake (game-feel juice) -------------------------------------
+
+  /// Decaying camera-shake magnitude in screen pixels. Bumped by impactful
+  /// moments (a dropped employee landing, big celebrations); the painter jitters
+  /// the world layer by this much.
+  double shake = 0;
+
+  void addShake(double amount) => shake = min(8.0, shake + amount);
 
   /// Fired once per office-hour. The screen uses this to generate + persist a
   /// fresh batch of ideas (offline) and have an idea-room "ship" them.
@@ -557,7 +567,9 @@ class OfficeSim extends ChangeNotifier {
   void tick(double dt) {
     if (dt <= 0) return;
     _dayClock += dt; // advance the day/night cycle even when the office is empty
+    if (shake > 0) shake = max(0, shake - dt * 24);
     for (final e in employees) {
+      if (e.landSquash > 0) e.landSquash = max(0, e.landSquash - dt * 3.2);
       e.animPhase += dt;
       e.chatCooldown = max(0, e.chatCooldown - dt);
       e.coffeeCooldown = max(0, e.coffeeCooldown - dt);
@@ -1340,6 +1352,7 @@ class OfficeSim extends ChangeNotifier {
     e.goal = Goal.none;
     e.facing = Facing.down;
     e.say('😱', 1.6);
+    particles.puff(Offset(e.pos.dx, e.pos.dy + 1), count: 4); // pick-up pop
     selectedId = id;
     notifyListeners();
   }
@@ -1430,6 +1443,10 @@ class OfficeSim extends ChangeNotifier {
     e.activityTimer = 1.1 + _rng.nextDouble() * 0.5;
     e.facing = Facing.down;
     e.say('@_@', 1.4);
+    // Landing juice: squash, a dust puff and a quick screen shake.
+    e.landSquash = 1.0;
+    particles.puff(Offset(e.pos.dx, e.pos.dy + 1));
+    addShake(3.2);
     notifyListeners();
   }
 
@@ -1538,6 +1555,8 @@ class OfficeSim extends ChangeNotifier {
     e.say(_motivateLines[_rng.nextInt(_motivateLines.length)], 2.0);
     floating(Offset(e.pos.dx, e.pos.dy - 16), '⚡',
         ttl: 1.3, color: const Color(0xFFFFD24A));
+    particles.spark(Offset(e.pos.dx, e.pos.dy - 12));
+    addShake(1.6);
     notifyListeners();
   }
 

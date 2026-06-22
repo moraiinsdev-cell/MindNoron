@@ -188,6 +188,43 @@ class ParticleField {
     }
   }
 
+  /// A low puff of dust kicked up at [at] (a landing / pick-up).
+  void puff(Offset at, {int count = 8}) {
+    for (var i = 0; i < count; i++) {
+      final a = (i / count) * pi * 2 + _rng.nextDouble();
+      final speed = 8 + _rng.nextDouble() * 16;
+      _add(Particle(
+        pos: at,
+        vel: Offset(cos(a) * speed, -sin(a).abs() * speed * 0.5 - 4),
+        life: 0.4 + _rng.nextDouble() * 0.4,
+        maxLife: 0.8,
+        size: 1.5 + _rng.nextDouble(),
+        color: const Color(0xFFD8CFBE),
+        kind: ParticleKind.dust,
+        seed: _rng.nextDouble() * 6.28,
+      ));
+    }
+  }
+
+  /// A short upward spark fountain at [at] (an energy jolt).
+  void spark(Offset at, {int count = 10}) {
+    const palette = [Color(0xFFFFE27A), Color(0xFFFFD24A), Color(0xFFFFFFFF)];
+    for (var i = 0; i < count; i++) {
+      final a = -pi / 2 + (_rng.nextDouble() - 0.5) * 1.4;
+      final speed = 24 + _rng.nextDouble() * 40;
+      _add(Particle(
+        pos: at,
+        vel: Offset(cos(a) * speed, sin(a) * speed),
+        life: 0.4 + _rng.nextDouble() * 0.4,
+        maxLife: 0.8,
+        size: 1.5,
+        color: palette[_rng.nextInt(palette.length)],
+        kind: ParticleKind.splash,
+        seed: _rng.nextDouble() * 6.28,
+      ));
+    }
+  }
+
   /// A celebratory confetti burst at [at].
   void confetti(Offset at, {int count = 26}) {
     const palette = [

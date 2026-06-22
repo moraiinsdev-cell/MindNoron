@@ -389,6 +389,7 @@ class _OfficeScreenState extends ConsumerState<OfficeScreen>
                         cache: _cache,
                         zoom: _camera.zoom,
                         origin: _camera.origin,
+                        hoveredId: _hoverEmp?.spec.id,
                         buildMode: _buildMode,
                         placingItem:
                             _placingId == null ? null : catalogItem(_placingId!),

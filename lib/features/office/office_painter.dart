@@ -26,6 +26,7 @@ class OfficePainter extends CustomPainter {
     required this.zoom,
     required this.origin,
     this.hourOverride,
+    this.hoveredId,
     this.buildMode = false,
     this.placingItem,
     this.ghostTile,
@@ -36,6 +37,11 @@ class OfficePainter extends CustomPainter {
   final SpriteCache cache;
   final double zoom;
   final Offset origin;
+
+  /// The employee currently under the cursor (lifts + glows for feedback).
+  final String? hoveredId;
+
+  static final Random _rng = Random();
 
   /// Forces a specific hour-of-day for lighting (tests/previews). When null
   /// the real wall clock is used.
@@ -64,7 +70,13 @@ class OfficePainter extends CustomPainter {
     canvas.save();
     canvas.clipRect(Rect.fromLTWH(origin.dx, origin.dy,
         worldWidth * zoom, worldHeight * zoom));
-    canvas.translate(origin.dx, origin.dy);
+    // Screen shake: jitter the world layer (overlays stay put).
+    var ox = origin.dx, oy = origin.dy;
+    if (sim.shake > 0.05) {
+      ox += (_rng.nextDouble() * 2 - 1) * sim.shake;
+      oy += (_rng.nextDouble() * 2 - 1) * sim.shake;
+    }
+    canvas.translate(ox, oy);
     canvas.scale(zoom);
 
     final sky = hourOverride != null
@@ -585,7 +597,13 @@ class OfficePainter extends CustomPainter {
 
     final dragged = e.activity == Activity.dragged;
     final swimming = e.activity == Activity.swim;
-    final lift = dragged ? 7.0 + sin(e.animPhase * 5) * 1.5 : 0.0;
+    final selected = sim.selectedId == e.spec.id;
+    final hovered = hoveredId == e.spec.id && !dragged && !selected;
+    final lift = dragged
+        ? 7.0 + sin(e.animPhase * 5) * 1.5
+        : hovered
+            ? 2.0
+            : 0.0;
     final typingBob = e.activity == Activity.working &&
             (e.animPhase * 2.4).floor().isEven
         ? 1.0
@@ -597,8 +615,10 @@ class OfficePainter extends CustomPainter {
         ? (sin(e.animPhase * 1.8) * 0.5 - 0.5)
         : 0.0;
 
-    // Selection marker (pulsing ring under the employee).
-    if (sim.selectedId == e.spec.id) {
+    // Selection / hover feedback under the employee.
+    if (selected) {
+      _glow(canvas, Offset(e.pos.dx, e.pos.dy - 6), 22,
+          const Color(0xFFFFD65A), 0.5);
       final pulse = 0.55 + 0.35 * sin(e.animPhase * 4);
       canvas.drawOval(
         Rect.fromCenter(
@@ -608,6 +628,9 @@ class OfficePainter extends CustomPainter {
           ..strokeWidth = 1.2
           ..color = Color.fromRGBO(255, 214, 90, pulse),
       );
+    } else if (hovered) {
+      _glow(canvas, Offset(e.pos.dx, e.pos.dy - 6), 18,
+          const Color(0xFFFFFFFF), 0.26);
     }
 
     final rows = characterRows(frame, look.hairStyle);
@@ -664,11 +687,20 @@ class OfficePainter extends CustomPainter {
               e.pos.dy - chairSprite.height + 3));
     }
 
-    drawSprite(
-      canvas,
-      img,
-      Offset(e.pos.dx - 6, e.pos.dy - h - lift + typingBob + breathing),
-    );
+    final spriteOrigin =
+        Offset(e.pos.dx - 6, e.pos.dy - h - lift + typingBob + breathing);
+    if (e.landSquash > 0.01) {
+      // Squash-and-stretch on a fresh landing, pivoting on the feet.
+      final sq = e.landSquash;
+      canvas.save();
+      canvas.translate(e.pos.dx, e.pos.dy);
+      canvas.scale(1 + 0.35 * sq, 1 - 0.45 * sq);
+      canvas.translate(-e.pos.dx, -e.pos.dy);
+      drawSprite(canvas, img, spriteOrigin);
+      canvas.restore();
+    } else {
+      drawSprite(canvas, img, spriteOrigin);
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -880,5 +912,6 @@ class OfficePainter extends CustomPainter {
       oldDelegate.buildMode != buildMode ||
       oldDelegate.placingItem != placingItem ||
       oldDelegate.ghostTile != ghostTile ||
+      oldDelegate.hoveredId != hoveredId ||
       oldDelegate.focusMode != focusMode;
 }
