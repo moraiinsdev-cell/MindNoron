@@ -268,6 +268,17 @@ class OfficeSim extends ChangeNotifier {
   double _officeClock = 0;
   int officeHour = 0;
 
+  // --- Day/night clock (drives the visible lighting cycle) ----------------
+
+  /// A full dawn → day → dusk → night cycle compressed into this many real
+  /// seconds, so the office visibly moves through the day while you watch.
+  static const dayLengthSeconds = 600.0;
+  double _dayClock = 0;
+
+  /// Continuous hour-of-day (0..24) used for lighting. Starts mid-morning so a
+  /// freshly opened office reads as daytime, then rolls forward.
+  double get hourOfDay => (8.0 + (_dayClock / dayLengthSeconds) * 24.0) % 24.0;
+
   /// Fired once per office-hour. The screen uses this to generate + persist a
   /// fresh batch of ideas (offline) and have an idea-room "ship" them.
   void Function(int hour)? onOfficeHour;
@@ -545,6 +556,7 @@ class OfficeSim extends ChangeNotifier {
 
   void tick(double dt) {
     if (dt <= 0) return;
+    _dayClock += dt; // advance the day/night cycle even when the office is empty
     for (final e in employees) {
       e.animPhase += dt;
       e.chatCooldown = max(0, e.chatCooldown - dt);

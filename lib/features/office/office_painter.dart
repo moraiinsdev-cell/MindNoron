@@ -67,7 +67,9 @@ class OfficePainter extends CustomPainter {
     canvas.translate(origin.dx, origin.dy);
     canvas.scale(zoom);
 
-    final sky = hourOverride != null ? SkyLight.at(hourOverride!) : SkyLight.now();
+    final sky = hourOverride != null
+        ? SkyLight.at(hourOverride!)
+        : SkyLight.at(sim.hourOfDay);
 
     canvas.drawPicture(_staticLayer!);
     _paintWaterShimmer(canvas);
@@ -370,6 +372,19 @@ class OfficePainter extends CustomPainter {
     Offset(19 * 16.0 + 8, 16 * 16.0 + 4), // library lamp
     Offset(16 * 16.0, 24 * 16.0 + 6), // café counter
     Offset(34 * 16.0 + 8, 12 * 16.0), // finance lamp
+    Offset(33 * 16.0 + 8, 22 * 16.0), // lounge
+    Offset(30 * 16.0, 31 * 16.0), // reception
+  ];
+
+  // Windows along the top wall that pour warm daylight onto the floor below;
+  // fades out after dusk.
+  static const _windowPoints = [
+    Offset(3 * 16.0 + 8, 40),
+    Offset(7 * 16.0 + 8, 40),
+    Offset(11 * 16.0 + 8, 40),
+    Offset(15 * 16.0 + 8, 40),
+    Offset(33 * 16.0 + 8, 40),
+    Offset(36 * 16.0 + 8, 40),
   ];
 
   void _paintParticles(Canvas canvas) {
@@ -415,18 +430,27 @@ class OfficePainter extends CustomPainter {
   /// warm; occupied monitors cast a cool wash so the office reads as "alive"
   /// at night. Drawn in world space with [BlendMode.plus].
   void _paintLighting(Canvas canvas, SkyLight sky) {
-    if (sky.darkness <= 0.02) return;
     final d = sky.darkness;
 
+    // Daytime sun pools spilling in from the windows (fade out after dusk).
+    final day = (1 - d).clamp(0.0, 1.0);
+    if (day > 0.04) {
+      for (final w in _windowPoints) {
+        _glow(canvas, w, 48, const Color(0xFFFFE6AC), 0.13 * day);
+      }
+    }
+
+    if (d <= 0.02) return;
+
     for (final g in _lampPoints) {
-      _glow(canvas, g, 38, const Color(0xFFFFD080), 0.30 * d);
+      _glow(canvas, g, 46, const Color(0xFFFFD080), 0.42 * d);
     }
 
     // Cool monitor glow at desks where someone is actually working.
     for (final e in sim.employees) {
       if (e.activity != Activity.working) continue;
-      _glow(canvas, Offset(e.pos.dx, e.pos.dy - 6), 18,
-          const Color(0xFF8CC8FF), 0.22 * d);
+      _glow(canvas, Offset(e.pos.dx, e.pos.dy - 6), 20,
+          const Color(0xFF8CC8FF), 0.26 * d);
     }
   }
 
@@ -439,6 +463,8 @@ class OfficePainter extends CustomPainter {
       radius,
       Paint()
         ..blendMode = BlendMode.plus
+        // A soft blur turns the gradient pool into a gentle bloom halo.
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3)
         ..shader = ui.Gradient.radial(center, radius, [
           color.withValues(alpha: a),
           color.withValues(alpha: 0),
@@ -501,6 +527,19 @@ class OfficePainter extends CustomPainter {
   }
 
   void _paintObject(Canvas canvas, OfficeObject o) {
+    // Soft contact shadow to ground the piece (skip walk-over flat props).
+    if (o.blocks) {
+      final cx = (o.tx + o.tw / 2) * 16.0;
+      final by = (o.ty + o.th) * 16.0 - 1.5;
+      canvas.drawOval(
+        Rect.fromCenter(
+            center: Offset(cx, by), width: o.tw * 16 * 0.72, height: 4.5),
+        Paint()
+          ..color = const Color.fromRGBO(16, 14, 26, 0.16)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.2),
+      );
+    }
+
     final img = cache.imageFor(
         'obj-${identityHashCode(o.sprite)}', () => o.sprite);
     drawSprite(canvas, img, o.drawOrigin);
@@ -645,8 +684,21 @@ class OfficePainter extends CustomPainter {
       canvas.drawRect(rect, Paint()..color = sky.tint);
     }
 
+    // Cinematic colour grade: a hair of cool up top, warmth down low. Soft-light
+    // keeps the pixel art readable while adding filmic depth.
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..blendMode = BlendMode.softLight
+        ..shader = ui.Gradient.linear(
+          rect.topCenter,
+          rect.bottomCenter,
+          const [Color(0x223C72A8), Color(0x22C4861E)],
+        ),
+    );
+
     // Subtle vignette for depth — always on, a touch heavier at night.
-    final vignette = 0.16 + 0.22 * sky.darkness;
+    final vignette = 0.18 + 0.26 * sky.darkness;
     canvas.drawRect(
       rect,
       Paint()
@@ -657,7 +709,7 @@ class OfficePainter extends CustomPainter {
             const Color(0x00000000),
             Color.fromRGBO(8, 6, 18, vignette),
           ],
-          const [0.62, 1.0],
+          const [0.58, 1.0],
         ),
     );
   }
