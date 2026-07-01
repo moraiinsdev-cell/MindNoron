@@ -38,6 +38,10 @@ dependencies:
   file_picker: ^8.1.6
   uuid: ^4.5.1
 
+  # Networking (AI Idea Catalyst — the only online feature; calls the
+  # Anthropic Messages API directly since Dart has no official SDK).
+  http: ^1.2.0
+
   # Audio (session cues + looping ambient soundscapes). SoLoud uses a
   # miniaudio/WASAPI backend (not Media Foundation), so it plays nicely with
   # this app's STA COM init and gives gapless looping for the focus beds.
