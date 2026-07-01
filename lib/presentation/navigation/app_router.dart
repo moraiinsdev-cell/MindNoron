@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/activity/activity_screen.dart';
 import '../../features/calendar/calendar_screen.dart';
+import '../../features/catalyst/catalyst_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/expenses/expenses_screen.dart';
 import '../../features/habits/habits_screen.dart';
@@ -24,6 +25,7 @@ abstract final class Routes {
   static const welcome = '/welcome';
   static const dashboard = '/dashboard';
   static const office = '/office';
+  static const catalyst = '/catalyst';
   static const tasks = '/tasks';
   static const calendar = '/calendar';
   static const timer = '/timer';
@@ -54,6 +56,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: Routes.office,
           pageBuilder: (c, s) => _appPage(s, const OfficeScreen()),
+        ),
+        GoRoute(
+          path: Routes.catalyst,
+          pageBuilder: (c, s) => _appPage(s, const CatalystScreen()),
         ),
         GoRoute(
           path: Routes.tasks,

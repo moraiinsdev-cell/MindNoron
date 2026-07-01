@@ -80,7 +80,7 @@ class CatalystService {
   static const _maxTokens = 12000; // hard ceiling; adaptive thinking shares it
   static const _timeout = Duration(seconds: 150);
 
-  static final _uuid = const Uuid();
+  static const _uuid = Uuid();
 
   /// Runs the GOLD PROMPT against [brief] and returns the parsed ideas plus the
   /// round's token usage. Throws [CatalystException] on any failure.

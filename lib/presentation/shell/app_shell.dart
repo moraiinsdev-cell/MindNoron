@@ -21,6 +21,7 @@ class AppShell extends ConsumerWidget {
   static const _routes = [
     Routes.dashboard,
     Routes.office,
+    Routes.catalyst,
     Routes.tasks,
     Routes.calendar,
     Routes.timer,
@@ -96,6 +97,11 @@ class AppShell extends ConsumerWidget {
                     icon: const Icon(Icons.apartment_outlined),
                     selectedIcon: const Icon(Icons.apartment),
                     label: Text(l10n.navOffice),
+                  ),
+                  const NavigationRailDestination(
+                    icon: Icon(Icons.bolt_outlined),
+                    selectedIcon: Icon(Icons.bolt),
+                    label: Text('Catalyst'),
                   ),
                   NavigationRailDestination(
                     icon: _BadgedRailIcon(
