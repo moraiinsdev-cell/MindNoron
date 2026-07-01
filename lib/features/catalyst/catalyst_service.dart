@@ -29,6 +29,38 @@ class CatalystException implements Exception {
   String toString() => message;
 }
 
+/// Token usage for one brainstorm round, so the player can watch spend. Cache
+/// reads/writes are folded into [inputTokens] for an honest total.
+class CatalystUsage {
+  const CatalystUsage({required this.inputTokens, required this.outputTokens});
+
+  final int inputTokens;
+  final int outputTokens;
+
+  int get total => inputTokens + outputTokens;
+
+  static CatalystUsage fromJson(Object? j) {
+    if (j is! Map) {
+      return const CatalystUsage(inputTokens: 0, outputTokens: 0);
+    }
+    int n(String k) => (j[k] as num?)?.toInt() ?? 0;
+    return CatalystUsage(
+      inputTokens: n('input_tokens') +
+          n('cache_read_input_tokens') +
+          n('cache_creation_input_tokens'),
+      outputTokens: n('output_tokens'),
+    );
+  }
+}
+
+/// One brainstorm round: the ideas plus the token usage that produced them.
+class CatalystResult {
+  const CatalystResult(this.ideas, this.usage);
+
+  final List<CatalystIdea> ideas;
+  final CatalystUsage usage;
+}
+
 /// Calls Claude (Anthropic Messages API) once per brief to produce three
 /// breakthrough ideas. This is the app's only network feature — the Office idea
 /// engine remains fully offline.
@@ -42,15 +74,17 @@ class CatalystService {
 
   static const _endpoint = 'https://api.anthropic.com/v1/messages';
   static const _model = 'claude-opus-4-8';
-  static const _effort = 'high'; // deep reasoning for breakthrough quality
-  static const _maxTokens = 12000; // headroom: adaptive thinking shares this
+  // 'high' balances idea quality against token spend per round; 'xhigh'/'max'
+  // would think longer and cost noticeably more per brainstorm.
+  static const _effort = 'high';
+  static const _maxTokens = 12000; // hard ceiling; adaptive thinking shares it
   static const _timeout = Duration(seconds: 150);
 
   static final _uuid = const Uuid();
 
-  /// Runs the GOLD PROMPT against [brief] and returns the parsed ideas.
-  /// Throws [CatalystException] on any failure.
-  Future<List<CatalystIdea>> generate(String brief, String apiKey) async {
+  /// Runs the GOLD PROMPT against [brief] and returns the parsed ideas plus the
+  /// round's token usage. Throws [CatalystException] on any failure.
+  Future<CatalystResult> generate(String brief, String apiKey) async {
     final trimmedBrief = brief.trim();
     if (apiKey.trim().isEmpty) {
       throw const CatalystException(CatalystError.missingKey,
@@ -142,7 +176,7 @@ class CatalystService {
     return _parse(resp.body, trimmedBrief);
   }
 
-  List<CatalystIdea> _parse(String responseBody, String brief) {
+  CatalystResult _parse(String responseBody, String brief) {
     Map<String, dynamic> data;
     try {
       data = jsonDecode(responseBody) as Map<String, dynamic>;
@@ -208,7 +242,7 @@ class CatalystService {
       throw const CatalystException(
           CatalystError.badResponse, 'No usable ideas came back. Try again.');
     }
-    return ideas;
+    return CatalystResult(ideas, CatalystUsage.fromJson(data['usage']));
   }
 }
 
