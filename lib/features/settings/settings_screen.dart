@@ -161,6 +161,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const _SoundSettings(),
           const _HotkeySettings(),
           const _ContextSettings(),
+          const _CatalystSettings(),
           _SectionCard(
             title: 'Data',
             child: Wrap(
@@ -512,6 +513,110 @@ class _ContextSettingsState extends ConsumerState<_ContextSettings> {
                 onPressed: _add,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// API-key entry for the AI Idea Catalyst — the app's only online feature.
+/// The key is stored locally in the settings table (plaintext, single-user
+/// desktop app); the field is masked with a reveal toggle.
+class _CatalystSettings extends ConsumerStatefulWidget {
+  const _CatalystSettings();
+
+  @override
+  ConsumerState<_CatalystSettings> createState() => _CatalystSettingsState();
+}
+
+class _CatalystSettingsState extends ConsumerState<_CatalystSettings> {
+  final _controller = TextEditingController();
+  bool _obscure = true;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final value = _controller.text.trim();
+    await ref.read(settingsRepositoryProvider).setCatalystApiKey(value);
+    _controller.clear();
+    if (!mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+          content: Text(value.isEmpty ? 'API key cleared' : 'API key saved')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final configured = ref.watch(catalystApiKeyProvider).valueOrNull != null;
+
+    return _SectionCard(
+      title: 'AI Idea Catalyst',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                configured
+                    ? Icons.check_circle_outline
+                    : Icons.key_off_outlined,
+                size: 18,
+                color: configured
+                    ? const Color(0xFF4D9E68)
+                    : theme.colorScheme.outline,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                configured
+                    ? 'Anthropic API key configured'
+                    : 'No API key set',
+                style: theme.textTheme.bodyMedium,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controller,
+            obscureText: _obscure,
+            onSubmitted: (_) => _save(),
+            decoration: InputDecoration(
+              isDense: true,
+              labelText:
+                  configured ? 'Replace API key' : 'Anthropic API key',
+              hintText: 'sk-ant-...',
+              prefixIcon: const Icon(Icons.vpn_key_outlined, size: 18),
+              suffixIcon: IconButton(
+                tooltip: _obscure ? 'Show' : 'Hide',
+                icon: Icon(_obscure
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined),
+                onPressed: () => setState(() => _obscure = !_obscure),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.tonalIcon(
+              onPressed: _save,
+              icon: const Icon(Icons.save_outlined),
+              label: const Text('Save'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Powers the Idea Catalyst (Claude). Get a key at '
+            'console.anthropic.com. Stored locally on this device only.',
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ],
       ),
