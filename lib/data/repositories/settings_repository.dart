@@ -30,6 +30,7 @@ class SettingsRepository {
   static const _kUserNamePrompted = 'userNamePrompted';
   static const _kContexts = 'contexts';
   static const _kCaptureHotkey = 'captureHotkey';
+  static const _kCatalystApiKey = 'catalystApiKey';
 
   Future<void> _set(String key, String value) {
     return _db.into(_db.settings).insertOnConflictUpdate(
@@ -191,6 +192,20 @@ class SettingsRepository {
   Future<void> setCaptureHotkey(String hotkey) =>
       _set(_kCaptureHotkey, hotkey);
 
+  // --- AI Idea Catalyst (Anthropic API key) -------------------------------
+
+  /// The Anthropic API key for the AI Idea Catalyst (the app's only online
+  /// feature). Stored locally in the settings table; empty = not configured.
+  Stream<String?> watchCatalystApiKey() =>
+      _watch(_kCatalystApiKey).map((v) => (v == null || v.isEmpty) ? null : v);
+  Future<String?> getCatalystApiKey() async {
+    final v = await readValue(_kCatalystApiKey);
+    return (v == null || v.isEmpty) ? null : v;
+  }
+
+  Future<void> setCatalystApiKey(String key) =>
+      _set(_kCatalystApiKey, key.trim());
+
   // --- Noron-space animated backdrop --------------------------------------
 
   Stream<bool> watchNeuronBackdrop() =>
@@ -268,4 +283,8 @@ final contextsProvider = StreamProvider<List<String>>((ref) {
 
 final captureHotkeyProvider = StreamProvider<String>((ref) {
   return ref.watch(settingsRepositoryProvider).watchCaptureHotkey();
+});
+
+final catalystApiKeyProvider = StreamProvider<String?>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchCatalystApiKey();
 });
