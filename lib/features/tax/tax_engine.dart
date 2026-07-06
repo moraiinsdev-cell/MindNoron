@@ -43,6 +43,12 @@ abstract final class TaxRules {
     ProgressiveBracket(upTo: null, rate: 0.35), // > 80tr
   ];
 
+  /// Thuế thu nhập doanh nghiệp (CIT) — mức phổ thông 20% trên lợi nhuận.
+  static const double citRate = 0.20;
+
+  /// Thuế TNCN trên cổ tức khi chia lợi nhuận cho chủ sở hữu — 5%.
+  static const double dividendPitRate = 0.05;
+
   /// Tiền chậm nộp — 0,03%/ngày trên số thuế nộp muộn.
   static const double lateDailyRate = 0.0003;
 
@@ -130,6 +136,40 @@ BusinessTaxResult computeBusinessTax({
     vat: vat,
     pit: pit,
     exempt: false,
+  );
+}
+
+/// Taxing the same income through a **one-member limited company** (công ty
+/// TNHH): CIT on profit, then dividend PIT if the after-tax profit is paid out
+/// to the owner. Unlike the flat individual method, real business expenses are
+/// deductible — so it can win once margins are thin, at the cost of accounting
+/// and social-insurance overhead (flagged in the UI, not modelled here).
+CompanyTaxResult computeCompanyTax({
+  required int revenue,
+  required int expenseRatioPct,
+  bool distribute = true,
+}) {
+  final ratio = expenseRatioPct.clamp(0, 100) / 100;
+  final profit = (revenue * (1 - ratio)).round();
+  if (profit <= 0) {
+    return CompanyTaxResult(
+      revenue: revenue,
+      profit: profit < 0 ? 0 : profit,
+      cit: 0,
+      dividendTax: 0,
+      distributed: distribute,
+    );
+  }
+  final cit = (profit * TaxRules.citRate).round();
+  final afterCit = profit - cit;
+  final dividendTax =
+      distribute ? (afterCit * TaxRules.dividendPitRate).round() : 0;
+  return CompanyTaxResult(
+    revenue: revenue,
+    profit: profit,
+    cit: cit,
+    dividendTax: dividendTax,
+    distributed: distribute,
   );
 }
 

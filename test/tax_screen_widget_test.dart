@@ -43,9 +43,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Both comparison cards are present.
-    expect(find.text('Khai theo cá nhân kinh doanh'), findsOneWidget);
-    expect(find.text('Khai theo tiền lương / tiền công'), findsOneWidget);
+    // All three comparison cards are present.
+    expect(find.text('Cá nhân kinh doanh'), findsOneWidget);
+    expect(find.text('Tiền lương / tiền công'), findsOneWidget);
+    expect(find.text('Công ty TNHH một thành viên'), findsOneWidget);
 
     // At 1.2 tỷ, registering as an individual business is the optimum.
     expect(

@@ -88,6 +88,37 @@ void main() {
     });
   });
 
+  group('computeCompanyTax', () {
+    test('CIT 20% + dividend 5% when profit distributed', () {
+      // 1 tỷ revenue, 30% expenses -> 700tr profit
+      final r = computeCompanyTax(
+        revenue: 1000000000,
+        expenseRatioPct: 30,
+      );
+      expect(r.profit, 700000000);
+      expect(r.cit, 140000000); // 20% of 700tr
+      expect(r.dividendTax, (560000000 * 0.05).round()); // 5% of after-CIT
+      expect(r.annualTax, 140000000 + 28000000);
+      expect(r.ownerNet, 700000000 - r.annualTax);
+    });
+
+    test('retained profit skips dividend tax', () {
+      final r = computeCompanyTax(
+        revenue: 1000000000,
+        expenseRatioPct: 30,
+        distribute: false,
+      );
+      expect(r.dividendTax, 0);
+      expect(r.annualTax, 140000000);
+    });
+
+    test('no profit -> no tax', () {
+      final r = computeCompanyTax(revenue: 100000000, expenseRatioPct: 100);
+      expect(r.profit, 0);
+      expect(r.annualTax, 0);
+    });
+  });
+
   group('projectRevenue', () {
     test('annualizes mid-year revenue by run-rate', () {
       // 300tr booked over 6 months -> 600tr projected.

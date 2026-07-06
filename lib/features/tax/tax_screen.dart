@@ -28,6 +28,7 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
   final _incomeCtrl = TextEditingController();
   final _depsCtrl = TextEditingController();
   final _insCtrl = TextEditingController();
+  final _expCtrl = TextEditingController();
   BusinessLine _line = BusinessLine.exportedServices;
   bool _seeded = false;
 
@@ -36,6 +37,7 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
     _incomeCtrl.dispose();
     _depsCtrl.dispose();
     _insCtrl.dispose();
+    _expCtrl.dispose();
     super.dispose();
   }
 
@@ -49,6 +51,7 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
     if (p.monthlyInsurance > 0) {
       _insCtrl.text = (p.monthlyInsurance ~/ 1000000).toString();
     }
+    _expCtrl.text = p.expenseRatioPct.toString();
     _line = p.line;
   }
 
@@ -57,12 +60,15 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
   int get _dependents => int.tryParse(_depsCtrl.text.trim()) ?? 0;
   int get _monthlyInsurance =>
       (int.tryParse(_insCtrl.text.trim()) ?? 0) * 1000000;
+  int get _expenseRatioPct =>
+      (int.tryParse(_expCtrl.text.trim()) ?? 30).clamp(0, 100);
 
   void _persist() {
     ref.read(taxRepositoryProvider).save(TaxProfile(
           annualIncome: _annualIncome,
           dependents: _dependents,
           monthlyInsurance: _monthlyInsurance,
+          expenseRatioPct: _expenseRatioPct,
           line: _line,
         ));
   }
@@ -122,10 +128,12 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
                   incomeCtrl: _incomeCtrl,
                   depsCtrl: _depsCtrl,
                   insCtrl: _insCtrl,
+                  expCtrl: _expCtrl,
                   line: _line,
                   annualIncome: _annualIncome,
                   dependents: _dependents,
                   monthlyInsurance: _monthlyInsurance,
+                  expenseRatioPct: _expenseRatioPct,
                   onChanged: () {
                     setState(() {});
                     _persist();
@@ -154,10 +162,12 @@ class _CalculatorTab extends StatelessWidget {
     required this.incomeCtrl,
     required this.depsCtrl,
     required this.insCtrl,
+    required this.expCtrl,
     required this.line,
     required this.annualIncome,
     required this.dependents,
     required this.monthlyInsurance,
+    required this.expenseRatioPct,
     required this.onChanged,
     required this.onLineChanged,
   });
@@ -165,10 +175,12 @@ class _CalculatorTab extends StatelessWidget {
   final TextEditingController incomeCtrl;
   final TextEditingController depsCtrl;
   final TextEditingController insCtrl;
+  final TextEditingController expCtrl;
   final BusinessLine line;
   final int annualIncome;
   final int dependents;
   final int monthlyInsurance;
+  final int expenseRatioPct;
   final VoidCallback onChanged;
   final ValueChanged<BusinessLine> onLineChanged;
 
@@ -183,9 +195,21 @@ class _CalculatorTab extends StatelessWidget {
       annualRevenue: annualIncome,
       line: line,
     );
+    final company = computeCompanyTax(
+      revenue: annualIncome,
+      expenseRatioPct: expenseRatioPct,
+    );
     final hasIncome = annualIncome > 0;
-    final businessCheaper = business.annualTax <= salary.annualTax;
-    final saving = (salary.annualTax - business.annualTax).abs();
+
+    // Cheapest of the three methods drives the highlight + banner.
+    final taxes = {
+      'business': business.annualTax,
+      'salary': salary.annualTax,
+      'company': company.annualTax,
+    };
+    final best = taxes.entries.reduce((a, b) => a.value <= b.value ? a : b).key;
+    final sorted = taxes.values.toList()..sort();
+    final saving = sorted[1] - sorted[0];
 
     return ListView(
       children: [
@@ -193,6 +217,7 @@ class _CalculatorTab extends StatelessWidget {
           incomeCtrl: incomeCtrl,
           depsCtrl: depsCtrl,
           insCtrl: insCtrl,
+          expCtrl: expCtrl,
           line: line,
           onChanged: onChanged,
           onLineChanged: onLineChanged,
@@ -201,18 +226,15 @@ class _CalculatorTab extends StatelessWidget {
         if (!hasIncome)
           const _HintCard()
         else ...[
-          _WinnerBanner(
-            businessCheaper: businessCheaper,
-            saving: saving,
-          ),
+          _WinnerBanner(best: best, saving: saving),
           const SizedBox(height: 12),
           _ResultCard(
-            title: 'Khai theo cá nhân kinh doanh',
+            title: 'Cá nhân kinh doanh',
             subtitle: line.label,
             annualTax: business.annualTax,
             effectiveRate: business.effectiveRate,
             annualNet: business.annualNet,
-            highlighted: businessCheaper,
+            highlighted: best == 'business',
             rows: [
               if (business.exempt)
                 const _Row('Tình trạng', 'Miễn thuế (≤ 500 triệu/năm)')
@@ -224,12 +246,12 @@ class _CalculatorTab extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _ResultCard(
-            title: 'Khai theo tiền lương / tiền công',
+            title: 'Tiền lương / tiền công',
             subtitle: 'Biểu lũy tiến 5%–35%, giảm trừ gia cảnh',
             annualTax: salary.annualTax,
             effectiveRate: salary.effectiveRate,
             annualNet: salary.annualNet,
-            highlighted: !businessCheaper,
+            highlighted: best == 'salary',
             rows: [
               _Row('Thu nhập tính thuế/năm', _vnd(salary.annualTaxableIncome)),
               _Row('Thuế suất biên', '${(salary.marginalRate * 100).round()}%'),
@@ -239,10 +261,83 @@ class _CalculatorTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
+          _ResultCard(
+            title: 'Công ty TNHH một thành viên',
+            subtitle: 'TNDN 20% + thuế cổ tức 5% (giả định chia hết lợi nhuận)',
+            annualTax: company.annualTax,
+            effectiveRate: company.effectiveRate,
+            annualNet: company.ownerNet,
+            netLabel: 'Còn lại từ lợi nhuận',
+            highlighted: best == 'company',
+            rows: [
+              _Row('Chi phí ước tính', '$expenseRatioPct% doanh thu'),
+              _Row('Lợi nhuận trước thuế', _vnd(company.profit)),
+              _Row('Thuế TNDN (20%)', _vnd(company.cit)),
+              _Row('Thuế cổ tức (5%)', _vnd(company.dividendTax)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Lưu ý: công ty được trừ chi phí thực tế (lợi thế khi biên lợi '
+            'nhuận thấp) nhưng phải làm kế toán, BHXH, và có chi phí tuân thủ '
+            'cao hơn — cân nhắc khi thu nhập lớn.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () => _copyReport(
+                context,
+                business: business,
+                salary: salary,
+                company: company,
+                best: best,
+              ),
+              icon: const Icon(Icons.copy_all_outlined, size: 18),
+              label: const Text('Sao chép báo cáo'),
+            ),
+          ),
+          const SizedBox(height: 12),
           const _DisclaimerCard(),
         ],
       ],
     );
+  }
+
+  Future<void> _copyReport(
+    BuildContext context, {
+    required BusinessTaxResult business,
+    required SalaryTaxResult salary,
+    required CompanyTaxResult company,
+    required String best,
+  }) async {
+    String pct(double r) => '${(r * 100).toStringAsFixed(1)}%';
+    const names = {
+      'business': 'Cá nhân kinh doanh',
+      'salary': 'Tiền lương / tiền công',
+      'company': 'Công ty TNHH',
+    };
+    final report = '''
+BÁO CÁO THUẾ — Thu nhập từ nước ngoài
+Thu nhập/năm: ${_vnd(annualIncome)}
+Người phụ thuộc: $dependents
+
+1) Cá nhân kinh doanh (${line.label})
+   Thuế/năm: ${_vnd(business.annualTax)} (${pct(business.effectiveRate)})
+2) Tiền lương / tiền công (lũy tiến)
+   Thuế/năm: ${_vnd(salary.annualTax)} (${pct(salary.effectiveRate)})
+3) Công ty TNHH (chi phí $expenseRatioPct%)
+   Thuế/năm: ${_vnd(company.annualTax)} (${pct(company.effectiveRate)})
+
+➜ Phương án tối ưu: ${names[best]}
+
+$taxDisclaimer''';
+    await Clipboard.setData(ClipboardData(text: report));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã sao chép báo cáo thuế')));
   }
 }
 
@@ -251,6 +346,7 @@ class _InputsCard extends StatelessWidget {
     required this.incomeCtrl,
     required this.depsCtrl,
     required this.insCtrl,
+    required this.expCtrl,
     required this.line,
     required this.onChanged,
     required this.onLineChanged,
@@ -259,6 +355,7 @@ class _InputsCard extends StatelessWidget {
   final TextEditingController incomeCtrl;
   final TextEditingController depsCtrl;
   final TextEditingController insCtrl;
+  final TextEditingController expCtrl;
   final BusinessLine line;
   final VoidCallback onChanged;
   final ValueChanged<BusinessLine> onLineChanged;
@@ -326,6 +423,20 @@ class _InputsCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: expCtrl,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    onChanged: (_) => onChanged(),
+                    decoration: const InputDecoration(
+                      labelText: 'Chi phí (công ty)',
+                      suffixText: '%',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
               ],
             ),
           ],
@@ -336,17 +447,19 @@ class _InputsCard extends StatelessWidget {
 }
 
 class _WinnerBanner extends StatelessWidget {
-  const _WinnerBanner({required this.businessCheaper, required this.saving});
+  const _WinnerBanner({required this.best, required this.saving});
 
-  final bool businessCheaper;
+  final String best;
   final int saving;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final which = businessCheaper
-        ? 'Đăng ký cá nhân kinh doanh'
-        : 'Khai theo tiền lương / tiền công';
+    final which = switch (best) {
+      'business' => 'Đăng ký cá nhân kinh doanh',
+      'company' => 'Lập công ty TNHH',
+      _ => 'Khai theo tiền lương / tiền công',
+    };
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -371,7 +484,7 @@ class _WinnerBanner extends StatelessWidget {
                 if (saving > 0) ...[
                   const SizedBox(height: 2),
                   Text(
-                    'Tiết kiệm ~${_vnd(saving)}/năm so với cách còn lại.',
+                    'Tiết kiệm ~${_vnd(saving)}/năm so với phương án tốt kế tiếp.',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onPrimaryContainer,
                     ),
@@ -395,6 +508,7 @@ class _ResultCard extends StatelessWidget {
     required this.annualNet,
     required this.highlighted,
     required this.rows,
+    this.netLabel = 'Thực nhận',
   });
 
   final String title;
@@ -404,6 +518,7 @@ class _ResultCard extends StatelessWidget {
   final int annualNet;
   final bool highlighted;
   final List<_Row> rows;
+  final String netLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -458,7 +573,7 @@ class _ResultCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 4),
-            Text('Thực nhận: ${_vnd(annualNet)}/năm',
+            Text('$netLabel: ${_vnd(annualNet)}/năm',
                 style: theme.textTheme.bodyMedium),
             const Divider(height: 24),
             ...rows,

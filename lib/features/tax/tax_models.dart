@@ -84,6 +84,31 @@ class BusinessTaxResult {
       annualRevenue == 0 ? 0 : annualTax / annualRevenue;
 }
 
+/// Result of routing income through a one-member limited company.
+class CompanyTaxResult {
+  const CompanyTaxResult({
+    required this.revenue,
+    required this.profit,
+    required this.cit,
+    required this.dividendTax,
+    required this.distributed,
+  });
+
+  final int revenue;
+  final int profit;
+  final int cit;
+  final int dividendTax;
+  final bool distributed;
+
+  int get annualTax => cit + dividendTax;
+
+  /// What the owner keeps out of profit after CIT and (optional) dividend tax.
+  int get ownerNet => profit - annualTax;
+
+  /// Total tax as a share of revenue — comparable to the other methods.
+  double get effectiveRate => revenue == 0 ? 0 : annualTax / revenue;
+}
+
 /// Year-end outlook computed from revenue booked so far.
 class RevenueProjection {
   const RevenueProjection({
@@ -169,6 +194,7 @@ class TaxProfile {
     this.annualIncome = 0,
     this.dependents = 0,
     this.monthlyInsurance = 0,
+    this.expenseRatioPct = 30,
     this.line = BusinessLine.exportedServices,
   });
 
@@ -178,18 +204,23 @@ class TaxProfile {
 
   /// Monthly mandatory insurance deductible from salary-method taxable income.
   final int monthlyInsurance;
+
+  /// Estimated business-expense ratio (%) — used for the company (TNHH) route.
+  final int expenseRatioPct;
   final BusinessLine line;
 
   TaxProfile copyWith({
     int? annualIncome,
     int? dependents,
     int? monthlyInsurance,
+    int? expenseRatioPct,
     BusinessLine? line,
   }) =>
       TaxProfile(
         annualIncome: annualIncome ?? this.annualIncome,
         dependents: dependents ?? this.dependents,
         monthlyInsurance: monthlyInsurance ?? this.monthlyInsurance,
+        expenseRatioPct: expenseRatioPct ?? this.expenseRatioPct,
         line: line ?? this.line,
       );
 
@@ -197,6 +228,7 @@ class TaxProfile {
         'income': annualIncome,
         'deps': dependents,
         'ins': monthlyInsurance,
+        'exp': expenseRatioPct,
         'line': line.name,
       };
 
@@ -204,6 +236,7 @@ class TaxProfile {
         annualIncome: (j['income'] as num?)?.toInt() ?? 0,
         dependents: (j['deps'] as num?)?.toInt() ?? 0,
         monthlyInsurance: (j['ins'] as num?)?.toInt() ?? 0,
+        expenseRatioPct: (j['exp'] as num?)?.toInt() ?? 30,
         line: BusinessLine.values.firstWhere(
           (l) => l.name == j['line'],
           orElse: () => BusinessLine.exportedServices,
