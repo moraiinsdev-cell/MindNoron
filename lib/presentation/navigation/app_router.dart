@@ -14,6 +14,7 @@ import '../../features/notes/notes_screen.dart';
 import '../../features/office/office_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/tasks/tasks_screen.dart';
+import '../../features/tax/tax_screen.dart';
 import '../../features/timer/timer_screen.dart';
 import '../shell/app_shell.dart';
 
@@ -26,6 +27,7 @@ abstract final class Routes {
   static const dashboard = '/dashboard';
   static const office = '/office';
   static const catalyst = '/catalyst';
+  static const tax = '/tax';
   static const tasks = '/tasks';
   static const calendar = '/calendar';
   static const timer = '/timer';
@@ -60,6 +62,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: Routes.catalyst,
           pageBuilder: (c, s) => _appPage(s, const CatalystScreen()),
+        ),
+        GoRoute(
+          path: Routes.tax,
+          pageBuilder: (c, s) => _appPage(s, const TaxScreen()),
         ),
         GoRoute(
           path: Routes.tasks,

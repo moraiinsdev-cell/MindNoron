@@ -31,6 +31,7 @@ class SettingsRepository {
   static const _kContexts = 'contexts';
   static const _kCaptureHotkey = 'captureHotkey';
   static const _kCatalystApiKey = 'catalystApiKey';
+  static const _kTaxProfile = 'taxProfileV1';
 
   Future<void> _set(String key, String value) {
     return _db.into(_db.settings).insertOnConflictUpdate(
@@ -205,6 +206,14 @@ class SettingsRepository {
 
   Future<void> setCatalystApiKey(String key) =>
       _set(_kCatalystApiKey, key.trim());
+
+  // --- Tax hub profile (offline calculator inputs) ------------------------
+
+  /// Remembered inputs for the offline Tax calculator (income, dependents,
+  /// business line). Stored as JSON; empty = defaults.
+  Stream<String?> watchTaxProfile() => _watch(_kTaxProfile);
+  Future<String?> getTaxProfile() async => readValue(_kTaxProfile);
+  Future<void> setTaxProfile(String json) => _set(_kTaxProfile, json);
 
   // --- Noron-space animated backdrop --------------------------------------
 
