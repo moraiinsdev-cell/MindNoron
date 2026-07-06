@@ -20,7 +20,7 @@ class TaxScreen extends ConsumerStatefulWidget {
   ConsumerState<TaxScreen> createState() => _TaxScreenState();
 }
 
-enum _Tab { calculator, regulations, strategies }
+enum _Tab { calculator, revenue, risk, regulations, strategies }
 
 class _TaxScreenState extends ConsumerState<TaxScreen> {
   _Tab _tab = _Tab.calculator;
@@ -80,26 +80,40 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SegmentedButton<_Tab>(
-            segments: const [
-              ButtonSegment(
-                value: _Tab.calculator,
-                icon: Icon(Icons.calculate_outlined),
-                label: Text('Máy tính'),
-              ),
-              ButtonSegment(
-                value: _Tab.regulations,
-                icon: Icon(Icons.gavel_outlined),
-                label: Text('Quy định'),
-              ),
-              ButtonSegment(
-                value: _Tab.strategies,
-                icon: Icon(Icons.savings_outlined),
-                label: Text('Tối ưu'),
-              ),
-            ],
-            selected: {_tab},
-            onSelectionChanged: (s) => setState(() => _tab = s.first),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SegmentedButton<_Tab>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(
+                  value: _Tab.calculator,
+                  icon: Icon(Icons.calculate_outlined),
+                  label: Text('Máy tính'),
+                ),
+                ButtonSegment(
+                  value: _Tab.revenue,
+                  icon: Icon(Icons.trending_up),
+                  label: Text('Doanh thu'),
+                ),
+                ButtonSegment(
+                  value: _Tab.risk,
+                  icon: Icon(Icons.shield_outlined),
+                  label: Text('Rủi ro'),
+                ),
+                ButtonSegment(
+                  value: _Tab.regulations,
+                  icon: Icon(Icons.gavel_outlined),
+                  label: Text('Quy định'),
+                ),
+                ButtonSegment(
+                  value: _Tab.strategies,
+                  icon: Icon(Icons.savings_outlined),
+                  label: Text('Tối ưu'),
+                ),
+              ],
+              selected: {_tab},
+              onSelectionChanged: (s) => setState(() => _tab = s.first),
+            ),
           ),
           const SizedBox(height: 16),
           Expanded(
@@ -121,6 +135,8 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
                     _persist();
                   },
                 ),
+              _Tab.revenue => const _RevenueTab(),
+              _Tab.risk => const _RiskTab(),
               _Tab.regulations => const _NotesTab(),
               _Tab.strategies => const _StrategiesTab(),
             },
@@ -677,6 +693,355 @@ class _StrategiesTab extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+// ────────────────────────────── Revenue tracker ────────────────────────────
+
+class _RevenueTab extends ConsumerWidget {
+  const _RevenueTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final now = DateTime.now();
+    final all = ref.watch(taxRevenueProvider).valueOrNull ?? const [];
+    final thisYear = [...all.where((e) => e.year == now.year)]
+      ..sort((a, b) => b.month.compareTo(a.month));
+    final toDate =
+        thisYear.fold<int>(0, (sum, e) => sum + e.amount);
+    final projection =
+        projectRevenue(toDate: toDate, monthsElapsed: now.month);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: ListView(
+            children: [
+              _ThresholdCard(projection: projection, year: now.year),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Đã ghi nhận (${now.year})',
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700)),
+                  FilledButton.tonalIcon(
+                    onPressed: () => _showAddDialog(context, ref, now),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Thêm tháng'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (thisYear.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Text(
+                    'Chưa có dữ liệu. Ghi lại doanh thu mỗi tháng để theo dõi '
+                    'mốc 500 triệu và ước tính thuế cả năm.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                )
+              else
+                for (final e in thisYear)
+                  Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: theme.colorScheme.secondaryContainer,
+                        child: Text('T${e.month}',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                                color:
+                                    theme.colorScheme.onSecondaryContainer)),
+                      ),
+                      title: Text(_vnd(e.amount),
+                          style: const TextStyle(fontWeight: FontWeight.w700)),
+                      subtitle: e.note.isEmpty ? null : Text(e.note),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        tooltip: 'Xóa',
+                        onPressed: () => ref
+                            .read(taxRepositoryProvider)
+                            .removeRevenue(e.id),
+                      ),
+                    ),
+                  ),
+              const SizedBox(height: 8),
+              const _DisclaimerCard(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showAddDialog(
+      BuildContext context, WidgetRef ref, DateTime now) async {
+    var month = now.month;
+    final amountCtrl = TextEditingController();
+    final noteCtrl = TextEditingController();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text('Thêm doanh thu tháng'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<int>(
+                initialValue: month,
+                decoration: const InputDecoration(
+                    labelText: 'Tháng', border: OutlineInputBorder()),
+                items: [
+                  for (var m = 1; m <= 12; m++)
+                    DropdownMenuItem(value: m, child: Text('Tháng $m')),
+                ],
+                onChanged: (m) => setLocal(() => month = m ?? month),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: amountCtrl,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(
+                  labelText: 'Doanh thu',
+                  suffixText: 'triệu ₫',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: noteCtrl,
+                decoration: const InputDecoration(
+                    labelText: 'Ghi chú (tùy chọn)',
+                    border: OutlineInputBorder()),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Hủy')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Lưu')),
+          ],
+        ),
+      ),
+    );
+
+    if (ok == true) {
+      final trieu = int.tryParse(amountCtrl.text.trim()) ?? 0;
+      if (trieu > 0) {
+        await ref.read(taxRepositoryProvider).addRevenue(RevenueEntry(
+              id: '${now.year}-$month-${DateTime.now().microsecondsSinceEpoch}',
+              year: now.year,
+              month: month,
+              amount: trieu * 1000000,
+              note: noteCtrl.text.trim(),
+            ));
+      }
+    }
+    amountCtrl.dispose();
+    noteCtrl.dispose();
+  }
+}
+
+class _ThresholdCard extends StatelessWidget {
+  const _ThresholdCard({required this.projection, required this.year});
+
+  final RevenueProjection projection;
+  final int year;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final frac = projection.thresholdFraction.clamp(0.0, 1.0);
+    final over = projection.overThreshold;
+    final barColor = projection.thresholdFraction >= 1
+        ? theme.colorScheme.error
+        : projection.thresholdFraction >= 0.8
+            ? const Color(0xFFD9A521)
+            : theme.colorScheme.primary;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Doanh thu $year đến nay',
+                style: theme.textTheme.titleSmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 4),
+            Text(_vnd(projection.toDate),
+                style: theme.textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: frac.toDouble(),
+                minHeight: 10,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                valueColor: AlwaysStoppedAnimation(barColor),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Mốc miễn thuế 500 triệu · '
+              '${(projection.thresholdFraction * 100).toStringAsFixed(0)}%',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            const Divider(height: 24),
+            _Row('Ước tính cả năm (run-rate)', _vnd(projection.projectedAnnual)),
+            _Row(
+              'Thuế dự kiến (cá nhân KD 2%)',
+              over ? _vnd(projection.projectedTax) : 'Miễn (dưới ngưỡng)',
+            ),
+            if (over) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded,
+                        size: 18, color: theme.colorScheme.onErrorContainer),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Dự kiến vượt 500 triệu/năm → phát sinh nghĩa vụ thuế. '
+                        'Chuẩn bị đăng ký kê khai và giữ chứng từ.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onErrorContainer),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────── Risk & compliance ────────────────────────
+
+class _RiskTab extends StatelessWidget {
+  const _RiskTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListView(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            'Chấm rủi ro pháp lý từng cách giảm thuế. Mục tiêu: tối ưu HỢP '
+            'PHÁP và tránh xa trốn thuế — vì mức phạt luôn lớn hơn số thuế '
+            'tiết kiệm được.',
+            style: theme.textTheme.bodyMedium,
+          ),
+        ),
+        for (final r in taxRisks) _RiskCard(item: r),
+        const SizedBox(height: 4),
+        Text('Mức phạt & dấu hiệu bị thanh tra',
+            style: theme.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 8),
+        for (final p in taxPenalties) _NoteCard(note: p),
+        const _DisclaimerCard(),
+      ],
+    );
+  }
+}
+
+class _RiskCard extends StatelessWidget {
+  const _RiskCard({required this.item});
+  final TaxRiskItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = switch (item.level) {
+      RiskLevel.safe => const Color(0xFF2E7D32),
+      RiskLevel.grey => const Color(0xFFB8860B),
+      RiskLevel.illegal => theme.colorScheme.error,
+    };
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.level.emoji, style: const TextStyle(fontSize: 18)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(item.title,
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(item.level.label,
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: color, fontWeight: FontWeight.w800)),
+            ),
+            const SizedBox(height: 10),
+            Text(item.what, style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  item.level == RiskLevel.illegal
+                      ? Icons.gpp_bad_outlined
+                      : Icons.verified_user_outlined,
+                  size: 16,
+                  color: color,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(item.consequence,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

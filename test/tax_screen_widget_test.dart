@@ -33,6 +33,10 @@ void main() {
               line: BusinessLine.exportedServices,
             )),
           ),
+          // Static stream so the revenue tab doesn't spin up the real Drift
+          // stream (whose teardown leaves a pending timer under FakeAsync).
+          taxRevenueProvider
+              .overrideWith((ref) => Stream.value(const <RevenueEntry>[])),
         ],
         child: const MaterialApp(home: TaxScreen()),
       ),
@@ -56,5 +60,15 @@ void main() {
     await tester.tap(find.text('Quy định'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Bỏ thuế khoán'), findsOneWidget);
+
+    // Risk tab renders risk-rated items incl. the illegal-evasion warning.
+    await tester.tap(find.text('Rủi ro'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Trốn thuế'), findsWidgets);
+
+    // Revenue tab renders the 500tr threshold gauge and empty state.
+    await tester.tap(find.text('Doanh thu'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Mốc miễn thuế 500 triệu'), findsOneWidget);
   });
 }

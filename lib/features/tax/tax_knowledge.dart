@@ -41,6 +41,160 @@ class TaxStrategy {
   final List<String> steps;
 }
 
+/// Compliance risk band for a given approach.
+enum RiskLevel {
+  safe, // 🟢 hợp pháp, chỉ cần làm đúng + giữ chứng từ
+  grey, // 🟡 vùng xám: hợp pháp nếu đúng thực chất, sai một chút thành trốn thuế
+  illegal; // 🔴 trốn thuế — rủi ro truy thu + phạt + hình sự
+
+  String get emoji => switch (this) {
+        RiskLevel.safe => '🟢',
+        RiskLevel.grey => '🟡',
+        RiskLevel.illegal => '🔴',
+      };
+
+  String get label => switch (this) {
+        RiskLevel.safe => 'Hợp pháp',
+        RiskLevel.grey => 'Vùng xám',
+        RiskLevel.illegal => 'Trốn thuế — không nên',
+      };
+}
+
+/// An approach to reducing tax, honestly rated by legal risk. The point of the
+/// list is to draw the line clearly: what is safe, what needs care, and what is
+/// outright evasion (with the penalty attached), so the user optimizes legally.
+class TaxRiskItem {
+  const TaxRiskItem({
+    required this.level,
+    required this.title,
+    required this.what,
+    required this.consequence,
+  });
+
+  final RiskLevel level;
+  final String title;
+  final String what;
+
+  /// For safe items: how to keep it defensible. For illegal: the penalty.
+  final String consequence;
+}
+
+const taxRisks = <TaxRiskItem>[
+  TaxRiskItem(
+    level: RiskLevel.safe,
+    title: 'Đăng ký cá nhân kinh doanh dịch vụ xuất khẩu (VAT 0% + 2%)',
+    what:
+        'Khai đúng bản chất công việc là dịch vụ cho khách nước ngoài, tiêu '
+        'dùng ngoài VN. Đây là ưu đãi luật cho, không phải lách.',
+    consequence:
+        'An toàn nếu giữ hợp đồng, invoice, sao kê thanh toán quốc tế chứng '
+        'minh dịch vụ xuất khẩu.',
+  ),
+  TaxRiskItem(
+    level: RiskLevel.safe,
+    title: 'Tận dụng ngưỡng miễn thuế 500 triệu/năm & giảm trừ gia cảnh',
+    what:
+        'Doanh thu ≤ 500tr/năm được miễn; đăng ký đủ người phụ thuộc để giảm '
+        'thu nhập tính thuế.',
+    consequence:
+        'Hoàn toàn hợp pháp. Chỉ cần kê khai trung thực và đăng ký người phụ '
+        'thuộc đúng điều kiện.',
+  ),
+  TaxRiskItem(
+    level: RiskLevel.safe,
+    title: 'Áp dụng hiệp định tránh đánh thuế hai lần (DTA)',
+    what:
+        'Xin khấu trừ phần thuế đã nộp ở nước ngoài theo hiệp định để không '
+        'nộp trùng.',
+    consequence:
+        'Hợp pháp; cần chứng từ khấu trừ thuế nước ngoài và hồ sơ áp dụng hiệp '
+        'định khi quyết toán.',
+  ),
+  TaxRiskItem(
+    level: RiskLevel.grey,
+    title: 'Chia doanh thu qua nhiều người/hộ để ở dưới ngưỡng',
+    what:
+        'Phân bổ doanh thu giữa các thành viên gia đình cùng làm. Chỉ hợp pháp '
+        'nếu MỖI người thực sự tham gia và nhận đúng phần việc của mình.',
+    consequence:
+        'Nếu là chia khống (người kia không thực làm) → bị coi là trốn thuế, '
+        'truy thu + phạt. Ranh giới rất mong manh, cần tư vấn đại lý thuế.',
+  ),
+  TaxRiskItem(
+    level: RiskLevel.grey,
+    title: 'Giữ doanh thu quanh mốc 500tr để né bậc thuế',
+    what:
+        'Điều tiết thời điểm nhận tiền/xuất hóa đơn giữa các năm. Hợp pháp nếu '
+        'phản ánh đúng thời điểm hoàn thành dịch vụ.',
+    consequence:
+        'Dời doanh thu sang năm sau một cách giả tạo (đã hoàn thành nhưng ghi '
+        'nhận muộn) là sai lệch kỳ kê khai → rủi ro bị điều chỉnh + phạt.',
+  ),
+  TaxRiskItem(
+    level: RiskLevel.illegal,
+    title: 'Không kê khai / khai thiếu tiền nhận từ nước ngoài',
+    what:
+        'Nhận tiền về tài khoản nhưng không khai, hoặc chỉ khai một phần.',
+    consequence:
+        'TRỐN THUẾ. Ngân hàng và cơ quan thuế đối chiếu được dòng tiền; bị '
+        'truy thu + phạt 1–3 lần số thuế trốn + tiền chậm nộp, số lớn có thể bị '
+        'truy cứu hình sự (Điều 200 BLHS).',
+  ),
+  TaxRiskItem(
+    level: RiskLevel.illegal,
+    title: 'Nhận tiền qua tài khoản người khác / ví lạ để giấu nguồn',
+    what:
+        'Dùng tài khoản người thân, ví điện tử nước ngoài hay crypto để tiền '
+        'không hiện trên tài khoản của mình.',
+    consequence:
+        'TRỐN THUẾ và có thể vi phạm quy định ngoại hối/rửa tiền. Rủi ro pháp '
+        'lý cao hơn nhiều so với số thuế tiết kiệm được — không đáng.',
+  ),
+  TaxRiskItem(
+    level: RiskLevel.illegal,
+    title: 'Lập hóa đơn/chi phí khống để giảm thu nhập tính thuế',
+    what:
+        'Mua hóa đơn, kê chi phí không có thật để giảm lợi nhuận chịu thuế.',
+    consequence:
+        'TRỐN THUẾ + vi phạm về hóa đơn. Bị loại chi phí, truy thu, phạt nặng '
+        'và có thể xử lý hình sự.',
+  ),
+];
+
+/// Penalties & audit triggers — the downside the risk tab quantifies.
+const taxPenalties = <TaxNote>[
+  TaxNote(
+    icon: '⏰',
+    title: 'Chậm nộp tiền thuế',
+    body:
+        'Tính tiền chậm nộp 0,03%/ngày trên số thuế nộp muộn (~10,95%/năm). '
+        'Nộp đúng hạn gần như luôn rẻ hơn mọi mẹo trì hoãn.',
+  ),
+  TaxNote(
+    icon: '📉',
+    title: 'Khai sai dẫn đến thiếu thuế',
+    body:
+        'Phạt 20% trên số thuế khai thiếu, cộng tiền chậm nộp trên phần thiếu. '
+        'Áp dụng cả khi "quên" chứ không chủ đích trốn.',
+  ),
+  TaxNote(
+    icon: '🚨',
+    title: 'Trốn thuế (hành chính & hình sự)',
+    body:
+        'Phạt từ 1 đến 3 lần số thuế trốn. Số tiền trốn lớn (theo ngưỡng Bộ '
+        'luật Hình sự) có thể bị truy cứu trách nhiệm hình sự — phạt tù và cấm '
+        'hành nghề. Đây là lằn ranh không nên thử.',
+  ),
+  TaxNote(
+    icon: '🔍',
+    title: 'Điều gì kích hoạt thanh tra',
+    body:
+        'Dòng tiền vào lớn/bất thường không khớp tờ khai; nhận nhiều lần từ '
+        'nước ngoài mà không đăng ký thuế; kê khai giảm đột ngột; ngành rủi ro '
+        'cao. Hồ sơ sạch, khớp sao kê là "bảo hiểm" tốt nhất khi bị đối chiếu.',
+  ),
+];
+
 const taxDisclaimer =
     'Công cụ tham khảo, KHÔNG phải tư vấn thuế. Số liệu dựa trên quy định áp '
     'dụng từ 2026 và có thể thay đổi. Chỉ tối ưu thuế hợp pháp — luôn kê khai '

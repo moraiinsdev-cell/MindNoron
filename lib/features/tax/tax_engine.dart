@@ -43,6 +43,16 @@ abstract final class TaxRules {
     ProgressiveBracket(upTo: null, rate: 0.35), // > 80tr
   ];
 
+  /// Tiền chậm nộp — 0,03%/ngày trên số thuế nộp muộn.
+  static const double lateDailyRate = 0.0003;
+
+  /// Phạt khai sai dẫn đến thiếu thuế — 20% số thuế thiếu (Luật QLT).
+  static const double underreportPenaltyRate = 0.20;
+
+  /// Phạt trốn thuế (hành chính) — 1 đến 3 lần số thuế trốn.
+  static const int evasionPenaltyMin = 1;
+  static const int evasionPenaltyMax = 3;
+
   /// Direct-method rates by business line (Thông tư 40/2021, Phụ lục I):
   /// `.vat` = tỷ lệ % thuế GTGT, `.pit` = tỷ lệ % thuế TNCN, on revenue.
   static BizRate rateFor(BusinessLine line) => switch (line) {
@@ -121,6 +131,44 @@ BusinessTaxResult computeBusinessTax({
     pit: pit,
     exempt: false,
   );
+}
+
+/// Projects a full-year revenue picture from income booked so far, and the tax
+/// it would attract under the exported-services method (the freelancer's likely
+/// optimum). Used by the revenue tracker to warn before the 500tr threshold is
+/// crossed rather than after year-end.
+RevenueProjection projectRevenue({
+  required int toDate,
+  required int monthsElapsed,
+}) {
+  final projectedAnnual =
+      monthsElapsed <= 0 ? toDate : (toDate / monthsElapsed * 12).round();
+  final biz = computeBusinessTax(
+    annualRevenue: projectedAnnual,
+    line: BusinessLine.exportedServices,
+  );
+  return RevenueProjection(
+    toDate: toDate,
+    projectedAnnual: projectedAnnual,
+    overThreshold: projectedAnnual > TaxRules.businessTaxFreeThreshold,
+    projectedTax: biz.annualTax,
+    thresholdFraction: toDate / TaxRules.businessTaxFreeThreshold,
+  );
+}
+
+/// Late-payment interest (tiền chậm nộp): 0,03%/ngày × số thuế × số ngày trễ.
+int lateFilingPenalty({required int taxOwed, required int daysLate}) {
+  if (taxOwed <= 0 || daysLate <= 0) return 0;
+  return (taxOwed * TaxRules.lateDailyRate * daysLate).round();
+}
+
+/// Estimated total exposure if underreported income is later assessed: the
+/// unpaid tax + 20% under-report penalty + accrued late interest. A concrete,
+/// sobering number that makes the case for filing honestly.
+int underreportExposure({required int taxEvaded, required int daysLate}) {
+  final penalty = (taxEvaded * TaxRules.underreportPenaltyRate).round();
+  final interest = lateFilingPenalty(taxOwed: taxEvaded, daysLate: daysLate);
+  return taxEvaded + penalty + interest;
 }
 
 /// Progressive tax on a single month's taxable income (đồng).

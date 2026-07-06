@@ -32,6 +32,7 @@ class SettingsRepository {
   static const _kCaptureHotkey = 'captureHotkey';
   static const _kCatalystApiKey = 'catalystApiKey';
   static const _kTaxProfile = 'taxProfileV1';
+  static const _kTaxRevenue = 'taxRevenueV1';
 
   Future<void> _set(String key, String value) {
     return _db.into(_db.settings).insertOnConflictUpdate(
@@ -214,6 +215,11 @@ class SettingsRepository {
   Stream<String?> watchTaxProfile() => _watch(_kTaxProfile);
   Future<String?> getTaxProfile() async => readValue(_kTaxProfile);
   Future<void> setTaxProfile(String json) => _set(_kTaxProfile, json);
+
+  /// Booked monthly revenue entries for the offline revenue tracker (JSON).
+  Stream<String?> watchTaxRevenue() => _watch(_kTaxRevenue);
+  Future<String?> getTaxRevenue() async => readValue(_kTaxRevenue);
+  Future<void> setTaxRevenue(String json) => _set(_kTaxRevenue, json);
 
   // --- Noron-space animated backdrop --------------------------------------
 

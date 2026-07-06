@@ -88,6 +88,48 @@ void main() {
     });
   });
 
+  group('projectRevenue', () {
+    test('annualizes mid-year revenue by run-rate', () {
+      // 300tr booked over 6 months -> 600tr projected.
+      final p = projectRevenue(toDate: 300000000, monthsElapsed: 6);
+      expect(p.projectedAnnual, 600000000);
+      expect(p.overThreshold, isTrue); // > 500tr
+      expect(p.projectedTax, (600000000 * 0.02).round()); // 2% exported
+      expect(p.thresholdFraction, closeTo(0.6, 1e-9)); // 300/500
+    });
+
+    test('stays under threshold -> no projected tax', () {
+      final p = projectRevenue(toDate: 100000000, monthsElapsed: 6);
+      expect(p.projectedAnnual, 200000000);
+      expect(p.overThreshold, isFalse);
+      expect(p.projectedTax, 0);
+    });
+
+    test('zero months elapsed does not divide by zero', () {
+      final p = projectRevenue(toDate: 50000000, monthsElapsed: 0);
+      expect(p.projectedAnnual, 50000000);
+    });
+  });
+
+  group('penalties', () {
+    test('late-filing interest is 0.03%/day', () {
+      // 10tr owed, 100 days late -> 0.0003 * 100 * 10tr = 300k
+      expect(lateFilingPenalty(taxOwed: 10000000, daysLate: 100), 300000);
+    });
+
+    test('no penalty for on-time or zero tax', () {
+      expect(lateFilingPenalty(taxOwed: 10000000, daysLate: 0), 0);
+      expect(lateFilingPenalty(taxOwed: 0, daysLate: 100), 0);
+    });
+
+    test('underreport exposure = tax + 20% + interest', () {
+      // 100tr evaded, 200 days: 100tr + 20tr + 0.0003*200*100tr(6tr) = 126tr
+      final exposure =
+          underreportExposure(taxEvaded: 100000000, daysLate: 200);
+      expect(exposure, 100000000 + 20000000 + 6000000);
+    });
+  });
+
   group('optimization comparison', () {
     test('exported-services registration beats salary for high foreign income',
         () {

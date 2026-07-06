@@ -84,6 +84,84 @@ class BusinessTaxResult {
       annualRevenue == 0 ? 0 : annualTax / annualRevenue;
 }
 
+/// Year-end outlook computed from revenue booked so far.
+class RevenueProjection {
+  const RevenueProjection({
+    required this.toDate,
+    required this.projectedAnnual,
+    required this.overThreshold,
+    required this.projectedTax,
+    required this.thresholdFraction,
+  });
+
+  final int toDate;
+  final int projectedAnnual;
+  final bool overThreshold;
+
+  /// Tax under the exported-services method on the projected annual revenue.
+  final int projectedTax;
+
+  /// Revenue-to-date as a fraction of the 500tr exemption threshold (0..).
+  final double thresholdFraction;
+}
+
+/// One month's booked revenue for the offline revenue tracker.
+class RevenueEntry {
+  const RevenueEntry({
+    required this.id,
+    required this.year,
+    required this.month,
+    required this.amount,
+    this.note = '',
+  });
+
+  final String id;
+  final int year;
+  final int month; // 1..12
+  final int amount; // đồng
+  final String note;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'y': year,
+        'm': month,
+        'amt': amount,
+        if (note.isNotEmpty) 'note': note,
+      };
+
+  static RevenueEntry? fromJson(Map<String, dynamic> j) {
+    final amt = (j['amt'] as num?)?.toInt();
+    final y = (j['y'] as num?)?.toInt();
+    final m = (j['m'] as num?)?.toInt();
+    if (amt == null || y == null || m == null) return null;
+    return RevenueEntry(
+      id: j['id'] as String? ?? '$y-$m-$amt',
+      year: y,
+      month: m,
+      amount: amt,
+      note: j['note'] as String? ?? '',
+    );
+  }
+
+  static String encodeList(List<RevenueEntry> list) =>
+      jsonEncode([for (final e in list) e.toJson()]);
+
+  static List<RevenueEntry> decodeList(String? raw) {
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final list = jsonDecode(raw);
+      if (list is! List) return const [];
+      return [
+        for (final e in list)
+          if (e is Map<String, dynamic>)
+            if (RevenueEntry.fromJson(e) case final entry?) entry,
+      ];
+    } catch (_) {
+      return const [];
+    }
+  }
+}
+
 /// The handful of inputs the calculator remembers between sessions, so a
 /// freelancer doesn't retype their numbers. Persisted as JSON in settings.
 class TaxProfile {

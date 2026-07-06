@@ -19,6 +19,26 @@ class TaxRepository {
 
   Future<void> save(TaxProfile profile) =>
       _settings.setTaxProfile(profile.encode());
+
+  // --- Revenue tracker ----------------------------------------------------
+
+  Stream<List<RevenueEntry>> watchRevenue() =>
+      _settings.watchTaxRevenue().map(RevenueEntry.decodeList);
+
+  Future<List<RevenueEntry>> getRevenue() async =>
+      RevenueEntry.decodeList(await _settings.getTaxRevenue());
+
+  Future<void> addRevenue(RevenueEntry entry) async {
+    final list = await getRevenue();
+    await _settings
+        .setTaxRevenue(RevenueEntry.encodeList([entry, ...list]));
+  }
+
+  Future<void> removeRevenue(String id) async {
+    final list = await getRevenue();
+    await _settings.setTaxRevenue(
+        RevenueEntry.encodeList(list.where((e) => e.id != id).toList()));
+  }
 }
 
 final taxRepositoryProvider = Provider<TaxRepository>((ref) {
@@ -27,4 +47,8 @@ final taxRepositoryProvider = Provider<TaxRepository>((ref) {
 
 final taxProfileProvider = StreamProvider<TaxProfile>((ref) {
   return ref.watch(taxRepositoryProvider).watchProfile();
+});
+
+final taxRevenueProvider = StreamProvider<List<RevenueEntry>>((ref) {
+  return ref.watch(taxRepositoryProvider).watchRevenue();
 });
