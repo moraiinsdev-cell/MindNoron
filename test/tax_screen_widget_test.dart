@@ -38,7 +38,9 @@ void main() {
           taxRevenueProvider
               .overrideWith((ref) => Stream.value(const <RevenueEntry>[])),
         ],
-        child: const MaterialApp(home: TaxScreen()),
+        // AppShell wraps every screen in a Scaffold in the real app; mirror
+        // that so bare Material widgets (e.g. the DTA search field) resolve.
+        child: const MaterialApp(home: Scaffold(body: TaxScreen())),
       ),
     );
     await tester.pumpAndSettle();
@@ -71,5 +73,10 @@ void main() {
     await tester.tap(find.text('Doanh thu'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Mốc miễn thuế 500 triệu'), findsOneWidget);
+
+    // DTA tab lists treaty countries incl. the US (signed-not-in-force).
+    await tester.tap(find.text('Quốc tế'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Hoa Kỳ'), findsOneWidget);
   });
 }

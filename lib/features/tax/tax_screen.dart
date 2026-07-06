@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../presentation/widgets/common/section_scaffold.dart';
+import 'tax_dta.dart';
 import 'tax_engine.dart';
 import 'tax_knowledge.dart';
 import 'tax_models.dart';
@@ -20,7 +21,7 @@ class TaxScreen extends ConsumerStatefulWidget {
   ConsumerState<TaxScreen> createState() => _TaxScreenState();
 }
 
-enum _Tab { calculator, revenue, risk, regulations, strategies }
+enum _Tab { calculator, revenue, risk, dta, regulations, strategies }
 
 class _TaxScreenState extends ConsumerState<TaxScreen> {
   _Tab _tab = _Tab.calculator;
@@ -107,6 +108,11 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
                   label: Text('Rủi ro'),
                 ),
                 ButtonSegment(
+                  value: _Tab.dta,
+                  icon: Icon(Icons.public),
+                  label: Text('Quốc tế'),
+                ),
+                ButtonSegment(
                   value: _Tab.regulations,
                   icon: Icon(Icons.gavel_outlined),
                   label: Text('Quy định'),
@@ -145,6 +151,7 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
                 ),
               _Tab.revenue => const _RevenueTab(),
               _Tab.risk => const _RiskTab(),
+              _Tab.dta => const _DtaTab(),
               _Tab.regulations => const _NotesTab(),
               _Tab.strategies => const _StrategiesTab(),
             },
@@ -1156,6 +1163,176 @@ class _RiskCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────── DTA (quốc tế) ─────────────────────────────
+
+class _DtaTab extends StatefulWidget {
+  const _DtaTab();
+
+  @override
+  State<_DtaTab> createState() => _DtaTabState();
+}
+
+class _DtaTabState extends State<_DtaTab> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final q = _query.trim().toLowerCase();
+    final matches = q.isEmpty
+        ? dtaCountries
+        : dtaCountries
+            .where((c) => c.name.toLowerCase().contains(q))
+            .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _searchCtrl,
+          onChanged: (v) => setState(() => _query = v),
+          decoration: InputDecoration(
+            hintText: 'Tìm quốc gia nguồn thu (vd: Mỹ, Singapore, Nhật)…',
+            prefixIcon: const Icon(Icons.search),
+            border: const OutlineInputBorder(),
+            suffixIcon: _query.isEmpty
+                ? null
+                : IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _searchCtrl.clear();
+                      setState(() => _query = '');
+                    },
+                  ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: ListView(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(dtaIntro, style: theme.textTheme.bodyMedium),
+              ),
+              if (matches.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Text(
+                    'Không thấy "$_query" trong danh sách. VN có hiệp định với '
+                    'hơn 80 nước — tra cứu tại cơ quan thuế nếu không có ở đây.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                )
+              else
+                for (final c in matches) _DtaCard(country: c),
+              if (q.isEmpty) ...[
+                const SizedBox(height: 4),
+                Text('Cách xin miễn/giảm & khấu trừ',
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 8),
+                for (var i = 0; i < dtaSteps.length; i++)
+                  _StepRow(index: i + 1, text: dtaSteps[i]),
+              ],
+              const SizedBox(height: 8),
+              const _DisclaimerCard(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DtaCard extends StatelessWidget {
+  const _DtaCard({required this.country});
+  final DtaCountry country;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = switch (country.status) {
+      DtaStatus.inForce => const Color(0xFF2E7D32),
+      DtaStatus.signedNotInForce => const Color(0xFFB8860B),
+      DtaStatus.none => theme.colorScheme.error,
+    };
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Theme(
+        data: theme.copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          leading: Text(country.flag, style: const TextStyle(fontSize: 24)),
+          title: Text(country.name,
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w800)),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text('${country.status.emoji} ${country.status.label}',
+                style: theme.textTheme.labelSmall
+                    ?.copyWith(color: color, fontWeight: FontWeight.w700)),
+          ),
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(country.note, style: theme.textTheme.bodyMedium),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StepRow extends StatelessWidget {
+  const _StepRow({required this.index, required this.text});
+  final int index;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 22,
+            height: 22,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer,
+              shape: BoxShape.circle,
+            ),
+            child: Text('$index',
+                style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.onPrimaryContainer)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: theme.textTheme.bodyMedium)),
+        ],
       ),
     );
   }
