@@ -41,6 +41,50 @@ class TaxStrategy {
   final List<String> steps;
 }
 
+/// A statutory tax deadline, materialised for a specific year so it can be
+/// dropped onto the Calendar as an all-day reminder.
+class TaxDeadline {
+  const TaxDeadline({
+    required this.date,
+    required this.title,
+    required this.detail,
+  });
+
+  final DateTime date;
+  final String title;
+  final String detail;
+}
+
+/// The key filing deadlines that fall within calendar [year] for an individual
+/// who self-declares (quarterly declaration + annual PIT finalisation). Dates
+/// follow the general rule (quý: cuối tháng đầu quý sau; quyết toán: cuối tháng
+/// thứ 4); if a date lands on a holiday it rolls to the next working day.
+List<TaxDeadline> taxDeadlines(int year) => [
+      TaxDeadline(
+        date: DateTime(year, 1, 31),
+        title: '[Thuế] Hạn khai thuế Quý 4/${year - 1}',
+        detail: 'Hạn nộp tờ khai & tiền thuế Quý 4 năm ${year - 1} '
+            '(nếu khai theo quý).',
+      ),
+      TaxDeadline(
+        date: DateTime(year, 4, 30),
+        title: '[Thuế] Quyết toán TNCN năm ${year - 1} + khai Quý 1',
+        detail: 'Hạn quyết toán thuế TNCN năm ${year - 1} và khai thuế '
+            'Quý 1/$year. Chuẩn bị chứng từ thu nhập, người phụ thuộc, thuế đã '
+            'nộp ở nước ngoài (nếu có).',
+      ),
+      TaxDeadline(
+        date: DateTime(year, 7, 31),
+        title: '[Thuế] Hạn khai thuế Quý 2/$year',
+        detail: 'Hạn nộp tờ khai & tiền thuế Quý 2/$year (nếu khai theo quý).',
+      ),
+      TaxDeadline(
+        date: DateTime(year, 10, 31),
+        title: '[Thuế] Hạn khai thuế Quý 3/$year',
+        detail: 'Hạn nộp tờ khai & tiền thuế Quý 3/$year (nếu khai theo quý).',
+      ),
+    ];
+
 /// Compliance risk band for a given approach.
 enum RiskLevel {
   safe, // 🟢 hợp pháp, chỉ cần làm đúng + giữ chứng từ

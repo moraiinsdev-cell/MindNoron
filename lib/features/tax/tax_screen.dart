@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/repositories/event_repository.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
 import 'tax_dta.dart';
 import 'tax_engine.dart';
@@ -677,18 +678,101 @@ class _DisclaimerCard extends StatelessWidget {
 
 // ─────────────────────────────── Regulations ───────────────────────────────
 
-class _NotesTab extends StatelessWidget {
+class _NotesTab extends ConsumerWidget {
   const _NotesTab();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return ListView.builder(
-      itemCount: taxNotes.length + 1,
+      itemCount: taxNotes.length + 2,
       itemBuilder: (context, i) {
-        if (i == taxNotes.length) return const _DisclaimerCard();
-        final n = taxNotes[i];
-        return _NoteCard(note: n);
+        if (i == 0) return _DeadlineReminderCard(onAdd: () => _add(context, ref));
+        if (i == taxNotes.length + 1) return const _DisclaimerCard();
+        return _NoteCard(note: taxNotes[i - 1]);
       },
+    );
+  }
+
+  Future<void> _add(BuildContext context, WidgetRef ref) async {
+    final year = DateTime.now().year;
+    final repo = ref.read(eventRepositoryProvider);
+    final deadlines = taxDeadlines(year);
+
+    // Idempotent: skip if this year's tax reminders were already added.
+    final existing = await repo
+        .watchBetween(DateTime(year), DateTime(year, 12, 31, 23, 59))
+        .first;
+    final already = existing.any((e) => e.title.startsWith('[Thuế]'));
+    if (already) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Đã có nhắc lịch thuế cho năm nay trong Calendar')));
+      return;
+    }
+
+    for (final d in deadlines) {
+      await repo.create(
+        title: d.title,
+        startTime: DateTime(d.date.year, d.date.month, d.date.day, 9),
+        endTime: DateTime(d.date.year, d.date.month, d.date.day, 9, 30),
+        description: d.detail,
+        isAllDay: true,
+        colorTag: 'red',
+        reminderMinutes: 7 * 24 * 60, // remind 7 days before
+      );
+    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Đã thêm ${deadlines.length} nhắc lịch thuế vào Calendar')));
+  }
+}
+
+class _DeadlineReminderCard extends StatelessWidget {
+  const _DeadlineReminderCard({required this.onAdd});
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      color: theme.colorScheme.primaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const Text('📅', style: TextStyle(fontSize: 22)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Nhắc lịch thuế ${DateTime.now().year}',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Thêm hạn khai quý & quyết toán năm vào Calendar '
+                    '(nhắc trước 7 ngày).',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.event_available, size: 18),
+              label: const Text('Thêm'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
