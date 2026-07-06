@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/enums.dart';
+import '../../core/platform/platform_capabilities.dart';
 import '../../data/database/app_database.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../../data/repositories/task_repository.dart';
@@ -367,12 +368,15 @@ class _ActiveTimerState extends ConsumerState<_ActiveTimer>
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        TextButton.icon(
-          onPressed: () => enterFloatingTimer(ref),
-          icon: const Icon(Icons.picture_in_picture_alt, size: 18),
-          label: const Text('Float on top'),
-        ),
+        // "Float on top" pins a compact always-on-top window — desktop only.
+        if (isDesktopPlatform) ...[
+          const SizedBox(height: 12),
+          TextButton.icon(
+            onPressed: () => enterFloatingTimer(ref),
+            icon: const Icon(Icons.picture_in_picture_alt, size: 18),
+            label: const Text('Float on top'),
+          ),
+        ],
         const SizedBox(height: 8),
         const AmbientControl(),
       ],

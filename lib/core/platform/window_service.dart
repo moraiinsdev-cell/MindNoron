@@ -2,12 +2,17 @@ import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../constants/app_constants.dart';
+import 'platform_capabilities.dart';
 
 /// Owns the main desktop window: sizing, showing, and "close-to-tray".
+///
+/// Every method is a no-op off desktop (mobile/web have no OS window to manage),
+/// so callers can stay platform-agnostic.
 class WindowService {
   const WindowService._();
 
   static Future<void> init() async {
+    if (!isDesktopPlatform) return;
     await windowManager.ensureInitialized();
     const options = WindowOptions(
       size: AppConstants.defaultWindowSize,
@@ -26,6 +31,7 @@ class WindowService {
   }
 
   static Future<void> showAndFocus() async {
+    if (!isDesktopPlatform) return;
     if (!await windowManager.isVisible()) {
       await windowManager.show();
     }
@@ -40,6 +46,7 @@ class WindowService {
   /// mini office and countdown stay visible over other apps. Reversed by
   /// [exitFloating].
   static Future<void> enterFloating() async {
+    if (!isDesktopPlatform) return;
     // A maximized (or fullscreen) window ignores setSize on Windows, so it must
     // be returned to a normal state first — otherwise the "float" stays huge.
     if (await windowManager.isFullScreen()) {
@@ -59,6 +66,7 @@ class WindowService {
 
   /// Restores the normal full-size, framed, non-pinned window.
   static Future<void> exitFloating() async {
+    if (!isDesktopPlatform) return;
     await windowManager.setAlwaysOnTop(false);
     await windowManager.setTitleBarStyle(TitleBarStyle.normal);
     await windowManager.setResizable(true);
@@ -69,10 +77,14 @@ class WindowService {
     await windowManager.focus();
   }
 
-  static Future<void> hideToTray() => windowManager.hide();
+  static Future<void> hideToTray() async {
+    if (!isDesktopPlatform) return;
+    await windowManager.hide();
+  }
 
   /// Actually quit the app (bypasses the close-to-tray guard).
   static Future<void> quit() async {
+    if (!isDesktopPlatform) return;
     await windowManager.setPreventClose(false);
     await windowManager.destroy();
   }

@@ -7,6 +7,7 @@ import 'package:hotkey_manager/hotkey_manager.dart';
 import 'app.dart';
 import 'core/platform/hotkey_service.dart';
 import 'core/platform/notification_service.dart';
+import 'core/platform/platform_capabilities.dart';
 import 'core/platform/single_instance.dart';
 import 'core/platform/tray_service.dart';
 import 'core/platform/window_service.dart';
@@ -23,27 +24,32 @@ TrayService? _tray;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // hotkey_manager requires clearing any hotkeys left over from a hot restart.
-  await hotKeyManager.unregisterAll();
-
-  await SingleInstance.acquire();
-  await WindowService.init();
   await NotificationService.init();
-
   _container = ProviderContainer();
 
-  _tray = TrayService(
-    onCapture: _onCaptureRequested,
-    onShow: WindowService.showAndFocus,
-    onExit: _onExit,
-  );
-  await _tray!.init();
-  final hotkey =
-      await _container.read(settingsRepositoryProvider).getCaptureHotkey();
-  await HotkeyService.init(
-    onCapture: _onCaptureRequested,
-    hotkey: hotkey,
-  );
+  // Desktop-only shell: window, system tray, global hotkey and single-instance
+  // lock. Mobile has no equivalents, so this whole block is skipped there and
+  // the app boots straight into the UI.
+  if (isDesktopPlatform) {
+    // hotkey_manager requires clearing any hotkeys left over from a hot restart.
+    await hotKeyManager.unregisterAll();
+
+    await SingleInstance.acquire();
+    await WindowService.init();
+
+    _tray = TrayService(
+      onCapture: _onCaptureRequested,
+      onShow: WindowService.showAndFocus,
+      onExit: _onExit,
+    );
+    await _tray!.init();
+    final hotkey =
+        await _container.read(settingsRepositoryProvider).getCaptureHotkey();
+    await HotkeyService.init(
+      onCapture: _onCaptureRequested,
+      hotkey: hotkey,
+    );
+  }
 
   runApp(
     UncontrolledProviderScope(

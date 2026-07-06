@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'core/constants/app_constants.dart';
+import 'core/platform/platform_capabilities.dart';
 import 'core/platform/window_service.dart';
 import 'core/theme/app_theme.dart';
 import 'data/repositories/settings_repository.dart';
@@ -22,12 +23,13 @@ class _MindNoronAppState extends ConsumerState<MindNoronApp>
   @override
   void initState() {
     super.initState();
-    windowManager.addListener(this);
+    // The close-to-tray behaviour only applies to the desktop window.
+    if (isDesktopPlatform) windowManager.addListener(this);
   }
 
   @override
   void dispose() {
-    windowManager.removeListener(this);
+    if (isDesktopPlatform) windowManager.removeListener(this);
     super.dispose();
   }
 

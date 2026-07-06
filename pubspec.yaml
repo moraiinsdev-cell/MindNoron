@@ -26,12 +26,13 @@ dependencies:
   path_provider: ^2.1.5
   path: ^1.9.0
 
-  # Desktop integration (Windows-first)
+  # Desktop integration (Windows-first). These are desktop-only plugins; on
+  # mobile they are simply not registered and the app guards their use behind
+  # `isDesktopPlatform` (see core/platform/platform_capabilities.dart).
   window_manager: ^0.4.3
   tray_manager: ^0.3.2
   hotkey_manager: ^0.2.3
   local_notifier: ^0.1.6
-  launch_at_startup: ^0.3.1
 
   # Charts, files, ids
   fl_chart: ^0.69.2

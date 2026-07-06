@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/platform/hotkey_service.dart';
+import '../../core/platform/platform_capabilities.dart';
 import '../../core/platform/sound_service.dart';
 import '../../core/providers/app_providers.dart';
 import '../../data/backup/backup_service.dart';
@@ -159,7 +160,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
           const _SoundSettings(),
-          const _HotkeySettings(),
+          // Global capture hotkey exists only on desktop.
+          if (isDesktopPlatform) const _HotkeySettings(),
           const _ContextSettings(),
           const _CatalystSettings(),
           _SectionCard(
