@@ -307,6 +307,61 @@ void main() {
     });
   });
 
+  group('revenue ladder (scaling up)', () {
+    test('bands: exempt → direct → large-scale', () {
+      expect(bandOf(400000000).band, RevenueBand.exempt);
+      expect(bandOf(500000000).band, RevenueBand.exempt); // inclusive
+      expect(bandOf(500000001).band, RevenueBand.direct);
+      expect(bandOf(3000000000).band, RevenueBand.direct); // inclusive
+      expect(bandOf(3000000001).band, RevenueBand.largeScale);
+    });
+
+    test('reports the distance to the next rung', () {
+      expect(bandOf(300000000).toNextRung, 200000000); // to 500tr
+      expect(bandOf(1000000000).toNextRung, 2000000000); // to 3 tỷ
+      expect(bandOf(5000000000).nextRungAt, isNull); // top rung
+      expect(bandOf(5000000000).toNextRung, 0);
+    });
+
+    test('the 2% rate does NOT climb with revenue — it stays flat', () {
+      // The whole point: unlike progressive salary, a bigger year is the same
+      // rate. 10x the revenue, same effective rate.
+      final small = computeBusinessTax(
+          annualRevenue: 600000000, line: BusinessLine.exportedServices);
+      final huge = computeBusinessTax(
+          annualRevenue: 6000000000, line: BusinessLine.exportedServices);
+      expect(small.effectiveRate, closeTo(0.02, 1e-9));
+      expect(huge.effectiveRate, closeTo(0.02, 1e-9));
+      expect(huge.annualTax, 120000000);
+    });
+
+    test('salary keeps getting worse as revenue grows, so 2% wins by more', () {
+      const huge = 6000000000; // 6 tỷ/năm
+      final salary = computeSalaryTax(annualGross: huge);
+      final business = computeBusinessTax(
+          annualRevenue: huge, line: BusinessLine.exportedServices);
+      expect(salary.marginalRate, 0.35);
+      expect(salary.effectiveRate, greaterThan(0.3));
+      expect(business.annualTax * 10, lessThan(salary.annualTax));
+    });
+
+    test('a company only beats 2% when expenses exceed ~91.7% of revenue', () {
+      final e = companyBreakEvenExpenseRatio();
+      expect(e, closeTo(0.9167, 1e-3));
+
+      // Just below break-even: the flat 2% still wins.
+      const rev = 6000000000;
+      final flat = computeBusinessTax(
+          annualRevenue: rev, line: BusinessLine.exportedServices);
+      final leanCompany = computeCompanyTax(revenue: rev, expenseRatioPct: 85);
+      expect(flat.annualTax, lessThan(leanCompany.annualTax));
+
+      // Above break-even (a cost-heavy studio), the company wins.
+      final costlyCompany = computeCompanyTax(revenue: rev, expenseRatioPct: 95);
+      expect(costlyCompany.annualTax, lessThan(flat.annualTax));
+    });
+  });
+
   group('computeReserve', () {
     test('above the threshold, reserves the effective rate plus a buffer', () {
       final r = computeReserve(

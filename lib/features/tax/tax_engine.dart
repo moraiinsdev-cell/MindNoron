@@ -349,6 +349,59 @@ RemainingYearPlan planRemainingYear({
   );
 }
 
+/// Which rung of the revenue ladder a figure sits on, and how far to the next.
+///
+/// Note what does *not* happen as revenue grows: the rate stays flat at 2%. The
+/// direct method has no progressive brackets, so a bigger year is not a worse
+/// rate — only a heavier bookkeeping duty once past [TaxRules.directMethodCeiling].
+BandPosition bandOf(int revenue) {
+  if (revenue <= TaxRules.businessTaxFreeThreshold) {
+    return BandPosition(
+      band: RevenueBand.exempt,
+      revenue: revenue,
+      nextRungAt: TaxRules.businessTaxFreeThreshold,
+      toNextRung: TaxRules.businessTaxFreeThreshold - revenue,
+    );
+  }
+  if (revenue <= TaxRules.directMethodCeiling) {
+    return BandPosition(
+      band: RevenueBand.direct,
+      revenue: revenue,
+      nextRungAt: TaxRules.directMethodCeiling,
+      toNextRung: TaxRules.directMethodCeiling - revenue,
+    );
+  }
+  return BandPosition(
+    band: RevenueBand.largeScale,
+    revenue: revenue,
+    nextRungAt: null,
+    toNextRung: 0,
+  );
+}
+
+/// The expense ratio at which a company (TNHH) finally beats the flat direct
+/// method — the honest answer to "should I incorporate once I earn a lot?".
+///
+/// A company pays CIT 20% on profit, then 5% dividend PIT on what's left:
+/// an effective `0.20 + 0.80×0.05 = 24%` of profit. The individual pays a flat
+/// `rate.total` of *revenue*. Setting them equal:
+///
+///   rate.total × R = 0.24 × R × (1 − e)   ⇒   e = 1 − rate.total / 0.24
+///
+/// For exported services (2%) that lands around **91,7%** — i.e. a company only
+/// wins if expenses eat more than nine tenths of revenue. A 3D artist's costs
+/// are nowhere near that, so the 2% method stays the better deal *at any
+/// revenue*, however large. Growing income is a reason to incorporate for
+/// liability, hiring or bookkeeping reasons — not for tax.
+double companyBreakEvenExpenseRatio({
+  BusinessLine line = BusinessLine.exportedServices,
+}) {
+  const companyRateOnProfit =
+      TaxRules.citRate + (1 - TaxRules.citRate) * TaxRules.dividendPitRate;
+  final ratio = 1 - TaxRules.rateFor(line).total / companyRateOnProfit;
+  return ratio.clamp(0.0, 1.0);
+}
+
 /// Late-payment interest (tiền chậm nộp): 0,03%/ngày × số thuế × số ngày trễ.
 int lateFilingPenalty({required int taxOwed, required int daysLate}) {
   if (taxOwed <= 0 || daysLate <= 0) return 0;

@@ -218,6 +218,71 @@ class TaxReserve {
   final int perPayoutHint;
 }
 
+/// Revenue doesn't just cross one line — it climbs a ladder, and each rung
+/// changes what you must *do*, not only what you pay.
+///
+/// The rate itself is flat (2% of revenue, forever), so scaling up never pushes
+/// you into a worse rate the way progressive salary does. What changes at the
+/// top rung is the **compliance burden**: a large-scale household business has
+/// to keep proper books, and that is usually the moment a company starts to make
+/// sense for reasons other than tax.
+enum RevenueBand {
+  /// ≤ 500tr/năm — no VAT, no PIT.
+  exempt,
+
+  /// 500tr → 3 tỷ — flat %-of-revenue (direct) method.
+  direct,
+
+  /// Above the large-scale threshold — full bookkeeping, invoices, and a real
+  /// decision to make about incorporating.
+  largeScale;
+
+  String get label => switch (this) {
+        RevenueBand.exempt => 'Miễn thuế',
+        RevenueBand.direct => 'Kê khai trực tiếp (% trên doanh thu)',
+        RevenueBand.largeScale => 'Quy mô lớn — sổ sách đầy đủ',
+      };
+
+  String get range => switch (this) {
+        RevenueBand.exempt => '≤ 500 triệu/năm',
+        RevenueBand.direct => '500 triệu → 3 tỷ/năm',
+        RevenueBand.largeScale => 'trên 3 tỷ/năm',
+      };
+
+  String get duty => switch (this) {
+        RevenueBand.exempt =>
+          'Không phát sinh thuế GTGT & TNCN từ hoạt động kinh doanh. Vẫn nên '
+              'đăng ký và ghi sổ — để chứng minh được mình ở dưới ngưỡng.',
+        RevenueBand.direct =>
+          'Nộp theo tỷ lệ % trên doanh thu (dịch vụ xuất khẩu: GTGT 0% + TNCN '
+              '2%). Khai theo quý, dùng hóa đơn điện tử. Không được trừ chi phí '
+              '— đổi lại sổ sách rất nhẹ.',
+        RevenueBand.largeScale =>
+          'Bị coi là hộ kinh doanh quy mô lớn: phải kê khai đầy đủ, chế độ kế '
+              'toán và hóa đơn như doanh nghiệp. Đây là lúc so sánh nghiêm túc '
+              'với việc lập công ty TNHH — và nên có đại lý thuế.',
+      };
+}
+
+/// Where a revenue figure sits on the ladder, plus how far it is to the next rung.
+class BandPosition {
+  const BandPosition({
+    required this.band,
+    required this.revenue,
+    required this.nextRungAt,
+    required this.toNextRung,
+  });
+
+  final RevenueBand band;
+  final int revenue;
+
+  /// Revenue at which the next rung starts, or null if already on the top rung.
+  final int? nextRungAt;
+
+  /// Đồng still to bill before reaching [nextRungAt]; 0 on the top rung.
+  final int toNextRung;
+}
+
 /// The band just above the exemption threshold where earning *more* leaves you
 /// with *less*, because crossing 500tr taxes the whole revenue rather than only
 /// the excess.
@@ -470,6 +535,7 @@ class TaxProfile {
     this.usdVndRate = PayoutDefaults.usdVndRate,
     this.devExUsdPerRobux = PayoutDefaults.devExUsdPerRobux,
     this.payoutFeePct = PayoutDefaults.payoutFeePct,
+    this.doneSteps = const {},
   });
 
   /// Annual foreign income in đồng — used directly when [mode] is [IncomeMode.vnd].
@@ -496,6 +562,15 @@ class TaxProfile {
   final double devExUsdPerRobux;
   final double payoutFeePct;
 
+  /// Ids of the roadmap steps already ticked off ([RoadmapStep.id]).
+  final Set<String> doneSteps;
+
+  TaxProfile toggleStep(String id) => copyWith(
+        doneSteps: doneSteps.contains(id)
+            ? {...doneSteps.where((s) => s != id)}
+            : {...doneSteps, id},
+      );
+
   TaxProfile copyWith({
     int? annualIncome,
     int? dependents,
@@ -508,6 +583,7 @@ class TaxProfile {
     int? usdVndRate,
     double? devExUsdPerRobux,
     double? payoutFeePct,
+    Set<String>? doneSteps,
   }) =>
       TaxProfile(
         annualIncome: annualIncome ?? this.annualIncome,
@@ -521,6 +597,7 @@ class TaxProfile {
         usdVndRate: usdVndRate ?? this.usdVndRate,
         devExUsdPerRobux: devExUsdPerRobux ?? this.devExUsdPerRobux,
         payoutFeePct: payoutFeePct ?? this.payoutFeePct,
+        doneSteps: doneSteps ?? this.doneSteps,
       );
 
   Map<String, dynamic> toJson() => {
@@ -535,6 +612,7 @@ class TaxProfile {
         'fx': usdVndRate,
         'devex': devExUsdPerRobux,
         'fee': payoutFeePct,
+        if (doneSteps.isNotEmpty) 'done': doneSteps.toList(),
       };
 
   static TaxProfile fromJson(Map<String, dynamic> j) => TaxProfile(
@@ -561,6 +639,9 @@ class TaxProfile {
             PayoutDefaults.devExUsdPerRobux,
         payoutFeePct:
             (j['fee'] as num?)?.toDouble() ?? PayoutDefaults.payoutFeePct,
+        doneSteps: {
+          for (final s in (j['done'] as List?) ?? const []) s.toString(),
+        },
       );
 
   String encode() => jsonEncode(toJson());
