@@ -302,6 +302,53 @@ ExemptionCliff exemptionCliff(
   );
 }
 
+/// Projects the year from *today* to 31/12 on a **daily** run-rate, rather than
+/// annualising whole months.
+///
+/// Mid-year this is the number that matters: a freelancer on 12/7 has 172 days
+/// left to bill in, and wants to know what they can still take on before the
+/// 500tr exemption is lost — not what a full calendar year would have looked
+/// like. [today] is truncated to a date, so the result is stable within a day.
+RemainingYearPlan planRemainingYear({
+  required int revenueToDate,
+  required DateTime today,
+  BusinessLine line = BusinessLine.exportedServices,
+}) {
+  final d = DateTime(today.year, today.month, today.day);
+  final yearStart = DateTime(d.year);
+  final yearEnd = DateTime(d.year, 12, 31);
+
+  final daysElapsed = d.difference(yearStart).inDays + 1;
+  final daysRemaining = yearEnd.difference(d).inDays;
+
+  final runRate = daysElapsed <= 0 ? 0.0 : revenueToDate / daysElapsed;
+  final projected =
+      (revenueToDate + runRate * daysRemaining).round();
+
+  final tax = computeBusinessTax(annualRevenue: projected, line: line);
+  final cliff = exemptionCliff(line: line);
+
+  final headroom = cliff.threshold - revenueToDate;
+  final toClear = cliff.deadZoneTop - revenueToDate;
+
+  return RemainingYearPlan(
+    today: d,
+    yearEnd: yearEnd,
+    daysElapsed: daysElapsed,
+    daysRemaining: daysRemaining,
+    revenueToDate: revenueToDate,
+    dailyRunRate: runRate,
+    projectedYearEnd: projected,
+    projectedTax: tax.annualTax,
+    headroom: headroom < 0 ? 0 : headroom,
+    // Only meaningful once the threshold is behind you; before that, headroom
+    // is the number to watch.
+    extraToClearCliff:
+        revenueToDate <= cliff.threshold || toClear < 0 ? 0 : toClear,
+    cliff: cliff,
+  );
+}
+
 /// Late-payment interest (tiền chậm nộp): 0,03%/ngày × số thuế × số ngày trễ.
 int lateFilingPenalty({required int taxOwed, required int daysLate}) {
   if (taxOwed <= 0 || daysLate <= 0) return 0;

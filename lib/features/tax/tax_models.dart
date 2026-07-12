@@ -240,6 +240,73 @@ class ExemptionCliff {
   bool contains(int revenue) => revenue > threshold && revenue < deadZoneTop;
 }
 
+/// The picture from *today* to 31/12 — the horizon a freelancer actually plans
+/// against, rather than a whole calendar year they are already halfway through.
+///
+/// It answers three questions in one object: where does the year land if nothing
+/// changes ([projectedYearEnd]), how much more can I bill before tax starts
+/// ([headroom]), and if I'm about to cross the threshold, how much extra do I
+/// need for the crossing to be worth it ([extraToClearCliff]).
+class RemainingYearPlan {
+  const RemainingYearPlan({
+    required this.today,
+    required this.yearEnd,
+    required this.daysElapsed,
+    required this.daysRemaining,
+    required this.revenueToDate,
+    required this.dailyRunRate,
+    required this.projectedYearEnd,
+    required this.projectedTax,
+    required this.headroom,
+    required this.extraToClearCliff,
+    required this.cliff,
+  });
+
+  final DateTime today;
+  final DateTime yearEnd;
+
+  /// Days of the year already gone (1/1 → today, inclusive).
+  final int daysElapsed;
+
+  /// Days left to bill in, today → 31/12.
+  final int daysRemaining;
+
+  final int revenueToDate;
+
+  /// Đồng per day, averaged over the year so far.
+  final double dailyRunRate;
+
+  /// Where the year lands if the current run-rate holds.
+  final int projectedYearEnd;
+
+  /// Tax on [projectedYearEnd] under the chosen method.
+  final int projectedTax;
+
+  /// How much more can still be billed before the 500tr exemption is lost.
+  /// Zero once the threshold is already crossed.
+  final int headroom;
+
+  /// Once past the threshold, the extra revenue still needed before crossing
+  /// actually pays — i.e. before net income beats simply stopping at 500tr.
+  /// Zero when out of the dead zone.
+  final int extraToClearCliff;
+
+  final ExemptionCliff cliff;
+
+  bool get overThreshold => projectedYearEnd > cliff.threshold;
+
+  /// True when the *projected* year lands in the band where earning more leaves
+  /// you with less — the moment to either push well past it or defer to next year.
+  bool get projectedInDeadZone => cliff.contains(projectedYearEnd);
+
+  /// Revenue booked as a share of the 500tr threshold (0..).
+  double get thresholdFraction => revenueToDate / cliff.threshold;
+
+  /// How far through the calendar year we are (0..1).
+  double get yearProgress =>
+      daysElapsed / (daysElapsed + daysRemaining).clamp(1, 400);
+}
+
 /// Year-end outlook computed from revenue booked so far.
 class RevenueProjection {
   const RevenueProjection({

@@ -249,6 +249,64 @@ void main() {
     });
   });
 
+  group('planRemainingYear (today → 31/12)', () {
+    // 12/7/2026: 193 days gone, 172 left in a 365-day year.
+    final today = DateTime(2026, 7, 12);
+
+    test('splits the year by real days, not whole months', () {
+      final p = planRemainingYear(revenueToDate: 0, today: today);
+      expect(p.daysElapsed, 193);
+      expect(p.daysRemaining, 172);
+      expect(p.daysElapsed + p.daysRemaining, 365);
+      expect(p.yearEnd, DateTime(2026, 12, 31));
+    });
+
+    test('projects year-end on the daily run-rate', () {
+      // 193tr booked over 193 days = 1tr/day → +172tr by 31/12 = 365tr.
+      final p = planRemainingYear(revenueToDate: 193000000, today: today);
+      expect(p.dailyRunRate, closeTo(1000000, 1));
+      expect(p.projectedYearEnd, 365000000);
+      expect(p.overThreshold, isFalse);
+      expect(p.projectedTax, 0);
+    });
+
+    test('headroom is what can still be billed tax-free', () {
+      final p = planRemainingYear(revenueToDate: 300000000, today: today);
+      expect(p.headroom, 200000000); // 500tr - 300tr
+      expect(p.extraToClearCliff, 0); // threshold not crossed yet
+    });
+
+    test('past the threshold, headroom is gone and the cliff distance shows',
+        () {
+      // 505tr booked: over 500tr but still inside the dead zone (< 510,2tr).
+      final p = planRemainingYear(revenueToDate: 505000000, today: today);
+      expect(p.headroom, 0);
+      expect(p.extraToClearCliff, p.cliff.deadZoneTop - 505000000);
+      expect(p.extraToClearCliff, greaterThan(0));
+    });
+
+    test('clear of the dead zone, there is nothing left to clear', () {
+      final p = planRemainingYear(revenueToDate: 700000000, today: today);
+      expect(p.headroom, 0);
+      expect(p.extraToClearCliff, 0);
+      expect(p.overThreshold, isTrue);
+    });
+
+    test('a run-rate landing in the dead zone is flagged', () {
+      // 267tr over 193 days → ~505tr by year end: earning more, keeping less.
+      final p = planRemainingYear(revenueToDate: 267000000, today: today);
+      expect(p.projectedInDeadZone, isTrue);
+    });
+
+    test('1 January does not divide by zero', () {
+      final p =
+          planRemainingYear(revenueToDate: 0, today: DateTime(2026, 1, 1));
+      expect(p.daysElapsed, 1);
+      expect(p.daysRemaining, 364);
+      expect(p.projectedYearEnd, 0);
+    });
+  });
+
   group('computeReserve', () {
     test('above the threshold, reserves the effective rate plus a buffer', () {
       final r = computeReserve(
