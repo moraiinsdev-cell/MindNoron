@@ -156,6 +156,30 @@ const taxRisks = <TaxRiskItem>[
   ),
   TaxRiskItem(
     level: RiskLevel.grey,
+    title: 'Để Robux tồn trong tài khoản, DevEx sang năm sau',
+    what:
+        'Chưa cash-out thì chưa có USD về, nên chưa ghi nhận doanh thu. Hợp '
+        'pháp nếu bạn thực sự chưa rút và ghi nhận nhất quán theo tiền thực '
+        'nhận qua các năm.',
+    consequence:
+        'Chỉ HOÃN chứ không xóa thuế — khi rút vẫn phải khai. Rủi ro thêm: rate '
+        'DevEx hoặc chính sách Roblox đổi, và nếu năm sau bạn dồn hai năm doanh '
+        'thu vào một năm thì có thể vọt qua ngưỡng, thuế còn cao hơn. Đừng đổi '
+        'cách ghi nhận qua lại từng năm cho tiện — đó là dấu hiệu bị soi.',
+  ),
+  TaxRiskItem(
+    level: RiskLevel.grey,
+    title: 'Nhận Robux vào tài khoản Roblox của bạn bè / nhóm rồi chia lại',
+    what:
+        'Group payout hoặc nhờ người khác giữ hộ Robux. Chỉ hợp pháp nếu người '
+        'đó THỰC SỰ tham gia dự án và nhận đúng phần việc của họ.',
+    consequence:
+        'Nếu chỉ mượn tài khoản để chia nhỏ doanh thu → là che giấu doanh thu, '
+        'bị coi là trốn thuế. Ngoài ra còn vi phạm ToS của Roblox, có thể bị '
+        'khóa tài khoản và mất toàn bộ Robux — mất nhiều hơn số thuế né được.',
+  ),
+  TaxRiskItem(
+    level: RiskLevel.grey,
     title: 'Chia doanh thu qua nhiều người/hộ để ở dưới ngưỡng',
     what:
         'Phân bổ doanh thu giữa các thành viên gia đình cùng làm. Chỉ hợp pháp '
@@ -193,6 +217,18 @@ const taxRisks = <TaxRiskItem>[
     consequence:
         'TRỐN THUẾ và có thể vi phạm quy định ngoại hối/rửa tiền. Rủi ro pháp '
         'lý cao hơn nhiều so với số thuế tiết kiệm được — không đáng.',
+  ),
+  TaxRiskItem(
+    level: RiskLevel.illegal,
+    title: 'Bán Robux "chợ đen" / trao đổi ngoài nền tảng để tiền không lộ',
+    what:
+        'Bán Robux cho người khác lấy tiền mặt, chuyển qua ví/crypto, hoặc nhận '
+        'thanh toán vòng qua bên thứ ba thay vì DevEx chính thức.',
+    consequence:
+        'TRỐN THUẾ, cộng thêm vi phạm điều khoản Roblox (khóa tài khoản vĩnh '
+        'viễn, mất sạch Robux) và có thể chạm quy định ngoại hối/rửa tiền. Đây '
+        'là cách nhanh nhất để mất cả nghề lẫn tiền — không đáng với vài phần '
+        'trăm thuế.',
   ),
   TaxRiskItem(
     level: RiskLevel.illegal,
@@ -353,6 +389,43 @@ const taxStrategies = <TaxStrategy>[
           'dịch vụ xuất khẩu.',
       'Kê khai theo phương pháp trực tiếp; xuất hóa đơn điện tử theo quy định '
           'mới từ 2026.',
+    ],
+  ),
+  TaxStrategy(
+    icon: '💸',
+    title: 'Báo giá "net" — đừng để phí PayPal + thuế ăn vào công của bạn',
+    summary:
+        'Với phương pháp 2%, thuế tính trên USD GỘP mà DevEx/PayPal trả, còn phí '
+        'nhận tiền và chênh lệch tỷ giá (4–5%) thì bạn tự chịu và KHÔNG được '
+        'trừ. Tổng cộng ~6–7% doanh thu biến mất trước khi bạn thấy tiền. Giải '
+        'pháp không phải là né thuế — mà là đưa nó vào giá.',
+    steps: [
+      'Tính giá sàn: giá bạn muốn thực nhận ÷ (1 − phí% − thuế%). Ví dụ muốn '
+          'net 1.000 USD với phí 4,4% và thuế 2% → báo ~1.070 USD.',
+      'Ưu tiên gom payout thành đợt lớn thay vì rút lắt nhắt — phí cố định và '
+          'ngưỡng tối thiểu 30.000 Robux khiến rút nhỏ rất đắt.',
+      'Hỏi studio xem họ chịu phí chuyển tiền được không (nhiều studio lớn '
+          'đồng ý) và ghi rõ "fees borne by payer" trong invoice.',
+      'So sánh kênh nhận tiền: PayPal, Payoneer, wire — chênh 1–2% phí trên '
+          'doanh thu năm là con số lớn hơn bạn nghĩ.',
+    ],
+  ),
+  TaxStrategy(
+    icon: '🏦',
+    title: 'Quỹ thuế: tách tiền thuế ra khỏi tiền của bạn ngay khi nhận',
+    summary:
+        'Lý do freelancer "sốc thuế" cuối năm không phải vì thuế cao, mà vì đã '
+        'tiêu mất phần tiền chưa bao giờ thuộc về mình. Mỗi lần DevEx/PayPal về, '
+        'chuyển ngay phần thuế sang một tài khoản riêng — phần còn lại mới là '
+        'thu nhập thật của bạn.',
+    steps: [
+      'Mở một tài khoản tiết kiệm riêng, đặt tên "QUY THUE" để không tiêu nhầm.',
+      'Mỗi payout, trích đúng % mà tab "Doanh thu" gợi ý (thuế dự kiến + đệm an '
+          'toàn) và chuyển ngay, trước khi tiêu bất cứ đồng nào.',
+      'Khi doanh thu tiến gần 500 triệu, app tự nâng % trích — vì vượt ngưỡng '
+          'thì thuế đánh trên TOÀN BỘ doanh thu, không chỉ phần vượt.',
+      'Đến kỳ khai, nộp từ quỹ này. Tiền dư sau quyết toán mới là thưởng cho '
+          'bạn — không phải tiền tiêu trước.',
     ],
   ),
   TaxStrategy(

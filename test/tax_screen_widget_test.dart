@@ -13,7 +13,9 @@ import 'package:mind_noron/features/tax/tax_screen.dart';
 void main() {
   testWidgets('tax screen computes and highlights the optimal option',
       (tester) async {
-    tester.view.physicalSize = const Size(1000, 1600);
+    // Wide enough that all seven tab segments fit without horizontal scrolling —
+    // otherwise tapping a tab by label silently misses an off-screen segment.
+    tester.view.physicalSize = const Size(1500, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -25,9 +27,11 @@ void main() {
       ProviderScope(
         overrides: [
           databaseProvider.overrideWithValue(db),
-          // 1.2 tỷ/năm foreign income, 1 dependent, exporting services.
+          // 1.2 tỷ/năm foreign income, 1 dependent, exporting services. Entered
+          // as a flat VND figure rather than USD + Robux.
           taxProfileProvider.overrideWith(
             (ref) => Stream.value(const TaxProfile(
+              mode: IncomeMode.vnd,
               annualIncome: 1200000000,
               dependents: 1,
               line: BusinessLine.exportedServices,
@@ -78,5 +82,15 @@ void main() {
     await tester.tap(find.text('Quốc tế'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Hoa Kỳ'), findsOneWidget);
+
+    // Roblox tab prices a minimum DevEx cash-out and warns that tax lands on
+    // the gross, not on what survives the PayPal fee.
+    await tester.tap(find.text('Roblox'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('30.000 R\$'), findsWidgets);
+    expect(
+      find.textContaining('Thuế tính trên USD gộp'),
+      findsOneWidget,
+    );
   });
 }

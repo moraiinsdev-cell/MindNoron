@@ -161,6 +161,129 @@ void main() {
     });
   });
 
+  group('convertPayout (Robux → USD → đồng)', () {
+    test('DevEx converts Robux at the configured rate', () {
+      // 100.000 Robux @ $0.0035 = $350; @ 26.000đ = 9.100.000đ gross.
+      final p = convertPayout(robux: 100000, feePct: 0);
+      expect(p.usdFromRobux, closeTo(350, 1e-9));
+      expect(p.usdGross, closeTo(350, 1e-9));
+      expect(p.vndGross, 9100000);
+      expect(p.vndNet, 9100000); // no fee
+    });
+
+    test('fees reduce what lands in the bank but NOT the taxable base', () {
+      final p = convertPayout(robux: 100000, feePct: 4.4);
+      expect(p.vndGross, 9100000); // taxable revenue is unchanged by fees
+      expect(p.vndFee, (9100000 * 0.044).round());
+      expect(p.vndNet, 9100000 - p.vndFee);
+      expect(p.feeRate, closeTo(0.044, 1e-3));
+    });
+
+    test('Robux and direct USD are summed into one gross', () {
+      final p = convertPayout(robux: 100000, usd: 650, feePct: 0);
+      expect(p.usdGross, closeTo(1000, 1e-9)); // 350 + 650
+      expect(p.vndGross, 26000000);
+    });
+
+    test('empty payout is zero, not a crash', () {
+      final p = convertPayout();
+      expect(p.vndGross, 0);
+      expect(p.feeRate, 0);
+    });
+  });
+
+  group('annualRevenueOf', () {
+    test('vnd mode uses the annual figure directly', () {
+      const p = TaxProfile(mode: IncomeMode.vnd, annualIncome: 600000000);
+      expect(annualRevenueOf(p), 600000000);
+    });
+
+    test('usdRobux mode annualizes the monthly Robux + USD', () {
+      // 50.000 Robux/mo = 600.000 Robux/yr = $2.100; plus $1.000/mo = $12.000.
+      // Total $14.100 × 26.000 = 366.600.000đ.
+      const p = TaxProfile(
+        mode: IncomeMode.usdRobux,
+        monthlyRobux: 50000,
+        monthlyUsd: 1000,
+      );
+      expect(annualRevenueOf(p), 366600000);
+    });
+
+    test('gross ignores the payout fee — fees are not a tax deduction', () {
+      const withFee = TaxProfile(
+        mode: IncomeMode.usdRobux,
+        monthlyUsd: 1000,
+        payoutFeePct: 10,
+      );
+      const noFee = TaxProfile(
+        mode: IncomeMode.usdRobux,
+        monthlyUsd: 1000,
+        payoutFeePct: 0,
+      );
+      expect(annualRevenueOf(withFee), annualRevenueOf(noFee));
+    });
+  });
+
+  group('exemptionCliff', () {
+    test('crossing 500tr taxes the whole revenue, creating a dead zone', () {
+      final c = exemptionCliff();
+      expect(c.threshold, 500000000);
+      expect(c.taxAtCrossing, 10000000); // 2% of the ENTIRE 500tr, not the excess
+      // Net(R) = 0.98R must beat 500tr ⇒ R > 500tr / 0.98 ≈ 510,2tr.
+      expect(c.deadZoneTop, (500000000 / 0.98).round());
+      expect(c.contains(505000000), isTrue); // worse off than stopping at 500tr
+      expect(c.contains(500000000), isFalse); // exactly at the threshold: exempt
+      expect(c.contains(600000000), isFalse); // clear of the zone
+    });
+
+    test('earning inside the dead zone really does leave you poorer', () {
+      final atThreshold = computeBusinessTax(
+        annualRevenue: 500000000,
+        line: BusinessLine.exportedServices,
+      );
+      final justOver = computeBusinessTax(
+        annualRevenue: 505000000,
+        line: BusinessLine.exportedServices,
+      );
+      expect(justOver.annualNet, lessThan(atThreshold.annualNet));
+    });
+  });
+
+  group('computeReserve', () {
+    test('above the threshold, reserves the effective rate plus a buffer', () {
+      final r = computeReserve(
+        revenueToDate: 500000000,
+        projectedAnnualRevenue: 1000000000,
+      );
+      expect(r.projectedTax, 20000000); // 2% of 1 tỷ
+      // 2% × (1 + 20% buffer) = 2,4%
+      expect(r.reserveRate, closeTo(0.024, 1e-9));
+      expect(r.shouldHaveBanked, (500000000 * 0.024).round());
+      expect(r.perPayoutHint, 240000); // per 10tr received
+    });
+
+    test('well under the threshold, nothing to reserve', () {
+      final r = computeReserve(
+        revenueToDate: 100000000,
+        projectedAnnualRevenue: 200000000,
+      );
+      expect(r.projectedTax, 0);
+      expect(r.reserveRate, 0);
+      expect(r.shouldHaveBanked, 0);
+    });
+
+    test('approaching the threshold ramps the reserve up before the cliff', () {
+      // 450tr projected: exempt today, but one more invoice tips the whole year.
+      final r = computeReserve(
+        revenueToDate: 300000000,
+        projectedAnnualRevenue: 450000000,
+      );
+      expect(r.projectedTax, 0); // still exempt
+      expect(r.reserveRate, greaterThan(0)); // but reserve anyway
+      expect(r.reserveRate, lessThan(0.024)); // ramping, not yet full rate
+    });
+  });
+
   group('optimization comparison', () {
     test('exported-services registration beats salary for high foreign income',
         () {

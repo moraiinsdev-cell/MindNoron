@@ -22,6 +22,48 @@ enum BusinessLine {
       };
 }
 
+/// Where a payout physically came from. A Roblox 3D freelancer typically mixes
+/// three: DevEx cash-outs of Robux, direct USD from studios via PayPal, and the
+/// occasional domestic (VND) job. All of them count toward the same 500tr/year
+/// revenue threshold — which is exactly why they are logged in one place.
+enum PayoutSource {
+  devex,
+  paypal,
+  wire,
+  domestic;
+
+  String get label => switch (this) {
+        PayoutSource.devex => 'Robux → DevEx',
+        PayoutSource.paypal => 'USD qua PayPal',
+        PayoutSource.wire => 'Chuyển khoản quốc tế',
+        PayoutSource.domestic => 'Khách trong nước (VNĐ)',
+      };
+
+  String get icon => switch (this) {
+        PayoutSource.devex => '🟩',
+        PayoutSource.paypal => '💸',
+        PayoutSource.wire => '🏦',
+        PayoutSource.domestic => '🇻🇳',
+      };
+
+  /// Domestic work is not an exported service — it does not get the VAT 0% rate.
+  bool get isForeign => this != PayoutSource.domestic;
+}
+
+/// How the calculator's annual revenue figure is entered.
+enum IncomeMode {
+  /// Straight VND — for someone who already knows their annual number.
+  vnd,
+
+  /// USD/month + Robux/month, converted with the profile's DevEx & FX rates.
+  usdRobux;
+
+  String get label => switch (this) {
+        IncomeMode.vnd => 'Nhập VNĐ',
+        IncomeMode.usdRobux => 'USD + Robux',
+      };
+}
+
 /// A VAT%/PIT% pair for the direct method.
 class BizRate {
   const BizRate({required this.vat, required this.pit});
@@ -109,6 +151,95 @@ class CompanyTaxResult {
   double get effectiveRate => revenue == 0 ? 0 : annualTax / revenue;
 }
 
+/// One payout traced from Robux all the way to đồng in the bank.
+///
+/// The two numbers that matter, and that freelancers routinely confuse:
+/// [vndGross] is what the taxman counts (revenue), [vndNet] is what you can
+/// actually spend. Under the flat 2% method the gap between them — PayPal and
+/// FX fees — is *not* deductible, so tax is owed on money you never touched.
+class PayoutBreakdown {
+  const PayoutBreakdown({
+    required this.robux,
+    required this.usdFromRobux,
+    required this.usdDirect,
+    required this.usdGross,
+    required this.usdFee,
+    required this.vndGross,
+    required this.vndFee,
+    required this.fxRate,
+  });
+
+  final int robux;
+  final double usdFromRobux;
+  final double usdDirect;
+  final double usdGross;
+  final double usdFee;
+
+  /// Taxable revenue in đồng.
+  final int vndGross;
+
+  /// Payment + conversion cost in đồng.
+  final int vndFee;
+  final int fxRate;
+
+  double get usdNet => usdGross - usdFee;
+
+  /// What actually lands in the Vietnamese bank account.
+  int get vndNet => vndGross - vndFee;
+
+  /// Fees as a share of gross (0..1) — the invisible tax nobody budgets for.
+  double get feeRate => vndGross == 0 ? 0 : vndFee / vndGross;
+}
+
+/// How much of each payout to park so the tax bill is already funded when it
+/// falls due — the difference between a freelancer who controls cash flow and
+/// one who panics every April.
+class TaxReserve {
+  const TaxReserve({
+    required this.projectedAnnualRevenue,
+    required this.projectedTax,
+    required this.reserveRate,
+    required this.shouldHaveBanked,
+    required this.perPayoutHint,
+  });
+
+  final int projectedAnnualRevenue;
+  final int projectedTax;
+
+  /// Suggested share of every incoming payout to move into the tax reserve
+  /// (effective tax rate + safety buffer), 0..1.
+  final double reserveRate;
+
+  /// Given the revenue booked so far, what should already be sitting in the
+  /// reserve today.
+  final int shouldHaveBanked;
+
+  /// Đồng to set aside per 10 triệu received — an easy mental rule.
+  final int perPayoutHint;
+}
+
+/// The band just above the exemption threshold where earning *more* leaves you
+/// with *less*, because crossing 500tr taxes the whole revenue rather than only
+/// the excess.
+class ExemptionCliff {
+  const ExemptionCliff({
+    required this.threshold,
+    required this.deadZoneTop,
+    required this.taxAtCrossing,
+  });
+
+  /// 500 triệu — the last fully tax-free đồng.
+  final int threshold;
+
+  /// Revenue you must exceed to be better off than stopping at [threshold].
+  final int deadZoneTop;
+
+  /// Tax due the moment you go one đồng over — charged on the entire revenue.
+  final int taxAtCrossing;
+
+  bool contains(int revenue) => revenue > threshold && revenue < deadZoneTop;
+}
+
 /// Year-end outlook computed from revenue booked so far.
 class RevenueProjection {
   const RevenueProjection({
@@ -130,7 +261,14 @@ class RevenueProjection {
   final double thresholdFraction;
 }
 
-/// One month's booked revenue for the offline revenue tracker.
+/// One booked payout for the offline revenue tracker.
+///
+/// [amount] is always the **gross revenue in đồng** — the taxable base. For a
+/// DevEx cash-out that is the USD Roblox pays out *before* PayPal takes its
+/// cut, because the flat 2% method taxes revenue, not what lands in your bank.
+/// [robux] / [usdCents] keep the original figures so the entry can be traced
+/// back to a DevEx statement, and [feeVnd] records what the fees actually cost
+/// you (shown as a cash-flow line, never deducted from the taxable base).
 class RevenueEntry {
   const RevenueEntry({
     required this.id,
@@ -138,13 +276,38 @@ class RevenueEntry {
     required this.month,
     required this.amount,
     this.note = '',
+    this.source = PayoutSource.paypal,
+    this.robux = 0,
+    this.usdCents = 0,
+    this.feeVnd = 0,
+    this.fxRate = 0,
   });
 
   final String id;
   final int year;
   final int month; // 1..12
-  final int amount; // đồng
+  final int amount; // đồng, gross (taxable base)
   final String note;
+  final PayoutSource source;
+
+  /// Robux cashed out (DevEx entries only; 0 otherwise).
+  final int robux;
+
+  /// Gross USD received, in cents (0 for domestic VND entries).
+  final int usdCents;
+
+  /// Payment/conversion fees in đồng — money lost, but NOT tax-deductible under
+  /// the flat direct method.
+  final int feeVnd;
+
+  /// VND per USD used at the time of booking, so history stays auditable even
+  /// after the profile's rate changes.
+  final int fxRate;
+
+  double get usd => usdCents / 100;
+
+  /// What actually reached your bank account.
+  int get net => amount - feeVnd;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -152,6 +315,11 @@ class RevenueEntry {
         'm': month,
         'amt': amount,
         if (note.isNotEmpty) 'note': note,
+        'src': source.name,
+        if (robux > 0) 'rbx': robux,
+        if (usdCents > 0) 'usdc': usdCents,
+        if (feeVnd > 0) 'fee': feeVnd,
+        if (fxRate > 0) 'fx': fxRate,
       };
 
   static RevenueEntry? fromJson(Map<String, dynamic> j) {
@@ -165,6 +333,14 @@ class RevenueEntry {
       month: m,
       amount: amt,
       note: j['note'] as String? ?? '',
+      source: PayoutSource.values.firstWhere(
+        (s) => s.name == j['src'],
+        orElse: () => PayoutSource.paypal,
+      ),
+      robux: (j['rbx'] as num?)?.toInt() ?? 0,
+      usdCents: (j['usdc'] as num?)?.toInt() ?? 0,
+      feeVnd: (j['fee'] as num?)?.toInt() ?? 0,
+      fxRate: (j['fx'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -187,6 +363,31 @@ class RevenueEntry {
   }
 }
 
+/// Sensible starting points for a Roblox 3D freelancer. All of them are
+/// editable — rates move, and the user's PayPal fee depends on their plan.
+abstract final class PayoutDefaults {
+  const PayoutDefaults._();
+
+  /// Roblox DevEx: USD paid per Robux cashed out. The long-standing published
+  /// rate is $0.0035/Robux (100.000 Robux ≈ 350 USD). Roblox can change it —
+  /// the profile keeps it editable and the UI tells the user to re-check.
+  static const double devExUsdPerRobux = 0.0035;
+
+  /// DevEx minimum cash-out (Robux). Below this the button is simply disabled.
+  static const int devExMinRobux = 30000;
+
+  /// VND per 1 USD. A planning default only — for a filing you must use the
+  /// buying rate of the commercial bank where the money actually landed.
+  static const int usdVndRate = 26000;
+
+  /// Combined receiving + currency-conversion cost on a cross-border payout (%).
+  static const double payoutFeePct = 4.4;
+
+  /// Safety margin added on top of the projected tax rate when suggesting how
+  /// much of each payout to park in the tax reserve.
+  static const int reserveBufferPct = 20;
+}
+
 /// The handful of inputs the calculator remembers between sessions, so a
 /// freelancer doesn't retype their numbers. Persisted as JSON in settings.
 class TaxProfile {
@@ -196,9 +397,15 @@ class TaxProfile {
     this.monthlyInsurance = 0,
     this.expenseRatioPct = 30,
     this.line = BusinessLine.exportedServices,
+    this.mode = IncomeMode.usdRobux,
+    this.monthlyUsd = 0,
+    this.monthlyRobux = 0,
+    this.usdVndRate = PayoutDefaults.usdVndRate,
+    this.devExUsdPerRobux = PayoutDefaults.devExUsdPerRobux,
+    this.payoutFeePct = PayoutDefaults.payoutFeePct,
   });
 
-  /// Annual foreign income, in đồng.
+  /// Annual foreign income in đồng — used directly when [mode] is [IncomeMode.vnd].
   final int annualIncome;
   final int dependents;
 
@@ -209,12 +416,31 @@ class TaxProfile {
   final int expenseRatioPct;
   final BusinessLine line;
 
+  /// How the annual revenue figure is entered.
+  final IncomeMode mode;
+
+  /// Direct USD (PayPal/wire) billed per month — [IncomeMode.usdRobux] only.
+  final int monthlyUsd;
+
+  /// Robux cashed out via DevEx per month — [IncomeMode.usdRobux] only.
+  final int monthlyRobux;
+
+  final int usdVndRate;
+  final double devExUsdPerRobux;
+  final double payoutFeePct;
+
   TaxProfile copyWith({
     int? annualIncome,
     int? dependents,
     int? monthlyInsurance,
     int? expenseRatioPct,
     BusinessLine? line,
+    IncomeMode? mode,
+    int? monthlyUsd,
+    int? monthlyRobux,
+    int? usdVndRate,
+    double? devExUsdPerRobux,
+    double? payoutFeePct,
   }) =>
       TaxProfile(
         annualIncome: annualIncome ?? this.annualIncome,
@@ -222,6 +448,12 @@ class TaxProfile {
         monthlyInsurance: monthlyInsurance ?? this.monthlyInsurance,
         expenseRatioPct: expenseRatioPct ?? this.expenseRatioPct,
         line: line ?? this.line,
+        mode: mode ?? this.mode,
+        monthlyUsd: monthlyUsd ?? this.monthlyUsd,
+        monthlyRobux: monthlyRobux ?? this.monthlyRobux,
+        usdVndRate: usdVndRate ?? this.usdVndRate,
+        devExUsdPerRobux: devExUsdPerRobux ?? this.devExUsdPerRobux,
+        payoutFeePct: payoutFeePct ?? this.payoutFeePct,
       );
 
   Map<String, dynamic> toJson() => {
@@ -230,6 +462,12 @@ class TaxProfile {
         'ins': monthlyInsurance,
         'exp': expenseRatioPct,
         'line': line.name,
+        'mode': mode.name,
+        'usdM': monthlyUsd,
+        'rbxM': monthlyRobux,
+        'fx': usdVndRate,
+        'devex': devExUsdPerRobux,
+        'fee': payoutFeePct,
       };
 
   static TaxProfile fromJson(Map<String, dynamic> j) => TaxProfile(
@@ -241,6 +479,21 @@ class TaxProfile {
           (l) => l.name == j['line'],
           orElse: () => BusinessLine.exportedServices,
         ),
+        mode: IncomeMode.values.firstWhere(
+          (m) => m.name == j['mode'],
+          // Profiles saved before the USD/Robux mode existed held a VND figure.
+          orElse: () => j.containsKey('mode') || !j.containsKey('income')
+              ? IncomeMode.usdRobux
+              : IncomeMode.vnd,
+        ),
+        monthlyUsd: (j['usdM'] as num?)?.toInt() ?? 0,
+        monthlyRobux: (j['rbxM'] as num?)?.toInt() ?? 0,
+        usdVndRate:
+            (j['fx'] as num?)?.toInt() ?? PayoutDefaults.usdVndRate,
+        devExUsdPerRobux: (j['devex'] as num?)?.toDouble() ??
+            PayoutDefaults.devExUsdPerRobux,
+        payoutFeePct:
+            (j['fee'] as num?)?.toDouble() ?? PayoutDefaults.payoutFeePct,
       );
 
   String encode() => jsonEncode(toJson());

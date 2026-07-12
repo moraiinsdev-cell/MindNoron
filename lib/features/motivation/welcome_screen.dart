@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/platform/platform_capabilities.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../../presentation/navigation/app_router.dart';
 import '../settings/user_name_dialog.dart';
@@ -159,18 +160,53 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                             ),
                           ),
                           const SizedBox(height: 18),
-                          const Wrap(
-                            alignment: WrapAlignment.center,
-                            spacing: 12,
-                            runSpacing: 12,
-                            children: [
-                              _KeyHint(label: 'SPACE', value: 'LOCK IN'),
-                              _KeyHint(
-                                label: 'ANY OTHER KEY',
-                                value: 'NEXT QUOTE',
-                              ),
-                            ],
-                          ),
+                          // Desktop drives this screen from the keyboard; touch
+                          // devices have no SPACE key, so they get an explicit
+                          // "enter" button plus a tap-to-shuffle hint.
+                          if (isDesktopPlatform)
+                            const Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: [
+                                _KeyHint(label: 'SPACE', value: 'LOCK IN'),
+                                _KeyHint(
+                                  label: 'ANY OTHER KEY',
+                                  value: 'NEXT QUOTE',
+                                ),
+                              ],
+                            )
+                          else
+                            Column(
+                              children: [
+                                FilledButton(
+                                  onPressed: enter,
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: WelcomeScreen._gold,
+                                    foregroundColor: Colors.black,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 40, vertical: 16),
+                                    shape: const StadiumBorder(),
+                                  ),
+                                  child: const Text(
+                                    'LOCK IN',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 2,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'TAP ANYWHERE FOR THE NEXT QUOTE',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    letterSpacing: 2,
+                                    color: Colors.white.withValues(alpha: 0.34),
+                                  ),
+                                ),
+                              ],
+                            ),
                           if (deckState?.repeatedAfterDailyPool ?? false) ...[
                             const SizedBox(height: 18),
                             Text(

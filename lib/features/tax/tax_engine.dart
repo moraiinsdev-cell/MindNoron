@@ -196,6 +196,112 @@ RevenueProjection projectRevenue({
   );
 }
 
+/// Traces a payout from Robux (and/or direct USD) to đồng in the bank.
+///
+/// Robux is converted at the DevEx rate, added to any direct USD, and the whole
+/// gross is converted at [usdVndRate]. Fees are then subtracted — but only from
+/// the *net*, never from [PayoutBreakdown.vndGross], because the flat 2% method
+/// taxes revenue before fees.
+PayoutBreakdown convertPayout({
+  int robux = 0,
+  double usd = 0,
+  double devExUsdPerRobux = PayoutDefaults.devExUsdPerRobux,
+  int usdVndRate = PayoutDefaults.usdVndRate,
+  double feePct = PayoutDefaults.payoutFeePct,
+}) {
+  final usdFromRobux = robux <= 0 ? 0.0 : robux * devExUsdPerRobux;
+  final usdDirect = usd < 0 ? 0.0 : usd;
+  final usdGross = usdFromRobux + usdDirect;
+  final usdFee = usdGross * (feePct.clamp(0, 100) / 100);
+  final vndGross = (usdGross * usdVndRate).round();
+  final vndFee = (usdFee * usdVndRate).round();
+
+  return PayoutBreakdown(
+    robux: robux < 0 ? 0 : robux,
+    usdFromRobux: usdFromRobux,
+    usdDirect: usdDirect,
+    usdGross: usdGross,
+    usdFee: usdFee,
+    vndGross: vndGross,
+    vndFee: vndFee,
+    fxRate: usdVndRate,
+  );
+}
+
+/// The annual revenue the calculator should tax, derived from however the user
+/// chose to enter it (a flat VND figure, or USD + Robux per month).
+int annualRevenueOf(TaxProfile p) {
+  if (p.mode == IncomeMode.vnd) return p.annualIncome;
+  final year = convertPayout(
+    robux: p.monthlyRobux * 12,
+    usd: p.monthlyUsd * 12.0,
+    devExUsdPerRobux: p.devExUsdPerRobux,
+    usdVndRate: p.usdVndRate,
+    feePct: p.payoutFeePct,
+  );
+  return year.vndGross;
+}
+
+/// How much of every incoming payout to move into a tax reserve so the bill is
+/// funded before it is due. The rate is the projected *effective* tax rate plus
+/// a safety buffer — deliberately a little too much, because over-reserving
+/// costs nothing and under-reserving costs a late-payment penalty.
+///
+/// Right below the 500tr threshold the reserve rate is not zero: [projectRevenue]
+/// may be wrong, and one extra invoice can drag the whole year over the cliff.
+TaxReserve computeReserve({
+  required int revenueToDate,
+  required int projectedAnnualRevenue,
+  BusinessLine line = BusinessLine.exportedServices,
+  int bufferPct = PayoutDefaults.reserveBufferPct,
+}) {
+  final projected =
+      computeBusinessTax(annualRevenue: projectedAnnualRevenue, line: line);
+
+  // Someone tracking toward the threshold should still reserve at the rate they
+  // would owe if they crossed it — the tax lands on the whole year, not the tip.
+  final rate = TaxRules.rateFor(line);
+  final effective =
+      projected.exempt ? _thresholdProximity(projectedAnnualRevenue) * rate.total
+                       : projected.effectiveRate;
+  final reserveRate = effective * (1 + bufferPct / 100);
+
+  return TaxReserve(
+    projectedAnnualRevenue: projectedAnnualRevenue,
+    projectedTax: projected.annualTax,
+    reserveRate: reserveRate,
+    shouldHaveBanked: (revenueToDate * reserveRate).round(),
+    perPayoutHint: (10000000 * reserveRate).round(),
+  );
+}
+
+/// 0 when the year is nowhere near the threshold, ramping to 1 as it approaches
+/// — so the suggested reserve rate rises smoothly instead of snapping from 0%
+/// to 2,4% the day the threshold is crossed.
+double _thresholdProximity(int projectedAnnual) {
+  const t = TaxRules.businessTaxFreeThreshold;
+  const rampStart = t * 0.7; // 350tr
+  if (projectedAnnual <= rampStart) return 0;
+  return ((projectedAnnual - rampStart) / (t - rampStart)).clamp(0.0, 1.0);
+}
+
+/// The trap around the exemption threshold: at 500tr you owe nothing, at 500tr
+/// + 1đ you owe tax on **all** 500tr+. Until revenue clears
+/// [ExemptionCliff.deadZoneTop] you take home less than if you had stopped at
+/// the threshold — worth knowing in November when deciding to take one more job.
+ExemptionCliff exemptionCliff(
+    {BusinessLine line = BusinessLine.exportedServices}) {
+  const t = TaxRules.businessTaxFreeThreshold;
+  final rate = TaxRules.rateFor(line);
+  // Net(R) = R * (1 - rate) must beat Net(t) = t  ⇒  R > t / (1 - rate).
+  final top = rate.total >= 1 ? t : (t / (1 - rate.total)).round();
+  return ExemptionCliff(
+    threshold: t,
+    deadZoneTop: top,
+    taxAtCrossing: (t * rate.total).round(),
+  );
+}
+
 /// Late-payment interest (tiền chậm nộp): 0,03%/ngày × số thuế × số ngày trễ.
 int lateFilingPenalty({required int taxOwed, required int daysLate}) {
   if (taxOwed <= 0 || daysLate <= 0) return 0;

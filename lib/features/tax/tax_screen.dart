@@ -9,12 +9,16 @@ import 'tax_engine.dart';
 import 'tax_knowledge.dart';
 import 'tax_models.dart';
 import 'tax_repository.dart';
+import 'tax_roblox.dart';
 
-/// Offline Tax hub for a freelancer billing foreign clients: a calculator that
-/// compares taxing the same income as employment (progressive) vs as an
-/// individual business exporting services (flat ~2%), a regulations digest, and
-/// legal optimization strategies. No network, no LLM — pure local math + curated
-/// content, consistent with the app's offline-first design.
+/// Offline Tax hub, tuned for a Vietnamese 3D artist selling models to Roblox
+/// studios and paid in USD (PayPal) or Robux (DevEx).
+///
+/// It answers the three questions that decide whether a freelancer keeps their
+/// money: *how much is really mine* (Robux → USD → VND, gross vs net of fees),
+/// *how should I be registered* (progressive salary vs 2% exported services vs
+/// a company), and *when do I owe it* (revenue tracker, tax reserve, deadlines).
+/// No network, no LLM — pure local math + curated content.
 class TaxScreen extends ConsumerStatefulWidget {
   const TaxScreen({super.key});
 
@@ -22,57 +26,83 @@ class TaxScreen extends ConsumerStatefulWidget {
   ConsumerState<TaxScreen> createState() => _TaxScreenState();
 }
 
-enum _Tab { calculator, revenue, risk, dta, regulations, strategies }
+enum _Tab { calculator, revenue, roblox, risk, dta, regulations, strategies }
 
 class _TaxScreenState extends ConsumerState<TaxScreen> {
   _Tab _tab = _Tab.calculator;
 
+  /// Live copy of the persisted profile — every edit writes through to settings.
+  TaxProfile _p = const TaxProfile();
+  bool _seeded = false;
+
   final _incomeCtrl = TextEditingController();
+  final _usdCtrl = TextEditingController();
+  final _robuxCtrl = TextEditingController();
   final _depsCtrl = TextEditingController();
   final _insCtrl = TextEditingController();
   final _expCtrl = TextEditingController();
-  BusinessLine _line = BusinessLine.exportedServices;
-  bool _seeded = false;
+  final _fxCtrl = TextEditingController();
+  final _devexCtrl = TextEditingController();
+  final _feeCtrl = TextEditingController();
 
   @override
   void dispose() {
-    _incomeCtrl.dispose();
-    _depsCtrl.dispose();
-    _insCtrl.dispose();
-    _expCtrl.dispose();
+    for (final c in [
+      _incomeCtrl,
+      _usdCtrl,
+      _robuxCtrl,
+      _depsCtrl,
+      _insCtrl,
+      _expCtrl,
+      _fxCtrl,
+      _devexCtrl,
+      _feeCtrl,
+    ]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
   void _seed(TaxProfile p) {
     if (_seeded) return;
     _seeded = true;
+    _p = p;
     if (p.annualIncome > 0) {
       _incomeCtrl.text = (p.annualIncome ~/ 1000000).toString();
     }
+    if (p.monthlyUsd > 0) _usdCtrl.text = p.monthlyUsd.toString();
+    if (p.monthlyRobux > 0) _robuxCtrl.text = p.monthlyRobux.toString();
     if (p.dependents > 0) _depsCtrl.text = p.dependents.toString();
     if (p.monthlyInsurance > 0) {
       _insCtrl.text = (p.monthlyInsurance ~/ 1000000).toString();
     }
     _expCtrl.text = p.expenseRatioPct.toString();
-    _line = p.line;
+    _fxCtrl.text = p.usdVndRate.toString();
+    _devexCtrl.text = p.devExUsdPerRobux.toString();
+    _feeCtrl.text = p.payoutFeePct.toString();
   }
 
-  int get _annualIncome =>
-      (int.tryParse(_incomeCtrl.text.trim()) ?? 0) * 1000000;
-  int get _dependents => int.tryParse(_depsCtrl.text.trim()) ?? 0;
-  int get _monthlyInsurance =>
-      (int.tryParse(_insCtrl.text.trim()) ?? 0) * 1000000;
-  int get _expenseRatioPct =>
-      (int.tryParse(_expCtrl.text.trim()) ?? 30).clamp(0, 100);
+  void _update(TaxProfile next) {
+    setState(() => _p = next);
+    ref.read(taxRepositoryProvider).save(next);
+  }
 
-  void _persist() {
-    ref.read(taxRepositoryProvider).save(TaxProfile(
-          annualIncome: _annualIncome,
-          dependents: _dependents,
-          monthlyInsurance: _monthlyInsurance,
-          expenseRatioPct: _expenseRatioPct,
-          line: _line,
-        ));
+  /// Re-reads every controller into the profile — simpler than wiring nine
+  /// individual callbacks, and the inputs are cheap to parse.
+  void _sync() {
+    _update(_p.copyWith(
+      annualIncome: (int.tryParse(_incomeCtrl.text.trim()) ?? 0) * 1000000,
+      monthlyUsd: int.tryParse(_usdCtrl.text.trim()) ?? 0,
+      monthlyRobux: int.tryParse(_robuxCtrl.text.trim()) ?? 0,
+      dependents: int.tryParse(_depsCtrl.text.trim()) ?? 0,
+      monthlyInsurance: (int.tryParse(_insCtrl.text.trim()) ?? 0) * 1000000,
+      expenseRatioPct: (int.tryParse(_expCtrl.text.trim()) ?? 30).clamp(0, 100),
+      usdVndRate: int.tryParse(_fxCtrl.text.trim()) ?? PayoutDefaults.usdVndRate,
+      devExUsdPerRobux: double.tryParse(_devexCtrl.text.trim().replaceAll(',', '.')) ??
+          PayoutDefaults.devExUsdPerRobux,
+      payoutFeePct: double.tryParse(_feeCtrl.text.trim().replaceAll(',', '.')) ??
+          PayoutDefaults.payoutFeePct,
+    ));
   }
 
   @override
@@ -83,8 +113,9 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
     return SectionScaffold(
       title: 'Thuế',
       subtitle:
-          'Trợ lý thuế cho freelancer nhận tiền từ nước ngoài — tính, hiểu quy '
-          'định, và tối ưu hợp pháp (offline).',
+          'Trợ lý thuế cho 3D artist freelance làm cho studio Roblox — Robux '
+          '(DevEx) & USD (PayPal) quy về đồng, thuế đúng luật, dòng tiền trong '
+          'tầm kiểm soát. Hoàn toàn offline.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -102,6 +133,11 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
                   value: _Tab.revenue,
                   icon: Icon(Icons.trending_up),
                   label: Text('Doanh thu'),
+                ),
+                ButtonSegment(
+                  value: _Tab.roblox,
+                  icon: Icon(Icons.sports_esports_outlined),
+                  label: Text('Roblox'),
                 ),
                 ButtonSegment(
                   value: _Tab.risk,
@@ -132,25 +168,21 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
           Expanded(
             child: switch (_tab) {
               _Tab.calculator => _CalculatorTab(
+                  profile: _p,
                   incomeCtrl: _incomeCtrl,
+                  usdCtrl: _usdCtrl,
+                  robuxCtrl: _robuxCtrl,
                   depsCtrl: _depsCtrl,
                   insCtrl: _insCtrl,
                   expCtrl: _expCtrl,
-                  line: _line,
-                  annualIncome: _annualIncome,
-                  dependents: _dependents,
-                  monthlyInsurance: _monthlyInsurance,
-                  expenseRatioPct: _expenseRatioPct,
-                  onChanged: () {
-                    setState(() {});
-                    _persist();
-                  },
-                  onLineChanged: (l) {
-                    setState(() => _line = l);
-                    _persist();
-                  },
+                  fxCtrl: _fxCtrl,
+                  devexCtrl: _devexCtrl,
+                  feeCtrl: _feeCtrl,
+                  onChanged: _sync,
+                  onProfile: _update,
                 ),
               _Tab.revenue => const _RevenueTab(),
+              _Tab.roblox => const _RobloxTab(),
               _Tab.risk => const _RiskTab(),
               _Tab.dta => const _DtaTab(),
               _Tab.regulations => const _NotesTab(),
@@ -167,37 +199,44 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
 
 class _CalculatorTab extends StatelessWidget {
   const _CalculatorTab({
+    required this.profile,
     required this.incomeCtrl,
+    required this.usdCtrl,
+    required this.robuxCtrl,
     required this.depsCtrl,
     required this.insCtrl,
     required this.expCtrl,
-    required this.line,
-    required this.annualIncome,
-    required this.dependents,
-    required this.monthlyInsurance,
-    required this.expenseRatioPct,
+    required this.fxCtrl,
+    required this.devexCtrl,
+    required this.feeCtrl,
     required this.onChanged,
-    required this.onLineChanged,
+    required this.onProfile,
   });
 
+  final TaxProfile profile;
   final TextEditingController incomeCtrl;
+  final TextEditingController usdCtrl;
+  final TextEditingController robuxCtrl;
   final TextEditingController depsCtrl;
   final TextEditingController insCtrl;
   final TextEditingController expCtrl;
-  final BusinessLine line;
-  final int annualIncome;
-  final int dependents;
-  final int monthlyInsurance;
-  final int expenseRatioPct;
+  final TextEditingController fxCtrl;
+  final TextEditingController devexCtrl;
+  final TextEditingController feeCtrl;
   final VoidCallback onChanged;
-  final ValueChanged<BusinessLine> onLineChanged;
+  final ValueChanged<TaxProfile> onProfile;
 
   @override
   Widget build(BuildContext context) {
+    final line = profile.line;
+    final dependents = profile.dependents;
+    final expenseRatioPct = profile.expenseRatioPct;
+    final annualIncome = annualRevenueOf(profile);
+
     final salary = computeSalaryTax(
       annualGross: annualIncome,
       dependents: dependents,
-      monthlyInsurance: monthlyInsurance,
+      monthlyInsurance: profile.monthlyInsurance,
     );
     final business = computeBusinessTax(
       annualRevenue: annualIncome,
@@ -219,21 +258,45 @@ class _CalculatorTab extends StatelessWidget {
     final sorted = taxes.values.toList()..sort();
     final saving = sorted[1] - sorted[0];
 
+    final cliff = exemptionCliff(line: line);
+
     return ListView(
       children: [
         _InputsCard(
+          profile: profile,
           incomeCtrl: incomeCtrl,
+          usdCtrl: usdCtrl,
+          robuxCtrl: robuxCtrl,
           depsCtrl: depsCtrl,
           insCtrl: insCtrl,
           expCtrl: expCtrl,
-          line: line,
+          fxCtrl: fxCtrl,
+          devexCtrl: devexCtrl,
+          feeCtrl: feeCtrl,
           onChanged: onChanged,
-          onLineChanged: onLineChanged,
+          onProfile: onProfile,
         ),
         const SizedBox(height: 14),
         if (!hasIncome)
           const _HintCard()
         else ...[
+          if (profile.mode == IncomeMode.usdRobux) ...[
+            _PayoutFlowCard(
+              breakdown: convertPayout(
+                robux: profile.monthlyRobux * 12,
+                usd: profile.monthlyUsd * 12.0,
+                devExUsdPerRobux: profile.devExUsdPerRobux,
+                usdVndRate: profile.usdVndRate,
+                feePct: profile.payoutFeePct,
+              ),
+              taxOnGross: business.annualTax,
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (cliff.contains(annualIncome)) ...[
+            _CliffWarning(cliff: cliff, revenue: annualIncome),
+            const SizedBox(height: 12),
+          ],
           _WinnerBanner(best: best, saving: saving),
           const SizedBox(height: 12),
           _ResultCard(
@@ -298,6 +361,7 @@ class _CalculatorTab extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: () => _copyReport(
                 context,
+                annualIncome: annualIncome,
                 business: business,
                 salary: salary,
                 company: company,
@@ -316,6 +380,7 @@ class _CalculatorTab extends StatelessWidget {
 
   Future<void> _copyReport(
     BuildContext context, {
+    required int annualIncome,
     required BusinessTaxResult business,
     required SalaryTaxResult salary,
     required CompanyTaxResult company,
@@ -327,16 +392,36 @@ class _CalculatorTab extends StatelessWidget {
       'salary': 'Tiền lương / tiền công',
       'company': 'Công ty TNHH',
     };
-    final report = '''
-BÁO CÁO THUẾ — Thu nhập từ nước ngoài
-Thu nhập/năm: ${_vnd(annualIncome)}
-Người phụ thuộc: $dependents
 
-1) Cá nhân kinh doanh (${line.label})
+    final src = StringBuffer();
+    if (profile.mode == IncomeMode.usdRobux) {
+      final flow = convertPayout(
+        robux: profile.monthlyRobux * 12,
+        usd: profile.monthlyUsd * 12.0,
+        devExUsdPerRobux: profile.devExUsdPerRobux,
+        usdVndRate: profile.usdVndRate,
+        feePct: profile.payoutFeePct,
+      );
+      src
+        ..writeln('Nguồn thu/năm: ${_int(profile.monthlyRobux * 12)} Robux '
+            '(DevEx @ ${profile.devExUsdPerRobux}) + '
+            '${_int(profile.monthlyUsd * 12)} USD trực tiếp')
+        ..writeln('  = ${flow.usdGross.toStringAsFixed(0)} USD gộp × '
+            '${_int(profile.usdVndRate)} ₫/USD')
+        ..writeln('  Phí nhận tiền (${profile.payoutFeePct}%): '
+            '${_vnd(flow.vndFee)} → thực về tay ${_vnd(flow.vndNet)}');
+    }
+
+    final report = '''
+BÁO CÁO THUẾ — 3D freelance cho studio Roblox
+Doanh thu tính thuế/năm: ${_vnd(annualIncome)}
+${src}Người phụ thuộc: ${profile.dependents}
+
+1) Cá nhân kinh doanh (${profile.line.label})
    Thuế/năm: ${_vnd(business.annualTax)} (${pct(business.effectiveRate)})
 2) Tiền lương / tiền công (lũy tiến)
    Thuế/năm: ${_vnd(salary.annualTax)} (${pct(salary.effectiveRate)})
-3) Công ty TNHH (chi phí $expenseRatioPct%)
+3) Công ty TNHH (chi phí ${profile.expenseRatioPct}%)
    Thuế/năm: ${_vnd(company.annualTax)} (${pct(company.effectiveRate)})
 
 ➜ Phương án tối ưu: ${names[best]}
@@ -351,56 +436,179 @@ $taxDisclaimer''';
 
 class _InputsCard extends StatelessWidget {
   const _InputsCard({
+    required this.profile,
     required this.incomeCtrl,
+    required this.usdCtrl,
+    required this.robuxCtrl,
     required this.depsCtrl,
     required this.insCtrl,
     required this.expCtrl,
-    required this.line,
+    required this.fxCtrl,
+    required this.devexCtrl,
+    required this.feeCtrl,
     required this.onChanged,
-    required this.onLineChanged,
+    required this.onProfile,
   });
 
+  final TaxProfile profile;
   final TextEditingController incomeCtrl;
+  final TextEditingController usdCtrl;
+  final TextEditingController robuxCtrl;
   final TextEditingController depsCtrl;
   final TextEditingController insCtrl;
   final TextEditingController expCtrl;
-  final BusinessLine line;
+  final TextEditingController fxCtrl;
+  final TextEditingController devexCtrl;
+  final TextEditingController feeCtrl;
   final VoidCallback onChanged;
-  final ValueChanged<BusinessLine> onLineChanged;
+  final ValueChanged<TaxProfile> onProfile;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final usdMode = profile.mode == IncomeMode.usdRobux;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: incomeCtrl,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              onChanged: (_) => onChanged(),
-              decoration: const InputDecoration(
-                labelText: 'Thu nhập từ nước ngoài / năm',
-                suffixText: 'triệu ₫',
-                border: OutlineInputBorder(),
-                helperText: 'Ví dụ: 600 = 600 triệu đồng/năm',
-              ),
+            SegmentedButton<IncomeMode>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(
+                  value: IncomeMode.usdRobux,
+                  icon: Icon(Icons.currency_exchange, size: 16),
+                  label: Text('USD + Robux'),
+                ),
+                ButtonSegment(
+                  value: IncomeMode.vnd,
+                  icon: Icon(Icons.payments_outlined, size: 16),
+                  label: Text('Nhập VNĐ'),
+                ),
+              ],
+              selected: {profile.mode},
+              onSelectionChanged: (s) =>
+                  onProfile(profile.copyWith(mode: s.first)),
             ),
             const SizedBox(height: 14),
+            if (usdMode) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: robuxCtrl,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      onChanged: (_) => onChanged(),
+                      decoration: const InputDecoration(
+                        labelText: 'Robux DevEx / tháng',
+                        suffixText: 'R\$',
+                        border: OutlineInputBorder(),
+                        helperText: 'Tối thiểu 30.000 R\$ mỗi lần rút',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: usdCtrl,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      onChanged: (_) => onChanged(),
+                      decoration: const InputDecoration(
+                        labelText: 'USD trực tiếp / tháng',
+                        suffixText: '\$',
+                        border: OutlineInputBorder(),
+                        helperText: 'Commission studio trả qua PayPal',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: fxCtrl,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      onChanged: (_) => onChanged(),
+                      decoration: const InputDecoration(
+                        labelText: 'Tỷ giá USD',
+                        suffixText: '₫',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: devexCtrl,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => onChanged(),
+                      decoration: const InputDecoration(
+                        labelText: 'Rate DevEx',
+                        suffixText: '\$/R\$',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: feeCtrl,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => onChanged(),
+                      decoration: const InputDecoration(
+                        labelText: 'Phí nhận tiền',
+                        suffixText: '%',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Tỷ giá & rate DevEx do bạn tự cập nhật — Roblox có thể đổi rate, '
+                'và khi quyết toán phải dùng tỷ giá mua vào của ngân hàng nơi '
+                'tiền về.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ] else
+              TextField(
+                controller: incomeCtrl,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                onChanged: (_) => onChanged(),
+                decoration: const InputDecoration(
+                  labelText: 'Doanh thu / năm',
+                  suffixText: 'triệu ₫',
+                  border: OutlineInputBorder(),
+                  helperText: 'Ví dụ: 600 = 600 triệu đồng/năm',
+                ),
+              ),
+            const SizedBox(height: 14),
             DropdownButtonFormField<BusinessLine>(
-              initialValue: line,
+              initialValue: profile.line,
               isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Ngành nghề (khi khai cá nhân kinh doanh)',
                 border: OutlineInputBorder(),
+                helperText: 'Làm 3D cho studio nước ngoài → dịch vụ xuất khẩu',
               ),
               items: [
                 for (final l in BusinessLine.values)
                   DropdownMenuItem(value: l, child: Text(l.label)),
               ],
-              onChanged: (l) => l == null ? null : onLineChanged(l),
+              onChanged: (l) =>
+                  l == null ? null : onProfile(profile.copyWith(line: l)),
             ),
             const SizedBox(height: 14),
             Row(
@@ -449,6 +657,147 @@ class _InputsCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Robux → USD → đồng, with the two numbers side by side that a freelancer must
+/// never confuse: the revenue the taxman sees, and the money that reaches the
+/// bank. The gap is the fees — and under the 2% method you are taxed on the
+/// bigger of the two.
+class _PayoutFlowCard extends StatelessWidget {
+  const _PayoutFlowCard({required this.breakdown, required this.taxOnGross});
+
+  final PayoutBreakdown breakdown;
+  final int taxOnGross;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final b = breakdown;
+    final takeHome = b.vndNet - taxOnGross;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('💱', style: TextStyle(fontSize: 20)),
+                const SizedBox(width: 8),
+                Text('Đường đi của tiền (cả năm)',
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w800)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (b.robux > 0)
+              _Row('${_int(b.robux)} Robux → DevEx',
+                  '\$${b.usdFromRobux.toStringAsFixed(0)}'),
+            if (b.usdDirect > 0)
+              _Row('PayPal / chuyển khoản trực tiếp',
+                  '\$${b.usdDirect.toStringAsFixed(0)}'),
+            _Row('USD gộp (doanh thu tính thuế)',
+                '\$${b.usdGross.toStringAsFixed(0)}'),
+            _Row('Quy đổi @ ${_int(b.fxRate)} ₫/USD', _vnd(b.vndGross)),
+            const Divider(height: 22),
+            _Row('− Phí nhận tiền & quy đổi', '−${_vnd(b.vndFee)}'),
+            _Row('− Thuế (theo phương án đang chọn)', '−${_vnd(taxOnGross)}'),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text('Còn lại thật sự của bạn',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: theme.colorScheme.onPrimaryContainer,
+                        )),
+                  ),
+                  Text(_vnd(takeHome),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: theme.colorScheme.onPrimaryContainer,
+                      )),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Phí chiếm ${(b.feeRate * 100).toStringAsFixed(1)}% doanh thu và '
+              'KHÔNG được trừ khi khai theo phương pháp 2% — bạn vẫn nộp thuế '
+              'trên phần tiền chưa từng chạm tay. Hãy cộng nó vào giá báo cho '
+              'studio.',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The 500tr trap: one đồng over the threshold taxes the *whole* year's revenue,
+/// so there is a band where earning more leaves you poorer.
+class _CliffWarning extends StatelessWidget {
+  const _CliffWarning({required this.cliff, required this.revenue});
+
+  final ExemptionCliff cliff;
+  final int revenue;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final netNow = revenue - (revenue * 0.02).round();
+    final lost = cliff.threshold - netNow;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.dangerous_outlined,
+              color: theme.colorScheme.onErrorContainer),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Bạn đang ở "vùng chết" của ngưỡng 500 triệu',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.onErrorContainer,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Vượt 500 triệu thì thuế đánh trên TOÀN BỘ doanh thu, không '
+                  'chỉ phần vượt. Với ${_vnd(revenue)} bạn còn ${_vnd(netNow)} — '
+                  'ít hơn ${_vnd(lost)} so với việc dừng đúng ở 500 triệu. Chỉ '
+                  'thực sự có lời khi doanh thu vượt ${_vnd(cliff.deadZoneTop)}: '
+                  'hoặc nhận thêm việc cho vượt hẳn, hoặc dời hợp đồng sang năm '
+                  'sau (khi việc thật sự hoàn thành ở năm sau).',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onErrorContainer),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -631,9 +980,10 @@ class _HintCard extends StatelessWidget {
             const Text('🧮', style: TextStyle(fontSize: 34)),
             const SizedBox(height: 10),
             Text(
-              'Nhập thu nhập/năm để so sánh hai cách nộp thuế:\n'
-              'khai lũy tiến (tới 35%) vs đăng ký cá nhân kinh doanh dịch vụ '
-              'xuất khẩu (~2%).',
+              'Nhập số Robux bạn DevEx mỗi tháng và số USD studio trả qua '
+              'PayPal.\nApp quy ra đồng, trừ phí, rồi so sánh 3 cách nộp thuế: '
+              'lũy tiến tới 35% · cá nhân kinh doanh dịch vụ xuất khẩu ~2% · '
+              'công ty TNHH.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
@@ -912,150 +1262,340 @@ class _RevenueTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final now = DateTime.now();
+    final profile =
+        ref.watch(taxProfileProvider).valueOrNull ?? const TaxProfile();
     final all = ref.watch(taxRevenueProvider).valueOrNull ?? const [];
     final thisYear = [...all.where((e) => e.year == now.year)]
       ..sort((a, b) => b.month.compareTo(a.month));
-    final toDate =
-        thisYear.fold<int>(0, (sum, e) => sum + e.amount);
-    final projection =
-        projectRevenue(toDate: toDate, monthsElapsed: now.month);
+    final toDate = thisYear.fold<int>(0, (sum, e) => sum + e.amount);
+    final feesToDate = thisYear.fold<int>(0, (sum, e) => sum + e.feeVnd);
+    final projection = projectRevenue(toDate: toDate, monthsElapsed: now.month);
+    final reserve = computeReserve(
+      revenueToDate: toDate,
+      projectedAnnualRevenue: projection.projectedAnnual,
+      line: profile.line,
+    );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return ListView(
       children: [
-        Expanded(
-          child: ListView(
-            children: [
-              _ThresholdCard(projection: projection, year: now.year),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Đã ghi nhận (${now.year})',
-                      style: theme.textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700)),
-                  FilledButton.tonalIcon(
-                    onPressed: () => _showAddDialog(context, ref, now),
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Thêm tháng'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              if (thisYear.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: Text(
-                    'Chưa có dữ liệu. Ghi lại doanh thu mỗi tháng để theo dõi '
-                    'mốc 500 triệu và ước tính thuế cả năm.',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                )
-              else
-                for (final e in thisYear)
-                  Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: theme.colorScheme.secondaryContainer,
-                        child: Text('T${e.month}',
-                            style: theme.textTheme.labelMedium?.copyWith(
-                                color:
-                                    theme.colorScheme.onSecondaryContainer)),
-                      ),
-                      title: Text(_vnd(e.amount),
-                          style: const TextStyle(fontWeight: FontWeight.w700)),
-                      subtitle: e.note.isEmpty ? null : Text(e.note),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        tooltip: 'Xóa',
-                        onPressed: () => ref
-                            .read(taxRepositoryProvider)
-                            .removeRevenue(e.id),
-                      ),
-                    ),
-                  ),
-              const SizedBox(height: 8),
-              const _DisclaimerCard(),
-            ],
-          ),
+        _ThresholdCard(projection: projection, year: now.year),
+        const SizedBox(height: 12),
+        if (toDate > 0) ...[
+          _ReserveCard(reserve: reserve, feesToDate: feesToDate),
+          const SizedBox(height: 12),
+        ],
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Đã ghi nhận (${now.year})',
+                style: theme.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            FilledButton.tonalIcon(
+              onPressed: () => _showAddDialog(context, ref, now, profile),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Thêm khoản'),
+            ),
+          ],
         ),
+        const SizedBox(height: 8),
+        if (thisYear.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Text(
+              'Chưa có dữ liệu. Ghi lại mỗi lần DevEx hoặc PayPal về tiền — app '
+              'cộng dồn để canh mốc 500 triệu, ước tính thuế cả năm và nhắc bạn '
+              'trích quỹ thuế.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          )
+        else
+          for (final e in thisYear) _RevenueTile(entry: e),
+        const SizedBox(height: 8),
+        const _DisclaimerCard(),
       ],
     );
   }
 
-  Future<void> _showAddDialog(
-      BuildContext context, WidgetRef ref, DateTime now) async {
+  Future<void> _showAddDialog(BuildContext context, WidgetRef ref, DateTime now,
+      TaxProfile profile) async {
     var month = now.month;
+    var source = PayoutSource.devex;
     final amountCtrl = TextEditingController();
     final noteCtrl = TextEditingController();
+
+    /// Converts whatever the user typed (Robux, USD or triệu VNĐ, depending on
+    /// the source) into the gross/fee pair actually stored.
+    PayoutBreakdown preview() {
+      final raw = int.tryParse(amountCtrl.text.trim()) ?? 0;
+      return switch (source) {
+        PayoutSource.devex => convertPayout(
+            robux: raw,
+            devExUsdPerRobux: profile.devExUsdPerRobux,
+            usdVndRate: profile.usdVndRate,
+            feePct: profile.payoutFeePct,
+          ),
+        PayoutSource.paypal || PayoutSource.wire => convertPayout(
+            usd: raw.toDouble(),
+            usdVndRate: profile.usdVndRate,
+            feePct: profile.payoutFeePct,
+          ),
+        // Domestic money arrives in đồng with no FX or platform fee.
+        PayoutSource.domestic => convertPayout(
+            usd: raw * 1000000 / (profile.usdVndRate == 0 ? 1 : profile.usdVndRate),
+            usdVndRate: profile.usdVndRate,
+            feePct: 0,
+          ),
+      };
+    }
 
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setLocal) => AlertDialog(
-          title: const Text('Thêm doanh thu tháng'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<int>(
-                initialValue: month,
-                decoration: const InputDecoration(
-                    labelText: 'Tháng', border: OutlineInputBorder()),
-                items: [
-                  for (var m = 1; m <= 12; m++)
-                    DropdownMenuItem(value: m, child: Text('Tháng $m')),
+        builder: (ctx, setLocal) {
+          final p = preview();
+          final unit = switch (source) {
+            PayoutSource.devex => 'Robux',
+            PayoutSource.domestic => 'triệu ₫',
+            _ => 'USD',
+          };
+          return AlertDialog(
+            title: const Text('Ghi nhận tiền về'),
+            content: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DropdownButtonFormField<PayoutSource>(
+                    initialValue: source,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                        labelText: 'Nguồn tiền', border: OutlineInputBorder()),
+                    items: [
+                      for (final s in PayoutSource.values)
+                        DropdownMenuItem(
+                            value: s, child: Text('${s.icon}  ${s.label}')),
+                    ],
+                    onChanged: (s) => setLocal(() => source = s ?? source),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<int>(
+                          initialValue: month,
+                          decoration: const InputDecoration(
+                              labelText: 'Tháng',
+                              border: OutlineInputBorder()),
+                          items: [
+                            for (var m = 1; m <= 12; m++)
+                              DropdownMenuItem(
+                                  value: m, child: Text('Tháng $m')),
+                          ],
+                          onChanged: (m) => setLocal(() => month = m ?? month),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: amountCtrl,
+                          autofocus: true,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          onChanged: (_) => setLocal(() {}),
+                          decoration: InputDecoration(
+                            labelText: 'Số tiền nhận',
+                            suffixText: unit,
+                            border: const OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: noteCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Ghi chú (khách hàng, dự án…)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (p.vndGross > 0) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        children: [
+                          if (source == PayoutSource.devex)
+                            _Row('DevEx @ ${profile.devExUsdPerRobux}',
+                                '\$${p.usdGross.toStringAsFixed(2)}'),
+                          _Row('Doanh thu tính thuế', _vnd(p.vndGross)),
+                          if (p.vndFee > 0) _Row('Phí ước tính', '−${_vnd(p.vndFee)}'),
+                          if (p.vndFee > 0) _Row('Thực về tài khoản', _vnd(p.vndNet)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
-                onChanged: (m) => setLocal(() => month = m ?? month),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: amountCtrl,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: const InputDecoration(
-                  labelText: 'Doanh thu',
-                  suffixText: 'triệu ₫',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: noteCtrl,
-                decoration: const InputDecoration(
-                    labelText: 'Ghi chú (tùy chọn)',
-                    border: OutlineInputBorder()),
-              ),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Hủy')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Lưu')),
             ],
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Hủy')),
-            FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Lưu')),
-          ],
-        ),
+          );
+        },
       ),
     );
 
     if (ok == true) {
-      final trieu = int.tryParse(amountCtrl.text.trim()) ?? 0;
-      if (trieu > 0) {
+      final p = preview();
+      final raw = int.tryParse(amountCtrl.text.trim()) ?? 0;
+      if (raw > 0 && p.vndGross > 0) {
         await ref.read(taxRepositoryProvider).addRevenue(RevenueEntry(
               id: '${now.year}-$month-${DateTime.now().microsecondsSinceEpoch}',
               year: now.year,
               month: month,
-              amount: trieu * 1000000,
+              amount: p.vndGross,
               note: noteCtrl.text.trim(),
+              source: source,
+              robux: source == PayoutSource.devex ? raw : 0,
+              usdCents: source == PayoutSource.domestic
+                  ? 0
+                  : (p.usdGross * 100).round(),
+              feeVnd: p.vndFee,
+              fxRate: profile.usdVndRate,
             ));
       }
     }
     amountCtrl.dispose();
     noteCtrl.dispose();
+  }
+}
+
+class _RevenueTile extends ConsumerWidget {
+  const _RevenueTile({required this.entry});
+  final RevenueEntry entry;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final e = entry;
+
+    // Show the original figures, so the row can be checked against a DevEx or
+    // PayPal statement without re-doing the maths.
+    final origin = [
+      if (e.robux > 0) '${_int(e.robux)} R\$',
+      if (e.usdCents > 0) '\$${e.usd.toStringAsFixed(2)}',
+      if (e.feeVnd > 0) 'phí ${_vnd(e.feeVnd)}',
+    ].join(' · ');
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: theme.colorScheme.secondaryContainer,
+          child: Text('T${e.month}',
+              style: theme.textTheme.labelMedium
+                  ?.copyWith(color: theme.colorScheme.onSecondaryContainer)),
+        ),
+        title: Row(
+          children: [
+            Text(_vnd(e.amount),
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(width: 8),
+            Text(e.source.icon, style: const TextStyle(fontSize: 13)),
+          ],
+        ),
+        subtitle: Text([
+          if (origin.isNotEmpty) origin,
+          if (e.note.isNotEmpty) e.note,
+        ].join(' — ')),
+        trailing: IconButton(
+          icon: const Icon(Icons.delete_outline),
+          tooltip: 'Xóa',
+          onPressed: () =>
+              ref.read(taxRepositoryProvider).removeRevenue(e.id),
+        ),
+      ),
+    );
+  }
+}
+
+/// The cash-flow half of the feature: how much of the money already received
+/// isn't actually yours, and should be sitting in a separate account today.
+class _ReserveCard extends StatelessWidget {
+  const _ReserveCard({required this.reserve, required this.feesToDate});
+
+  final TaxReserve reserve;
+  final int feesToDate;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final pct = (reserve.reserveRate * 100).toStringAsFixed(1);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('🏦', style: TextStyle(fontSize: 20)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Quỹ thuế nên có ngay bây giờ',
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(_vnd(reserve.shouldHaveBanked),
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: theme.colorScheme.primary,
+                )),
+            const SizedBox(height: 4),
+            Text(
+              'Trích $pct% mỗi lần tiền về — tức khoảng '
+              '${_vnd(reserve.perPayoutHint)} cho mỗi 10 triệu nhận được.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const Divider(height: 24),
+            _Row('Thuế dự kiến cả năm', _vnd(reserve.projectedTax)),
+            if (feesToDate > 0)
+              _Row('Phí PayPal/quy đổi đã mất', _vnd(feesToDate)),
+            const SizedBox(height: 8),
+            Text(
+              reserve.projectedTax == 0
+                  ? 'Đang dưới ngưỡng — nhưng app vẫn gợi ý trích sẵn, vì chỉ '
+                      'cần một hợp đồng nữa là cả năm bị đánh thuế trên toàn bộ '
+                      'doanh thu.'
+                  : 'Chuyển số này sang một tài khoản riêng ngay khi tiền về. '
+                      'Tiền thuế chưa bao giờ là tiền của bạn — đừng tiêu nó rồi '
+                      'đi vay để nộp.',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -1422,15 +1962,202 @@ class _StepRow extends StatelessWidget {
   }
 }
 
+// ────────────────────────────────── Roblox ─────────────────────────────────
+
+/// The tab that knows this freelancer's actual business: Robux, DevEx, PayPal,
+/// and the paperwork that makes all of it defensible.
+class _RobloxTab extends ConsumerWidget {
+  const _RobloxTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final profile =
+        ref.watch(taxProfileProvider).valueOrNull ?? const TaxProfile();
+
+    // A concrete anchor: what a single minimum DevEx cash-out is really worth.
+    final minCashout = convertPayout(
+      robux: PayoutDefaults.devExMinRobux,
+      devExUsdPerRobux: profile.devExUsdPerRobux,
+      usdVndRate: profile.usdVndRate,
+      feePct: profile.payoutFeePct,
+    );
+
+    return ListView(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(robloxIntro, style: theme.textTheme.bodyMedium),
+        ),
+        Card(
+          color: theme.colorScheme.primaryContainer,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Một lần rút DevEx tối thiểu '
+                  '(${_int(PayoutDefaults.devExMinRobux)} R\$)',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  '\$${minCashout.usdGross.toStringAsFixed(2)} → '
+                  '${_vnd(minCashout.vndGross)}',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Sau phí ${profile.payoutFeePct}% còn '
+                  '${_vnd(minCashout.vndNet)} về tài khoản — nhưng thuế vẫn tính '
+                  'trên ${_vnd(minCashout.vndGross)}.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        for (final f in robloxFacts) _NoteCard(note: f),
+        const SizedBox(height: 8),
+        Text('Việc cần làm, theo thứ tự',
+            style:
+                theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 8),
+        for (var i = 0; i < robloxSetupSteps.length; i++)
+          _StepRow(index: i + 1, text: robloxSetupSteps[i]),
+        const SizedBox(height: 12),
+        const _ChecklistCard(items: robloxDocChecklist),
+        const SizedBox(height: 12),
+        Text('Chi phí hợp lệ của một 3D artist',
+            style:
+                theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 4),
+        Text(
+          'Chỉ trừ được khi kê khai theo LỢI NHUẬN (công ty TNHH). Ở phương pháp '
+          '2% trên doanh thu thì không trừ chi phí — đó chính là cái giá của sự '
+          'đơn giản, và là lý do tab Máy tính so sánh cả hai.',
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 10),
+        for (final e in modelerExpenses) _ExpenseCard(item: e),
+        const _DisclaimerCard(),
+      ],
+    );
+  }
+}
+
+/// The evidence pack, as a card you can tick through mentally before a filing.
+class _ChecklistCard extends StatelessWidget {
+  const _ChecklistCard({required this.items});
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('📁', style: TextStyle(fontSize: 20)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Hồ sơ cần lưu (bảo hiểm khi bị đối chiếu)',
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            for (final item in items)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.check_box_outlined,
+                        size: 18, color: theme.colorScheme.primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                        child:
+                            Text(item, style: theme.textTheme.bodyMedium)),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ExpenseCard extends StatelessWidget {
+  const _ExpenseCard({required this.item});
+  final ExpenseItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(item.icon, style: const TextStyle(fontSize: 20)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item.name,
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 2),
+                  Text(item.note,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ───────────────────────────────── Helpers ─────────────────────────────────
 
 /// Formats đồng with thousands separators, e.g. 12_500_000 → "12.500.000 ₫".
-String _vnd(int dong) {
-  final s = dong.abs().toString();
+String _vnd(int dong) => '${_int(dong)} ₫';
+
+/// Thousands-separated integer, e.g. 100000 → "100.000".
+String _int(int n) {
+  final s = n.abs().toString();
   final buf = StringBuffer();
   for (var i = 0; i < s.length; i++) {
     if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
     buf.write(s[i]);
   }
-  return '${dong < 0 ? '-' : ''}$buf ₫';
+  return '${n < 0 ? '-' : ''}$buf';
 }

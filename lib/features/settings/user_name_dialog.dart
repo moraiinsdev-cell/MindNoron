@@ -5,38 +5,68 @@ Future<String?> showUserNameDialog(
   String? currentName,
   bool firstRun = false,
 }) {
-  final controller = TextEditingController(text: currentName ?? '');
-
   return showDialog<String?>(
     context: context,
     barrierDismissible: !firstRun,
-    builder: (context) {
-      void save() => Navigator.pop(context, controller.text.trim());
+    builder: (context) => _UserNameDialog(
+      currentName: currentName,
+      firstRun: firstRun,
+    ),
+  );
+}
 
-      return AlertDialog(
-        title: Text(firstRun ? 'What should I call you?' : 'Your name'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 40,
-          textInputAction: TextInputAction.done,
-          decoration: const InputDecoration(
-            labelText: 'Name',
-            hintText: 'Alex',
-          ),
-          onSubmitted: (_) => save(),
+/// Owns its own [TextEditingController] so the controller is disposed only after
+/// the dialog is fully removed (in [State.dispose]). Disposing it the instant
+/// the route pops — as a `.whenComplete()` callback would — crashes on the
+/// dialog's exit animation, which still reads the controller. The hardware Back
+/// button on Android reliably triggers that path.
+class _UserNameDialog extends StatefulWidget {
+  const _UserNameDialog({this.currentName, required this.firstRun});
+
+  final String? currentName;
+  final bool firstRun;
+
+  @override
+  State<_UserNameDialog> createState() => _UserNameDialogState();
+}
+
+class _UserNameDialogState extends State<_UserNameDialog> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.currentName ?? '');
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _save() => Navigator.pop(context, _controller.text.trim());
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.firstRun ? 'What should I call you?' : 'Your name'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        maxLength: 40,
+        textInputAction: TextInputAction.done,
+        decoration: const InputDecoration(
+          labelText: 'Name',
+          hintText: 'Alex',
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(firstRun ? 'Later' : 'Cancel'),
-          ),
-          FilledButton(
-            onPressed: save,
-            child: const Text('Save'),
-          ),
-        ],
-      );
-    },
-  ).whenComplete(controller.dispose);
+        onSubmitted: (_) => _save(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(widget.firstRun ? 'Later' : 'Cancel'),
+        ),
+        FilledButton(
+          onPressed: _save,
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
 }
