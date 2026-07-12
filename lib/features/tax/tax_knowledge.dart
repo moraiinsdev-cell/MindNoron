@@ -16,6 +16,7 @@ class TaxNote {
     required this.title,
     required this.body,
     this.effective,
+    this.source,
   });
 
   final String icon;
@@ -24,6 +25,11 @@ class TaxNote {
 
   /// When it takes effect, e.g. '1/1/2026'. Null = background/ongoing rule.
   final String? effective;
+
+  /// The legal instrument this comes from, e.g. 'Điều 200 BLHS 2015 (sđ 2017)'.
+  /// Anything that states a penalty, a rate or a threshold MUST cite one — a
+  /// number without a source is not something a user can act on or verify.
+  final String? source;
 }
 
 /// A legal optimization strategy card.
@@ -113,14 +119,20 @@ class TaxRiskItem {
     required this.title,
     required this.what,
     required this.consequence,
+    this.source,
   });
 
   final RiskLevel level;
   final String title;
   final String what;
 
-  /// For safe items: how to keep it defensible. For illegal: the penalty.
+  /// For safe items: how to keep it defensible. For illegal: the penalty, with
+  /// the actual figures — a vague "có thể bị xử lý hình sự" tells the user
+  /// nothing about where they stand.
   final String consequence;
+
+  /// The legal instrument behind [consequence].
+  final String? source;
 }
 
 const taxRisks = <TaxRiskItem>[
@@ -204,9 +216,16 @@ const taxRisks = <TaxRiskItem>[
     what:
         'Nhận tiền về tài khoản nhưng không khai, hoặc chỉ khai một phần.',
     consequence:
-        'TRỐN THUẾ. Ngân hàng và cơ quan thuế đối chiếu được dòng tiền; bị '
-        'truy thu + phạt 1–3 lần số thuế trốn + tiền chậm nộp, số lớn có thể bị '
-        'truy cứu hình sự (Điều 200 BLHS).',
+        'TRỐN THUẾ. Cơ quan thuế có quyền yêu cầu ngân hàng cung cấp sao kê, '
+        'nên dòng tiền PayPal về VN đối chiếu được. Hậu quả cụ thể: truy thu đủ '
+        'số thuế + phạt 1–3 lần số thuế trốn + tiền chậm nộp 0,03%/ngày. Nếu số '
+        'thuế trốn từ 100 TRIỆU trở lên → chuyển sang hình sự: 100–300 triệu bị '
+        'phạt tù 3 tháng–1 năm; 300 triệu–dưới 1 tỷ: tù 1–3 năm; từ 1 tỷ: tù '
+        '2–7 năm (hoặc phạt tiền tương ứng). Với mức 2% dịch vụ xuất khẩu, 100 '
+        'triệu tiền thuế tương ứng khoảng 5 tỷ doanh thu giấu — nhưng nếu bạn bị '
+        'ép khai theo lũy tiến 35% thì ngưỡng đó đến nhanh hơn nhiều.',
+    source: 'NĐ 125/2020 Điều 17; Điều 200 BLHS 2015 (sđ 2017); '
+        'Luật QLT 38/2019 Điều 59, 98',
   ),
   TaxRiskItem(
     level: RiskLevel.illegal,
@@ -215,8 +234,12 @@ const taxRisks = <TaxRiskItem>[
         'Dùng tài khoản người thân, ví điện tử nước ngoài hay crypto để tiền '
         'không hiện trên tài khoản của mình.',
     consequence:
-        'TRỐN THUẾ và có thể vi phạm quy định ngoại hối/rửa tiền. Rủi ro pháp '
-        'lý cao hơn nhiều so với số thuế tiết kiệm được — không đáng.',
+        'TRỐN THUẾ (phạt 1–3 lần số thuế trốn; từ 100 triệu tiền thuế trốn là '
+        'ngưỡng hình sự theo Điều 200 BLHS) và có thể vi phạm quy định ngoại '
+        'hối, chống rửa tiền. Rủi ro pháp lý cao hơn nhiều so với số thuế tiết '
+        'kiệm được — không đáng.',
+    source: 'NĐ 125/2020 Điều 17; Điều 200 BLHS; Pháp lệnh Ngoại hối; '
+        'Luật Phòng, chống rửa tiền 2022',
   ),
   TaxRiskItem(
     level: RiskLevel.illegal,
@@ -236,44 +259,119 @@ const taxRisks = <TaxRiskItem>[
     what:
         'Mua hóa đơn, kê chi phí không có thật để giảm lợi nhuận chịu thuế.',
     consequence:
-        'TRỐN THUẾ + vi phạm về hóa đơn. Bị loại chi phí, truy thu, phạt nặng '
-        'và có thể xử lý hình sự.',
+        'TRỐN THUẾ + vi phạm về hóa đơn. Chi phí bị loại, truy thu thuế, phạt '
+        '1–3 lần số thuế trốn. Riêng hành vi mua bán hóa đơn trái phép còn là '
+        'tội độc lập: phạt tiền 50–200 triệu, cải tạo không giam giữ đến 3 năm '
+        'hoặc tù 6 tháng–5 năm (Điều 203 BLHS).',
+    source: 'NĐ 125/2020 Điều 17; Điều 200 & Điều 203 BLHS 2015 (sđ 2017)',
   ),
 ];
 
-/// Penalties & audit triggers — the downside the risk tab quantifies.
+/// Penalties & audit triggers — with the actual numbers and where they come
+/// from. "Số tiền lớn thì đi tù" is useless advice; the thresholds below are
+/// exact, so you can see precisely how far the line is from where you stand.
 const taxPenalties = <TaxNote>[
   TaxNote(
     icon: '⏰',
-    title: 'Chậm nộp tiền thuế',
+    title: 'Chậm nộp TIỀN thuế → 0,03%/ngày',
     body:
-        'Tính tiền chậm nộp 0,03%/ngày trên số thuế nộp muộn (~10,95%/năm). '
-        'Nộp đúng hạn gần như luôn rẻ hơn mọi mẹo trì hoãn.',
+        'Tiền chậm nộp = 0,03%/ngày × số thuế nộp muộn (≈ 10,95%/năm). Tính '
+        'liên tục từ ngày kế tiếp hạn nộp cho tới ngày nộp thật. Ví dụ: chậm '
+        '10 triệu tiền thuế trong 90 ngày → 270.000 ₫. Không có mức trần theo '
+        'thời gian, nên để càng lâu càng đắt.',
+    effective: 'Hiện hành',
+    source: 'Luật Quản lý thuế 38/2019/QH14, Điều 59 khoản 2',
+  ),
+  TaxNote(
+    icon: '📄',
+    title: 'Chậm nộp HỒ SƠ khai thuế → 2 đến 25 triệu',
+    body:
+        'Phạt theo số ngày trễ, độc lập với tiền thuế: cảnh cáo (trễ 1–5 ngày '
+        'và có tình tiết giảm nhẹ); 2–5 triệu (trễ 1–30 ngày); 5–8 triệu (31–60 '
+        'ngày); 8–15 triệu (61–90 ngày, hoặc trễ trên 90 ngày mà không phát sinh '
+        'thuế phải nộp); 15–25 triệu (trễ trên 90 ngày VÀ có thuế phải nộp). '
+        'Nghĩa là quên nộp tờ khai vẫn bị phạt kể cả khi bạn không nợ đồng thuế nào.',
+    effective: 'Hiện hành',
+    source: 'Nghị định 125/2020/NĐ-CP, Điều 13',
   ),
   TaxNote(
     icon: '📉',
-    title: 'Khai sai dẫn đến thiếu thuế',
+    title: 'Khai sai dẫn đến thiếu thuế → phạt 20% số thuế thiếu',
     body:
-        'Phạt 20% trên số thuế khai thiếu, cộng tiền chậm nộp trên phần thiếu. '
-        'Áp dụng cả khi "quên" chứ không chủ đích trốn.',
+        'Áp dụng khi khai sai nhưng KHÔNG bị coi là trốn thuế (ví dụ ghi nhầm, '
+        'quên một khoản, nhưng nghiệp vụ vẫn phản ánh trên sổ sách/chứng từ). '
+        'Phải nộp đủ số thuế thiếu + 20% phạt + tiền chậm nộp 0,03%/ngày trên '
+        'phần thiếu. Đây là mức "nhẹ" — và là lý do khai trung thực rồi sửa sau '
+        'vẫn hơn hẳn giấu.',
+    effective: 'Hiện hành',
+    source: 'Nghị định 125/2020/NĐ-CP, Điều 16',
+  ),
+  TaxNote(
+    icon: '⚠️',
+    title: 'Trốn thuế — phạt hành chính 1 đến 3 lần số thuế trốn',
+    body:
+        'Mức phạt tăng theo tình tiết: 1 lần số thuế trốn (có ít nhất 1 tình '
+        'tiết giảm nhẹ, không có tăng nặng); 1,5 lần (không tăng nặng, không '
+        'giảm nhẹ); 2 lần (1 tình tiết tăng nặng); 2,5 lần (2 tình tiết); 3 lần '
+        '(từ 3 tình tiết tăng nặng trở lên). Cộng thêm buộc nộp đủ số thuế trốn '
+        'và tiền chậm nộp. Trốn 100 triệu, tình tiết trung bình → mất khoảng '
+        '250 triệu.',
+    effective: 'Hiện hành',
+    source: 'Nghị định 125/2020/NĐ-CP, Điều 17',
   ),
   TaxNote(
     icon: '🚨',
-    title: 'Trốn thuế (hành chính & hình sự)',
+    title: 'Trốn thuế — HÌNH SỰ: lằn ranh bắt đầu từ 100 triệu',
     body:
-        'Phạt từ 1 đến 3 lần số thuế trốn. Số tiền trốn lớn (theo ngưỡng Bộ '
-        'luật Hình sự) có thể bị truy cứu trách nhiệm hình sự — phạt tù và cấm '
-        'hành nghề. Đây là lằn ranh không nên thử.',
+        'Đây là con số cụ thể của chữ "lớn". Khung hình phạt với cá nhân:\n\n'
+        '• Trốn từ 100 triệu đến dưới 300 triệu → phạt tiền 100–500 triệu HOẶC '
+        'phạt tù 3 tháng – 1 năm.\n'
+        '• Từ 300 triệu đến dưới 1 tỷ (hoặc dưới 300 triệu nhưng có tình tiết '
+        'tăng nặng: có tổ chức, phạm tội 2 lần trở lên, tái phạm nguy hiểm…) → '
+        'phạt tiền 500 triệu – 1,5 tỷ HOẶC phạt tù 1 – 3 năm.\n'
+        '• Từ 1 tỷ trở lên → phạt tiền 1,5 – 4,5 tỷ HOẶC phạt tù 2 – 7 năm.\n\n'
+        'Dưới 100 triệu vẫn có thể bị xử lý hình sự NẾU đã từng bị xử phạt hành '
+        'chính về trốn thuế, hoặc đã bị kết án về tội này (hay một số tội kinh '
+        'tế khác) mà chưa được xóa án tích. Ngoài ra còn có thể bị phạt bổ sung '
+        '20–100 triệu, cấm hành nghề 1–5 năm, tịch thu tài sản.',
+    effective: 'Ngưỡng cần nhớ',
+    source: 'Điều 200 Bộ luật Hình sự 2015, sửa đổi bổ sung 2017',
+  ),
+  TaxNote(
+    icon: '⏳',
+    title: 'Sai sót bị truy ngược bao xa? → 10 năm',
+    body:
+        'Thời hiệu xử phạt vi phạm hành chính về thuế (trốn thuế, khai thiếu) '
+        'là 5 năm kể từ ngày thực hiện hành vi. NHƯNG nghĩa vụ truy thu tiền '
+        'thuế và tiền chậm nộp thì tính tới 10 năm trở về trước. Nếu chưa đăng '
+        'ký thuế thì bị truy thu không giới hạn thời gian. Nói cách khác: "để '
+        'lâu cho nó qua" không phải là một chiến lược.',
+    effective: 'Hiện hành',
+    source: 'Luật Quản lý thuế 38/2019/QH14, Điều 8 & Điều 137; '
+        'Nghị định 125/2020/NĐ-CP, Điều 8',
   ),
   TaxNote(
     icon: '🔍',
     title: 'Điều gì kích hoạt thanh tra',
     body:
         'Dòng tiền vào lớn/bất thường không khớp tờ khai; nhận nhiều lần từ '
-        'nước ngoài mà không đăng ký thuế; kê khai giảm đột ngột; ngành rủi ro '
-        'cao. Hồ sơ sạch, khớp sao kê là "bảo hiểm" tốt nhất khi bị đối chiếu.',
+        'nước ngoài mà không đăng ký thuế; kê khai giảm đột ngột so với các kỳ '
+        'trước; ngành rủi ro cao. Cơ quan thuế được quyền yêu cầu ngân hàng cung '
+        'cấp thông tin tài khoản và giao dịch của người nộp thuế — nên dòng tiền '
+        'PayPal về ngân hàng VN không hề "vô hình". Hồ sơ sạch, khớp sao kê là '
+        '"bảo hiểm" tốt nhất khi bị đối chiếu.',
+    source: 'Luật Quản lý thuế 38/2019/QH14, Điều 27 & Điều 98 '
+        '(nghĩa vụ cung cấp thông tin của ngân hàng thương mại)',
   ),
 ];
+
+/// A closing note the risk tab shows under the penalty list: these are curated
+/// summaries, and the law moves.
+const penaltySourceNote =
+    'Các mức phạt trên trích từ văn bản pháp luật hiện hành tại thời điểm biên '
+    'soạn (2026). Đây là bản tóm tắt rút gọn, không thay thế văn bản gốc — tra '
+    'toàn văn tại thuvienphapluat.vn hoặc cổng thông tin của Bộ Tài chính, và '
+    'xác nhận với đại lý thuế trước khi dựa vào để ra quyết định.';
 
 const taxDisclaimer =
     'Công cụ tham khảo, KHÔNG phải tư vấn thuế. Số liệu dựa trên quy định áp '
@@ -323,10 +421,40 @@ const taxNotes = <TaxNote>[
     effective: 'Kỳ tính thuế 2026',
     body:
         'Giảm trừ bản thân: 15,5 triệu/tháng (186 triệu/năm). Mỗi người phụ '
-        'thuộc: 6,2 triệu/tháng. Áp dụng cho thu nhập tính thuế theo tiền '
-        'lương/tiền công (biểu lũy tiến). Đăng ký đầy đủ người phụ thuộc (con, '
-        'cha mẹ hết tuổi lao động/không thu nhập…) là cách giảm thuế đơn giản '
-        'mà nhiều người quên.',
+        'thuộc: 6,2 triệu/tháng (74,4 triệu/năm). Áp dụng cho thu nhập tính '
+        'thuế theo tiền lương/tiền công (biểu lũy tiến) — KHÔNG áp dụng khi bạn '
+        'nộp theo cá nhân kinh doanh 2% trên doanh thu. Đăng ký đầy đủ người '
+        'phụ thuộc là cách giảm thuế đơn giản mà nhiều người quên (xem thẻ điều '
+        'kiện bên dưới).',
+    source: 'Nghị quyết về mức giảm trừ gia cảnh; Luật Thuế TNCN',
+  ),
+  TaxNote(
+    icon: '🎂',
+    title: '"Cha mẹ hết tuổi lao động" là bao nhiêu tuổi? — 2026: nam 61 tuổi '
+        '6 tháng, nữ 57 tuổi',
+    effective: 'Con số cụ thể',
+    body:
+        'Tuổi nghỉ hưu KHÔNG còn cố định 60/55 nữa — nó tăng dần theo lộ trình: '
+        'nam mỗi năm +3 tháng (từ 60 tuổi 3 tháng năm 2021 đến đủ 62 tuổi vào '
+        '2028); nữ mỗi năm +4 tháng (từ 55 tuổi 4 tháng năm 2021 đến đủ 60 tuổi '
+        'vào 2035).\n\n'
+        'Tra nhanh cho năm 2026: NAM 61 tuổi 6 tháng · NỮ 57 tuổi. '
+        '(2027: nam 61t9m, nữ 57t4m. 2028: nam 62t, nữ 57t8m.)\n\n'
+        'Nhưng tuổi CHƯA đủ — điều kiện thu nhập mới là thứ hay đánh trượt hồ sơ:\n'
+        '• Cha mẹ NGOÀI độ tuổi lao động: phải không có thu nhập, HOẶC có thu '
+        'nhập bình quân tháng từ mọi nguồn ≤ 1.000.000 ₫. Lương hưu, tiền cho '
+        'thuê nhà, lãi tiết kiệm đều tính. Bố mẹ có lương hưu 3 triệu/tháng thì '
+        'KHÔNG đủ điều kiện.\n'
+        '• Cha mẹ TRONG độ tuổi lao động: phải đồng thời (a) bị khuyết tật, '
+        'không có khả năng lao động, VÀ (b) thu nhập ≤ 1.000.000 ₫/tháng.\n'
+        '• Con: dưới 18 tuổi (tính đủ theo tháng); hoặc từ 18 tuổi trở lên bị '
+        'khuyết tật không có khả năng lao động; hoặc đang học đại học/cao đẳng/'
+        'trung cấp/dạy nghề và có thu nhập ≤ 1.000.000 ₫/tháng.\n\n'
+        'Lưu ý: mỗi người phụ thuộc chỉ được tính giảm trừ MỘT LẦN vào MỘT người '
+        'nộp thuế trong năm — anh chị em không cùng khai một bố/mẹ.',
+    source: 'Bộ luật Lao động 2019, Điều 169 (lộ trình tuổi nghỉ hưu) & Nghị '
+        'định 135/2020/NĐ-CP; Thông tư 111/2013/TT-BTC, Điều 9 khoản 1.d '
+        '(điều kiện người phụ thuộc)',
   ),
   TaxNote(
     icon: '💻',
@@ -449,13 +577,22 @@ const taxStrategies = <TaxStrategy>[
     title: 'Đăng ký đủ người phụ thuộc',
     summary:
         'Mỗi người phụ thuộc giảm 6,2 triệu/tháng (74,4 triệu/năm) khỏi thu '
-        'nhập tính thuế theo tiền lương. Con nhỏ, cha mẹ hết tuổi lao '
-        'động/không có thu nhập, người bạn trực tiếp nuôi dưỡng… đều có thể là '
-        'người phụ thuộc nếu đủ điều kiện.',
+        'nhập tính thuế. CẢNH BÁO QUAN TRỌNG: giảm trừ này CHỈ áp dụng cho cách '
+        'khai theo tiền lương/tiền công (biểu lũy tiến). Nếu bạn đăng ký cá '
+        'nhân kinh doanh nộp 2% trên doanh thu — phương án tối ưu cho hầu hết '
+        'trường hợp — thì người phụ thuộc KHÔNG giảm được đồng thuế nào. Đừng '
+        'chọn cách khai đắt hơn chỉ vì muốn dùng giảm trừ gia cảnh.',
     steps: [
-      'Chuẩn bị hồ sơ chứng minh quan hệ và điều kiện của người phụ thuộc.',
-      'Đăng ký mẫu 20-ĐK-TCT (tờ khai đăng ký người phụ thuộc) qua '
-          'thuedientu.gdt.gov.vn hoặc nơi làm việc.',
+      'Kiểm tra điều kiện chính xác: cha/mẹ ngoài tuổi lao động (2026: nam từ '
+          '61 tuổi 6 tháng, nữ từ 57 tuổi) VÀ thu nhập bình quân ≤ 1.000.000 '
+          '₫/tháng — lương hưu cũng tính vào ngưỡng này.',
+      'Con dưới 18 tuổi thì mặc nhiên đủ; con trên 18 phải đang đi học và thu '
+          'nhập ≤ 1.000.000 ₫/tháng.',
+      'Chuẩn bị hồ sơ chứng minh quan hệ (giấy khai sinh, sổ hộ khẩu/CCCD) và '
+          'điều kiện (xác nhận không có thu nhập của địa phương, giấy tờ khuyết '
+          'tật nếu có).',
+      'Đăng ký mẫu 20-ĐK-TCT qua thuedientu.gdt.gov.vn; mỗi người phụ thuộc chỉ '
+          'được một người nộp thuế kê khai trong năm.',
       'Đăng ký sớm trong năm để được giảm trừ cho các tháng phát sinh; bổ sung '
           'khi quyết toán nếu còn thiếu.',
     ],

@@ -49,6 +49,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // The hub opens on the roadmap: the filing cadence is answered up front.
+    expect(find.text('Khai theo tháng hay theo quý?'), findsOneWidget);
+    expect(find.text('Khai theo QUÝ'), findsOneWidget);
+    expect(find.text('ÁP DỤNG CHO BẠN'), findsOneWidget);
+    expect(find.textContaining('Còn '), findsWidgets); // countdown to 31/12
+
+    await tester.tap(find.text('Máy tính'));
+    await tester.pumpAndSettle();
+
     // All three comparison cards are present.
     expect(find.text('Cá nhân kinh doanh'), findsOneWidget);
     expect(find.text('Tiền lương / tiền công'), findsOneWidget);
@@ -92,5 +101,58 @@ void main() {
       find.textContaining('Thuế tính trên USD gộp'),
       findsOneWidget,
     );
+
+    // Banking tab leads with the misunderstanding that costs the most: money
+    // arriving in VNĐ through a correspondent bank has NOT had tax withheld.
+    await tester.tap(find.text('Ngân hàng'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('đã bị khấu trừ thuế chưa?'), findsOneWidget);
+    expect(find.textContaining('KHÔNG. Đó là chuyển tiền'), findsOneWidget);
+  });
+
+  testWidgets('penalties state exact thresholds and cite their source',
+      (tester) async {
+    tester.view.physicalSize = const Size(1500, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(() => db.close());
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          databaseProvider.overrideWithValue(db),
+          taxProfileProvider
+              .overrideWith((ref) => Stream.value(const TaxProfile())),
+          taxRevenueProvider
+              .overrideWith((ref) => Stream.value(const <RevenueEntry>[])),
+        ],
+        child: const MaterialApp(home: Scaffold(body: TaxScreen())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Rủi ro'));
+    await tester.pumpAndSettle();
+
+    // The penalty list sits below the risk items — scroll it into view (which is
+    // what forces the lazy ListView to build it).
+    await tester.dragUntilVisible(
+      find.textContaining('lằn ranh bắt đầu từ 100 triệu'),
+      find.byType(ListView).first,
+      const Offset(0, -300),
+    );
+    await tester.pumpAndSettle();
+
+    // "Số tiền lớn thì đi tù" is useless. The criminal threshold is a number.
+    expect(
+      find.textContaining('lằn ranh bắt đầu từ 100 triệu'),
+      findsOneWidget,
+    );
+    // And every penalty carries the law it comes from.
+    expect(find.textContaining('Điều 200 Bộ luật Hình sự'), findsWidgets);
+    expect(find.textContaining('Căn cứ:'), findsWidgets);
   });
 }

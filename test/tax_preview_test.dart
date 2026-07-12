@@ -29,7 +29,9 @@ Future<void> _capture(WidgetTester tester, Key key, String name) async {
 
 void main() {
   testWidgets('tax hub tabs render to preview PNGs', (tester) async {
-    tester.view.physicalSize = const Size(1040, 1500);
+    // Wide enough for all nine tab segments — a narrower view scrolls the later
+    // ones off-screen and taps on them silently miss.
+    tester.view.physicalSize = const Size(1700, 1500);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -97,24 +99,30 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Tab 1 — Robux/USD converted to đồng, then the 3-way comparison below it.
+    // Tab 1 — the roadmap is the landing view: countdown + filing cadence.
+    expect(find.text('Khai theo tháng hay theo quý?'), findsOneWidget);
+    await _capture(tester, key, '1_roadmap');
+
+    await tester.tap(find.text('Máy tính'));
+    await tester.pumpAndSettle();
     expect(find.text('Đường đi của tiền (cả năm)'), findsOneWidget);
-    await _capture(tester, key, '1_calculator');
+    await _capture(tester, key, '2_calculator');
 
     // The comparison cards sit below the fold — scroll them into view (which is
     // also what forces the lazy ListView to build them).
     await tester.drag(find.byType(ListView).first, const Offset(0, -900));
     await tester.pumpAndSettle();
     expect(find.text('Công ty TNHH một thành viên'), findsOneWidget);
-    await _capture(tester, key, '1b_calculator_compare');
+    await _capture(tester, key, '2b_calculator_compare');
 
     for (final (label, name) in [
-      ('Doanh thu', '2_revenue'),
-      ('Roblox', '3_roblox'),
-      ('Rủi ro', '4_risk'),
-      ('Quốc tế', '5_dta'),
-      ('Quy định', '6_regulations'),
-      ('Tối ưu', '7_strategies'),
+      ('Doanh thu', '3_revenue'),
+      ('Roblox', '4_roblox'),
+      ('Ngân hàng', '5_banking'),
+      ('Rủi ro', '6_risk'),
+      ('Quốc tế', '7_dta'),
+      ('Quy định', '8_regulations'),
+      ('Tối ưu', '9_strategies'),
     ]) {
       await tester.tap(find.text(label));
       await tester.pumpAndSettle();

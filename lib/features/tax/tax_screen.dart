@@ -4,11 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/event_repository.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
+import 'tax_banking.dart';
 import 'tax_dta.dart';
 import 'tax_engine.dart';
 import 'tax_knowledge.dart';
 import 'tax_models.dart';
 import 'tax_repository.dart';
+import 'tax_roadmap.dart';
 import 'tax_roblox.dart';
 
 /// Offline Tax hub, tuned for a Vietnamese 3D artist selling models to Roblox
@@ -26,10 +28,22 @@ class TaxScreen extends ConsumerStatefulWidget {
   ConsumerState<TaxScreen> createState() => _TaxScreenState();
 }
 
-enum _Tab { calculator, revenue, roblox, risk, dta, regulations, strategies }
+enum _Tab {
+  roadmap,
+  calculator,
+  revenue,
+  roblox,
+  banking,
+  risk,
+  dta,
+  regulations,
+  strategies
+}
 
 class _TaxScreenState extends ConsumerState<TaxScreen> {
-  _Tab _tab = _Tab.calculator;
+  /// Opens on the roadmap: the first question is always "what do I actually do,
+  /// and by when" — the numbers only matter once that's settled.
+  _Tab _tab = _Tab.roadmap;
 
   /// Live copy of the persisted profile — every edit writes through to settings.
   TaxProfile _p = const TaxProfile();
@@ -125,6 +139,11 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
               showSelectedIcon: false,
               segments: const [
                 ButtonSegment(
+                  value: _Tab.roadmap,
+                  icon: Icon(Icons.route_outlined),
+                  label: Text('Lộ trình'),
+                ),
+                ButtonSegment(
                   value: _Tab.calculator,
                   icon: Icon(Icons.calculate_outlined),
                   label: Text('Máy tính'),
@@ -138,6 +157,11 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
                   value: _Tab.roblox,
                   icon: Icon(Icons.sports_esports_outlined),
                   label: Text('Roblox'),
+                ),
+                ButtonSegment(
+                  value: _Tab.banking,
+                  icon: Icon(Icons.account_balance_outlined),
+                  label: Text('Ngân hàng'),
                 ),
                 ButtonSegment(
                   value: _Tab.risk,
@@ -167,6 +191,10 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
           const SizedBox(height: 16),
           Expanded(
             child: switch (_tab) {
+              _Tab.roadmap => _RoadmapTab(
+                  profile: _p,
+                  onToggleStep: (id) => _update(_p.toggleStep(id)),
+                ),
               _Tab.calculator => _CalculatorTab(
                   profile: _p,
                   incomeCtrl: _incomeCtrl,
@@ -183,6 +211,7 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
                 ),
               _Tab.revenue => const _RevenueTab(),
               _Tab.roblox => const _RobloxTab(),
+              _Tab.banking => const _BankingTab(),
               _Tab.risk => const _RiskTab(),
               _Tab.dta => const _DtaTab(),
               _Tab.regulations => const _NotesTab(),
@@ -1174,12 +1203,45 @@ class _NoteCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(note.body, style: theme.textTheme.bodyMedium),
+                  if (note.source != null) ...[
+                    const SizedBox(height: 8),
+                    _SourceLine(source: note.source!),
+                  ],
                 ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Citation footer. Every stated penalty, rate or threshold carries one — a
+/// number the user cannot trace back is a number they cannot act on.
+class _SourceLine extends StatelessWidget {
+  const _SourceLine({required this.source});
+  final String source;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.menu_book_outlined,
+            size: 14, color: theme.colorScheme.onSurfaceVariant),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            'Căn cứ: $source',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1269,16 +1331,23 @@ class _RevenueTab extends ConsumerWidget {
       ..sort((a, b) => b.month.compareTo(a.month));
     final toDate = thisYear.fold<int>(0, (sum, e) => sum + e.amount);
     final feesToDate = thisYear.fold<int>(0, (sum, e) => sum + e.feeVnd);
+    final plan = planRemainingYear(
+      revenueToDate: toDate,
+      today: now,
+      line: profile.line,
+    );
     final projection = projectRevenue(toDate: toDate, monthsElapsed: now.month);
     final reserve = computeReserve(
       revenueToDate: toDate,
-      projectedAnnualRevenue: projection.projectedAnnual,
+      projectedAnnualRevenue: plan.projectedYearEnd,
       line: profile.line,
     );
 
     return ListView(
       children: [
         _ThresholdCard(projection: projection, year: now.year),
+        const SizedBox(height: 12),
+        _HeadroomCard(plan: plan),
         const SizedBox(height: 12),
         if (toDate > 0) ...[
           _ReserveCard(reserve: reserve, feesToDate: feesToDate),
@@ -1534,6 +1603,82 @@ class _RevenueTile extends ConsumerWidget {
   }
 }
 
+/// "Từ hôm nay đến 31/12 tôi còn nhận thêm được bao nhiêu?" — the decision card.
+///
+/// Three states, three different pieces of advice: still under the threshold
+/// (here's your headroom), projected to land in the dead zone (push past it or
+/// defer), or clear of it (just reserve the tax).
+class _HeadroomCard extends StatelessWidget {
+  const _HeadroomCard({required this.plan});
+  final RemainingYearPlan plan;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final pos = bandOf(plan.projectedYearEnd);
+
+    final (color, headline, advice) = switch (plan) {
+      _ when plan.projectedInDeadZone => (
+          theme.colorScheme.error,
+          'Nhịp hiện tại đang lao thẳng vào "vùng chết"',
+          'Ước tính chốt năm ${_vnd(plan.projectedYearEnd)} — nằm giữa 500 triệu '
+              'và ${_vnd(plan.cliff.deadZoneTop)}, tức là làm thêm nhưng cầm về '
+              'ít hơn. Hoặc nhận đủ việc để vượt hẳn ${_vnd(plan.cliff.deadZoneTop)}, '
+              'hoặc dời hợp đồng sang năm sau.',
+        ),
+      _ when plan.headroom > 0 => (
+          theme.colorScheme.primary,
+          'Còn nhận thêm được ${_vnd(plan.headroom)} mà chưa phát sinh thuế',
+          'Trong ${plan.daysRemaining} ngày còn lại của năm. Vượt mốc 500 triệu '
+              'thì thuế đánh trên TOÀN BỘ doanh thu (khoảng '
+              '${_vnd(plan.cliff.taxAtCrossing)} ngay khi chạm ngưỡng), không '
+              'chỉ phần vượt — nên hãy chủ động, đừng để vô tình trôi qua.',
+        ),
+      _ => (
+          theme.colorScheme.primary,
+          'Đã qua ngưỡng — giờ là chuyện trích quỹ, không phải né mốc',
+          'Doanh thu đã vượt 500 triệu, thuế tính trên toàn bộ. Tin tốt: thuế '
+              'suất PHẲNG 2% và không tăng dù bạn kiếm bao nhiêu — làm càng '
+              'nhiều càng lời, chỉ cần trích quỹ đều.',
+        ),
+    };
+
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: color, width: 2),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Còn ${plan.daysRemaining} ngày đến 31/12/${plan.yearEnd.year}',
+                style: theme.textTheme.labelMedium
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 6),
+            Text(headline,
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w800, color: color)),
+            const SizedBox(height: 6),
+            Text(advice, style: theme.textTheme.bodyMedium),
+            const Divider(height: 24),
+            _Row('Nhịp hiện tại', '${_vnd(plan.dailyRunRate.round())}/ngày'),
+            _Row('Ước tính chốt 31/12', _vnd(plan.projectedYearEnd)),
+            _Row('Bậc doanh thu', '${pos.band.label} (${pos.band.range})'),
+            if (pos.nextRungAt != null)
+              _Row('Đến bậc kế tiếp', _vnd(pos.toNextRung)),
+            const SizedBox(height: 10),
+            Text(pos.band.duty,
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// The cash-flow half of the feature: how much of the money already received
 /// isn't actually yours, and should be sitting in a separate account today.
 class _ReserveCard extends StatelessWidget {
@@ -1715,6 +1860,27 @@ class _RiskTab extends StatelessWidget {
                 ?.copyWith(fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
         for (final p in taxPenalties) _NoteCard(note: p),
+        Container(
+          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.menu_book_outlined,
+                  size: 18, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(penaltySourceNote,
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              ),
+            ],
+          ),
+        ),
         const _DisclaimerCard(),
       ],
     );
@@ -1785,6 +1951,10 @@ class _RiskCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (item.source != null) ...[
+              const SizedBox(height: 8),
+              _SourceLine(source: item.source!),
+            ],
           ],
         ),
       ),
@@ -1962,6 +2132,659 @@ class _StepRow extends StatelessWidget {
   }
 }
 
+// ───────────────────────────────── Ngân hàng ───────────────────────────────
+
+/// Where the money physically lives. Leads with the misunderstanding that costs
+/// freelancers the most: money arriving in VNĐ through a correspondent bank has
+/// NOT had tax withheld — the "missing" amount is fees and FX spread, and the
+/// tax obligation is still entirely yours.
+class _BankingTab extends StatelessWidget {
+  const _BankingTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return ListView(
+      children: [
+        Card(
+          color: theme.colorScheme.errorContainer,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.priority_high,
+                        color: theme.colorScheme.onErrorContainer),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Tiền DevEx về qua Vietcombank → MBBank bằng VNĐ: '
+                        'đã bị khấu trừ thuế chưa?',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: theme.colorScheme.onErrorContainer,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(withholdingAnswer,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onErrorContainer)),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text('🎯', style: TextStyle(fontSize: 20)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text('Khai theo số nào?',
+                          style: theme.textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w800)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(taxBaseAnchor, style: theme.textTheme.bodyMedium),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text('Kiến trúc 4 tài khoản',
+            style: theme.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 2),
+        Text(
+          'Tiền có nhiệm vụ khác nhau thì không nên nằm chung một chỗ — để chung '
+          'là kiểu gì cũng tiêu mất. Bạn đang dùng một tài khoản MBBank cho tất '
+          'cả; đây là cách tách ra.',
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 10),
+        for (final r in accountRoles) _AccountRoleCard(role: r),
+        const SizedBox(height: 12),
+        Text('So sánh kênh nhận tiền',
+            style: theme.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 2),
+        Text(
+          'Chênh 2% chi phí trên doanh thu 500 triệu là 10 triệu/năm — bằng cả '
+          'tiền thuế của bạn ở mức 2%. Đáng để dành một buổi so sánh.',
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 10),
+        for (final c in payoutChannels) _ChannelCard(channel: c),
+        const SizedBox(height: 12),
+        const _ChecklistCard(
+          items: bankSelectionChecklist,
+          icon: '🔎',
+          title: 'Cần tự kiểm chứng trước khi đổi ngân hàng/kênh',
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.wifi_off,
+                  size: 18, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(bankDisclaimer,
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        const _DisclaimerCard(),
+      ],
+    );
+  }
+}
+
+class _AccountRoleCard extends StatelessWidget {
+  const _AccountRoleCard({required this.role});
+  final AccountRole role;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Theme(
+        data: theme.copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          leading: Text(role.icon, style: const TextStyle(fontSize: 22)),
+          title: Text(role.name,
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w800)),
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(role.job, style: theme.textTheme.bodyMedium),
+            ),
+            const SizedBox(height: 12),
+            Text('Chọn ngân hàng ưu tiên:',
+                style: theme.textTheme.labelMedium
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            for (final w in role.wants)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 5),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.check, size: 16, color: theme.colorScheme.primary),
+                    const SizedBox(width: 6),
+                    Expanded(
+                        child: Text(w, style: theme.textTheme.bodySmall)),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.errorContainer.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('⚠️', style: TextStyle(fontSize: 14)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('Tránh: ${role.avoid}',
+                        style: theme.textTheme.bodySmall),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChannelCard extends StatelessWidget {
+  const _ChannelCard({required this.channel});
+  final PayoutChannel channel;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final c = channel;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(c.icon, style: const TextStyle(fontSize: 20)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(c.name,
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(c.how, style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text('💰 Chi phí ước tính: ${c.costHint}',
+                  style: theme.textTheme.bodySmall),
+            ),
+            const SizedBox(height: 10),
+            for (final p in c.pros)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('👍  ', style: TextStyle(fontSize: 12)),
+                    Expanded(
+                        child: Text(p, style: theme.textTheme.bodySmall)),
+                  ],
+                ),
+              ),
+            for (final n in c.cons)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('👎  ', style: TextStyle(fontSize: 12)),
+                    Expanded(
+                        child: Text(n, style: theme.textTheme.bodySmall)),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ───────────────────────────────── Lộ trình ────────────────────────────────
+
+/// The tab that turns the rules into a dated sequence: what to do now, what to
+/// do every time money lands, and every filing deadline between today and a
+/// closed 2026 — each one tickable, so progress is visible rather than vaguely
+/// remembered.
+class _RoadmapTab extends ConsumerWidget {
+  const _RoadmapTab({required this.profile, required this.onToggleStep});
+
+  final TaxProfile profile;
+  final ValueChanged<String> onToggleStep;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final now = DateTime.now();
+    final steps = taxRoadmap(now);
+    final done = profile.doneSteps;
+
+    final all = ref.watch(taxRevenueProvider).valueOrNull ?? const [];
+    final toDate = all
+        .where((e) => e.year == now.year)
+        .fold<int>(0, (s, e) => s + e.amount);
+    final plan = planRemainingYear(
+      revenueToDate: toDate,
+      today: now,
+      line: profile.line,
+    );
+
+    // The next hard deadline that hasn't passed — what to worry about today.
+    final next = steps
+        .where((s) => s.due != null && !done.contains(s.id))
+        .where((s) => !s.due!.isBefore(DateTime(now.year, now.month, now.day)))
+        .fold<RoadmapStep?>(
+            null, (best, s) => best == null || s.due!.isBefore(best.due!) ? s : best);
+
+    return ListView(
+      children: [
+        _CountdownCard(plan: plan, doneCount: done.length, total: steps.length),
+        const SizedBox(height: 12),
+        if (next != null) ...[
+          _NextDeadlineCard(step: next, now: now),
+          const SizedBox(height: 12),
+        ],
+        const _FilingFrequencyCard(),
+        const SizedBox(height: 16),
+        for (final phase in RoadmapPhase.values) ...[
+          Text(phase.label,
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 2),
+          Text(phase.blurb,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          const SizedBox(height: 8),
+          for (final s in steps.where((s) => s.phase == phase))
+            _RoadmapStepCard(
+              step: s,
+              done: done.contains(s.id),
+              now: now,
+              onToggle: () => onToggleStep(s.id),
+            ),
+          const SizedBox(height: 14),
+        ],
+        const _DisclaimerCard(),
+      ],
+    );
+  }
+}
+
+/// How much of the year is left to bill in, and where it lands if nothing
+/// changes — the frame every decision below is made against.
+class _CountdownCard extends StatelessWidget {
+  const _CountdownCard({
+    required this.plan,
+    required this.doneCount,
+    required this.total,
+  });
+
+  final RemainingYearPlan plan;
+  final int doneCount;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final y = plan.yearEnd.year;
+
+    return Card(
+      color: theme.colorScheme.primaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Còn ${plan.daysRemaining} ngày đến 31/12/$y',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: theme.colorScheme.onPrimaryContainer,
+                )),
+            const SizedBox(height: 4),
+            Text(
+              'Đã đi ${plan.daysElapsed}/${plan.daysElapsed + plan.daysRemaining} '
+              'ngày của năm $y · đã xong $doneCount/$total việc trong lộ trình.',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onPrimaryContainer),
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: plan.yearProgress.clamp(0.0, 1.0),
+                minHeight: 8,
+                backgroundColor:
+                    theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.15),
+                valueColor:
+                    AlwaysStoppedAnimation(theme.colorScheme.onPrimaryContainer),
+              ),
+            ),
+            if (plan.revenueToDate > 0) ...[
+              const Divider(height: 26),
+              _Row('Doanh thu đã ghi nhận', _vnd(plan.revenueToDate)),
+              _Row('Ước tính chốt 31/12 (theo nhịp hiện tại)',
+                  _vnd(plan.projectedYearEnd)),
+              _Row(
+                plan.headroom > 0
+                    ? 'Còn được nhận thêm trước mốc 500 triệu'
+                    : 'Đã vượt mốc miễn thuế',
+                plan.headroom > 0 ? _vnd(plan.headroom) : '—',
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NextDeadlineCard extends StatelessWidget {
+  const _NextDeadlineCard({required this.step, required this.now});
+
+  final RoadmapStep step;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final days = step.due!
+        .difference(DateTime(now.year, now.month, now.day))
+        .inDays;
+    // Inside a month of a hard deadline, this stops being informational.
+    final urgent = days <= 30;
+    final bg = urgent
+        ? theme.colorScheme.errorContainer
+        : theme.colorScheme.secondaryContainer;
+    final fg = urgent
+        ? theme.colorScheme.onErrorContainer
+        : theme.colorScheme.onSecondaryContainer;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(urgent ? Icons.alarm : Icons.event_outlined, color: fg),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Hạn gần nhất: ${_date(step.due!)} — còn $days ngày',
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w800, color: fg),
+                ),
+                const SizedBox(height: 2),
+                Text(step.title,
+                    style: theme.textTheme.bodyMedium?.copyWith(color: fg)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The direct answer to "khai theo tháng hay theo quý?" — with the two options
+/// that *don't* apply spelled out, so the question stops nagging.
+class _FilingFrequencyCard extends StatelessWidget {
+  const _FilingFrequencyCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('🗓️', style: TextStyle(fontSize: 20)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Khai theo tháng hay theo quý?',
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(filingFrequencyNote, style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 12),
+            for (final o in filingOptions)
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: o.appliesToYou
+                      ? theme.colorScheme.primaryContainer
+                      : theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(10),
+                  border: o.appliesToYou
+                      ? Border.all(color: theme.colorScheme.primary, width: 2)
+                      : null,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(o.name,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: o.appliesToYou
+                                      ? theme.colorScheme.onPrimaryContainer
+                                      : null)),
+                        ),
+                        if (o.appliesToYou)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text('ÁP DỤNG CHO BẠN',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onPrimary,
+                                  fontWeight: FontWeight.w800,
+                                )),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(o.who,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                            color: o.appliesToYou
+                                ? theme.colorScheme.onPrimaryContainer
+                                : theme.colorScheme.onSurfaceVariant)),
+                    const SizedBox(height: 4),
+                    Text('⏰ ${o.deadline}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: o.appliesToYou
+                                ? theme.colorScheme.onPrimaryContainer
+                                : theme.colorScheme.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoadmapStepCard extends StatelessWidget {
+  const _RoadmapStepCard({
+    required this.step,
+    required this.done,
+    required this.now,
+    required this.onToggle,
+  });
+
+  final RoadmapStep step;
+  final bool done;
+  final DateTime now;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final due = step.due;
+    final days =
+        due?.difference(DateTime(now.year, now.month, now.day)).inDays;
+    final overdue = days != null && days < 0 && !done;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: overdue
+            ? BorderSide(color: theme.colorScheme.error, width: 2)
+            : BorderSide.none,
+      ),
+      child: Theme(
+        data: theme.copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          childrenPadding: const EdgeInsets.fromLTRB(52, 0, 16, 14),
+          leading: Checkbox(
+            value: done,
+            onChanged: (_) => onToggle(),
+          ),
+          title: Row(
+            children: [
+              Text(step.icon, style: const TextStyle(fontSize: 16)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  step.title,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    decoration: done ? TextDecoration.lineThrough : null,
+                    color: done ? theme.colorScheme.onSurfaceVariant : null,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          subtitle: due == null
+              ? null
+              : Padding(
+                  padding: const EdgeInsets.only(top: 3, left: 24),
+                  child: Text(
+                    done
+                        ? 'Hạn ${_date(due)} · đã xong'
+                        : overdue
+                            ? 'QUÁ HẠN ${-days} ngày (${_date(due)})'
+                            : 'Hạn ${_date(due)} · còn $days ngày',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: overdue
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Vì sao: ${step.why}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant)),
+            ),
+            const SizedBox(height: 10),
+            for (final a in step.actions)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.arrow_right,
+                        size: 18, color: theme.colorScheme.primary),
+                    const SizedBox(width: 4),
+                    Expanded(
+                        child: Text(a, style: theme.textTheme.bodyMedium)),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ────────────────────────────────── Roblox ─────────────────────────────────
 
 /// The tab that knows this freelancer's actual business: Robux, DevEx, PayPal,
@@ -2063,8 +2886,15 @@ class _RobloxTab extends ConsumerWidget {
 
 /// The evidence pack, as a card you can tick through mentally before a filing.
 class _ChecklistCard extends StatelessWidget {
-  const _ChecklistCard({required this.items});
+  const _ChecklistCard({
+    required this.items,
+    this.icon = '📁',
+    this.title = 'Hồ sơ cần lưu (bảo hiểm khi bị đối chiếu)',
+  });
+
   final List<String> items;
+  final String icon;
+  final String title;
 
   @override
   Widget build(BuildContext context) {
@@ -2077,10 +2907,10 @@ class _ChecklistCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Text('📁', style: TextStyle(fontSize: 20)),
+                Text(icon, style: const TextStyle(fontSize: 20)),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('Hồ sơ cần lưu (bảo hiểm khi bị đối chiếu)',
+                  child: Text(title,
                       style: theme.textTheme.titleSmall
                           ?.copyWith(fontWeight: FontWeight.w800)),
                 ),
@@ -2150,6 +2980,9 @@ class _ExpenseCard extends StatelessWidget {
 
 /// Formats đồng with thousands separators, e.g. 12_500_000 → "12.500.000 ₫".
 String _vnd(int dong) => '${_int(dong)} ₫';
+
+/// Vietnamese short date, e.g. 31/12/2026.
+String _date(DateTime d) => '${d.day}/${d.month}/${d.year}';
 
 /// Thousands-separated integer, e.g. 100000 → "100.000".
 String _int(int n) {
