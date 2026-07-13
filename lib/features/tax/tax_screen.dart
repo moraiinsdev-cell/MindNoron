@@ -3,11 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/event_repository.dart';
+import '../../data/repositories/expense_repository.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
 import 'tax_banking.dart';
 import 'tax_dta.dart';
 import 'tax_engine.dart';
 import 'tax_knowledge.dart';
+import 'tax_living_cost.dart';
 import 'tax_models.dart';
 import 'tax_repository.dart';
 import 'tax_roadmap.dart';
@@ -1927,9 +1929,17 @@ class _FundsTabState extends ConsumerState<_FundsTab> {
         const SizedBox(height: 12),
         _SpendCard(
           controller: _spendCtrl,
+          estimate: ref.watch(livingCostProvider).valueOrNull,
+          entered: profile.monthlySpend,
           onChanged: (v) => ref
               .read(taxRepositoryProvider)
               .save(profile.copyWith(monthlySpend: v * 1000000)),
+          onUseEstimate: (v) {
+            _spendCtrl.text = (v ~/ 1000000).toString();
+            ref
+                .read(taxRepositoryProvider)
+                .save(profile.copyWith(monthlySpend: v));
+          },
         ),
         const SizedBox(height: 12),
         if (!health.taxOnTrack && health.taxShouldHold > 0) ...[
@@ -2031,81 +2041,126 @@ class _FundsTabState extends ConsumerState<_FundsTab> {
     final noteCtrl = TextEditingController();
     final isOut = sign < 0;
 
+    // Spending a fund is spending. Money leaving the gear or emergency envelope
+    // buys something real and belongs in the expense log — otherwise it leaves
+    // the savings system and reappears nowhere, which is how a budget starts
+    // lying to you. A buffer withdrawal is different: that is you paying
+    // yourself, and the spending it funds gets logged as it happens.
+    var logExpense = isOut && _expensable(fund.kind);
+
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(isOut
-            ? 'Rút khỏi ${fund.name}'
-            : 'Nạp vào ${fund.name}'),
-        content: SizedBox(
-          width: 380,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: amountCtrl,
-                autofocus: true,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: const InputDecoration(
-                  labelText: 'Số tiền',
-                  suffixText: 'triệu ₫',
-                  border: OutlineInputBorder(),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: Text(isOut
+              ? 'Rút khỏi ${fund.name}'
+              : 'Nạp vào ${fund.name}'),
+          content: SizedBox(
+            width: 380,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: amountCtrl,
+                  autofocus: true,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: const InputDecoration(
+                    labelText: 'Số tiền',
+                    suffixText: 'triệu ₫',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: noteCtrl,
-                decoration: InputDecoration(
-                  labelText: isOut ? 'Rút để làm gì?' : 'Ghi chú',
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-              if (isOut) ...[
                 const SizedBox(height: 12),
-                Text(
-                  fund.kind == FundKind.tax
-                      ? 'Đây là tiền của cơ quan thuế đang giữ hộ. Rút ra nghĩa '
-                          'là đến kỳ nộp bạn sẽ phải bù từ chỗ khác.'
-                      : 'Mỗi lần rút, số tháng sống sót của bạn ngắn lại. Ghi rõ '
-                          'lý do — để lần sau đọc lại còn thấy nó có đáng không.',
-                  style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(ctx).colorScheme.onSurfaceVariant),
+                TextField(
+                  controller: noteCtrl,
+                  decoration: InputDecoration(
+                    labelText: isOut ? 'Rút để làm gì?' : 'Ghi chú',
+                    border: const OutlineInputBorder(),
+                  ),
                 ),
+                if (isOut && _expensable(fund.kind)) ...[
+                  const SizedBox(height: 4),
+                  CheckboxListTile(
+                    value: logExpense,
+                    onChanged: (v) => setLocal(() => logExpense = v ?? false),
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: Text('Ghi luôn thành khoản chi tiêu',
+                        style: Theme.of(ctx).textTheme.bodySmall),
+                  ),
+                ],
+                if (isOut) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    fund.kind == FundKind.tax
+                        ? 'Đây là tiền của cơ quan thuế đang giữ hộ. Rút ra '
+                            'nghĩa là đến kỳ nộp bạn sẽ phải bù từ chỗ khác.'
+                        : 'Mỗi lần rút, số tháng sống sót của bạn ngắn lại. Ghi '
+                            'rõ lý do — để lần sau đọc lại còn thấy nó có đáng '
+                            'không.',
+                    style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(ctx).colorScheme.onSurfaceVariant),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Hủy')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(isOut ? 'Rút' : 'Nạp')),
+          ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Hủy')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(isOut ? 'Rút' : 'Nạp')),
-        ],
       ),
     );
 
     if (ok == true) {
       final raw = int.tryParse(amountCtrl.text.trim()) ?? 0;
+      final note = noteCtrl.text.trim();
       if (raw > 0) {
+        final amount = raw * 1000000;
         await ref.read(taxRepositoryProvider).addFundTxns([
           FundTxn(
             id: 'tx-${DateTime.now().microsecondsSinceEpoch}',
             fundId: fund.id,
             at: DateTime.now(),
-            amount: sign * raw * 1000000,
+            amount: sign * amount,
             kind: isOut ? FundTxnKind.withdraw : FundTxnKind.deposit,
-            note: noteCtrl.text.trim(),
+            note: note,
           ),
         ]);
+        if (isOut && logExpense) {
+          await ref.read(expenseRepositoryProvider).create(
+                title: note.isEmpty ? 'Rút ${fund.name}' : note,
+                amountVnd: amount,
+                spentAt: DateTime.now(),
+                category: _expenseCategoryOf(fund.kind),
+                note: 'Rút từ ${fund.name}',
+              );
+        }
       }
     }
     amountCtrl.dispose();
     noteCtrl.dispose();
   }
+
+  /// Money out of these envelopes buys a thing, so it is an expense. Tax money
+  /// goes to the state (not spending), and buffer money becomes your salary —
+  /// logging that as an expense would double-count everything you then buy.
+  static bool _expensable(FundKind kind) =>
+      kind != FundKind.tax && kind != FundKind.buffer;
+
+  static String _expenseCategoryOf(FundKind kind) => switch (kind) {
+        FundKind.gear => 'Work',
+        FundKind.emergency => 'Health',
+        _ => 'General',
+      };
 
   /// Creates a new envelope, or edits an existing one. [fund] null = new.
   Future<void> _editFund(BuildContext context, SavingsFund? fund) async {
@@ -2345,16 +2400,39 @@ class _RunwayCard extends StatelessWidget {
   }
 }
 
-/// Living costs. One field, and every other number on the tab depends on it.
+/// Living costs. One field, and every other number on the tab depends on it —
+/// so rather than trusting a guess, it offers what the expense log actually
+/// says. People underestimate this number, always in the same direction.
 class _SpendCard extends StatelessWidget {
-  const _SpendCard({required this.controller, required this.onChanged});
+  const _SpendCard({
+    required this.controller,
+    required this.entered,
+    required this.onChanged,
+    required this.onUseEstimate,
+    this.estimate,
+  });
 
   final TextEditingController controller;
+
+  /// What the user has typed in (đồng/month), 0 if nothing yet.
+  final int entered;
+
+  final LivingCostEstimate? estimate;
   final ValueChanged<int> onChanged;
+  final ValueChanged<int> onUseEstimate;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final est = estimate;
+    final real = est != null && est.hasData ? est.essentialMonthly : 0;
+
+    // Only worth interrupting over when the guess is off by more than a tenth.
+    final drift = entered > 0 && real > 0
+        ? (entered - real).abs() / real
+        : 0.0;
+    final showOffer = real > 0 && (entered == 0 || drift > 0.10);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -2385,6 +2463,66 @@ class _SpendCard extends StatelessWidget {
                 isDense: true,
               ),
             ),
+            if (showOffer) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.receipt_long_outlined,
+                            size: 18, color: theme.colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Sổ chi tiêu của bạn nói: ${_vnd(real)}/tháng',
+                            style: theme.textTheme.bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => onUseEstimate(real),
+                          child: const Text('Dùng số này'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      [
+                        'Trung bình chi tiêu thiết yếu ${est!.monthsCovered} '
+                            'tháng gần nhất (${est.from.month}/${est.from.year}'
+                            '–${est.to.month == 1 ? 12 : est.to.month - 1}/'
+                            '${est.to.year})',
+                        if (est.totalMonthly > real)
+                          'tính cả khoản không thiết yếu thì là '
+                              '${_vnd(est.totalMonthly)}',
+                        if (est.isThin)
+                          'dữ liệu còn mỏng — ghi chi tiêu đều thì số này càng '
+                              'sát thực tế',
+                      ].join(' · '),
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                    if (entered > 0 && entered < real) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Bạn đang khai thấp hơn thực chi — nghĩa là runway hiện '
+                        'ra dài hơn sự thật. Đây đúng là kiểu sai lầm khiến '
+                        'người ta tưởng mình an toàn.',
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(color: theme.colorScheme.error),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),

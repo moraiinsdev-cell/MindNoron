@@ -283,6 +283,18 @@ class ExpenseRepository {
     );
   }
 
+  /// Raw entries in an arbitrary window, `[start, end)`. Used by the Tax hub to
+  /// work out what living actually costs, rather than asking the user to guess.
+  Stream<List<ExpenseEntry>> watchEntriesBetween(DateTime start, DateTime end) {
+    return (_db.select(_db.expenseEntries)
+          ..where((t) =>
+              t.deletedAt.isNull() &
+              t.spentAt.isBiggerOrEqualValue(start) &
+              t.spentAt.isSmallerThanValue(end))
+          ..orderBy([(t) => OrderingTerm.desc(t.spentAt)]))
+        .watch();
+  }
+
   Stream<List<ExpenseEntry>> watchEntriesInPeriod(
     ExpensePeriod period,
     DateTime anchor,

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mind_noron/core/providers/app_providers.dart';
 import 'package:mind_noron/data/database/app_database.dart';
+import 'package:mind_noron/features/tax/tax_living_cost.dart';
 import 'package:mind_noron/features/tax/tax_models.dart';
 import 'package:mind_noron/features/tax/tax_repository.dart';
 import 'package:mind_noron/features/tax/tax_savings.dart';
@@ -43,6 +44,11 @@ void main() {
           // stream (whose teardown leaves a pending timer under FakeAsync).
           taxRevenueProvider
               .overrideWith((ref) => Stream.value(const <RevenueEntry>[])),
+          // Like the revenue stream, the living-cost estimate reads Drift —
+          // whose teardown leaves a pending timer under FakeAsync.
+          livingCostProvider.overrideWith((ref) => Stream.value(
+                estimateLivingCost(entries: const [], today: DateTime.now()),
+              )),
         ],
         // AppShell wraps every screen in a Scaffold in the real app; mirror
         // that so bare Material widgets (e.g. the DTA search field) resolve.
@@ -130,6 +136,11 @@ void main() {
               .overrideWith((ref) => Stream.value(const TaxProfile())),
           taxRevenueProvider
               .overrideWith((ref) => Stream.value(const <RevenueEntry>[])),
+          // Like the revenue stream, the living-cost estimate reads Drift —
+          // whose teardown leaves a pending timer under FakeAsync.
+          livingCostProvider.overrideWith((ref) => Stream.value(
+                estimateLivingCost(entries: const [], today: DateTime.now()),
+              )),
           taxFundsProvider
               .overrideWith((ref) => Stream.value(defaultFunds())),
           taxFundTxnsProvider
@@ -174,6 +185,11 @@ void main() {
               .overrideWith((ref) => Stream.value(const TaxProfile())),
           taxRevenueProvider
               .overrideWith((ref) => Stream.value(const <RevenueEntry>[])),
+          // Like the revenue stream, the living-cost estimate reads Drift —
+          // whose teardown leaves a pending timer under FakeAsync.
+          livingCostProvider.overrideWith((ref) => Stream.value(
+                estimateLivingCost(entries: const [], today: DateTime.now()),
+              )),
         ],
         child: const MaterialApp(home: Scaffold(body: TaxScreen())),
       ),

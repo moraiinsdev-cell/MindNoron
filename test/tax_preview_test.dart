@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mind_noron/core/providers/app_providers.dart';
 import 'package:mind_noron/data/database/app_database.dart';
+import 'package:mind_noron/features/tax/tax_living_cost.dart';
 import 'package:mind_noron/features/tax/tax_models.dart';
 import 'package:mind_noron/features/tax/tax_repository.dart';
 import 'package:mind_noron/features/tax/tax_savings.dart';
@@ -56,6 +57,18 @@ void main() {
               expenseRatioPct: 35,
               line: BusinessLine.exportedServices,
               monthlySpend: 20000000,
+            )),
+          ),
+          // The expense log says living costs are 22tr/month — more than the
+          // 20tr the user typed, so the Quỹ tab offers the real figure.
+          livingCostProvider.overrideWith(
+            (ref) => Stream.value(LivingCostEstimate(
+              essentialMonthly: 22000000,
+              totalMonthly: 27000000,
+              monthsCovered: 3,
+              from: DateTime(DateTime.now().year, DateTime.now().month - 3),
+              to: DateTime(DateTime.now().year, DateTime.now().month),
+              entryCount: 48,
             )),
           ),
           // Envelopes part-way filled: the buffer is short, gear is nearly
