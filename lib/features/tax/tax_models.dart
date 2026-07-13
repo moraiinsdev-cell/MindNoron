@@ -535,6 +535,7 @@ class TaxProfile {
     this.usdVndRate = PayoutDefaults.usdVndRate,
     this.devExUsdPerRobux = PayoutDefaults.devExUsdPerRobux,
     this.payoutFeePct = PayoutDefaults.payoutFeePct,
+    this.monthlySpend = 0,
     this.doneSteps = const {},
   });
 
@@ -562,6 +563,14 @@ class TaxProfile {
   final double devExUsdPerRobux;
   final double payoutFeePct;
 
+  /// Essential living costs, đồng/tháng — rent, food, bills, insurance: what it
+  /// costs to exist for a month without earning anything.
+  ///
+  /// This one number turns a pile of savings into a *runway*, and an irregular
+  /// income into a salary. Everything in the Quỹ tab is measured against it, so
+  /// the tab asks for it before it shows anything else.
+  final int monthlySpend;
+
   /// Ids of the roadmap steps already ticked off ([RoadmapStep.id]).
   final Set<String> doneSteps;
 
@@ -583,6 +592,7 @@ class TaxProfile {
     int? usdVndRate,
     double? devExUsdPerRobux,
     double? payoutFeePct,
+    int? monthlySpend,
     Set<String>? doneSteps,
   }) =>
       TaxProfile(
@@ -597,6 +607,7 @@ class TaxProfile {
         usdVndRate: usdVndRate ?? this.usdVndRate,
         devExUsdPerRobux: devExUsdPerRobux ?? this.devExUsdPerRobux,
         payoutFeePct: payoutFeePct ?? this.payoutFeePct,
+        monthlySpend: monthlySpend ?? this.monthlySpend,
         doneSteps: doneSteps ?? this.doneSteps,
       );
 
@@ -612,6 +623,7 @@ class TaxProfile {
         'fx': usdVndRate,
         'devex': devExUsdPerRobux,
         'fee': payoutFeePct,
+        if (monthlySpend > 0) 'spend': monthlySpend,
         if (doneSteps.isNotEmpty) 'done': doneSteps.toList(),
       };
 
@@ -639,6 +651,7 @@ class TaxProfile {
             PayoutDefaults.devExUsdPerRobux,
         payoutFeePct:
             (j['fee'] as num?)?.toDouble() ?? PayoutDefaults.payoutFeePct,
+        monthlySpend: (j['spend'] as num?)?.toInt() ?? 0,
         doneSteps: {
           for (final s in (j['done'] as List?) ?? const []) s.toString(),
         },

@@ -8,14 +8,16 @@ import 'package:mind_noron/core/providers/app_providers.dart';
 import 'package:mind_noron/data/database/app_database.dart';
 import 'package:mind_noron/features/tax/tax_models.dart';
 import 'package:mind_noron/features/tax/tax_repository.dart';
+import 'package:mind_noron/features/tax/tax_savings.dart';
 import 'package:mind_noron/features/tax/tax_screen.dart';
 
 void main() {
   testWidgets('tax screen computes and highlights the optimal option',
       (tester) async {
-    // Wide enough that all seven tab segments fit without horizontal scrolling —
+    // Wide enough that every tab segment fits without horizontal scrolling —
     // otherwise tapping a tab by label silently misses an off-screen segment.
-    tester.view.physicalSize = const Size(1500, 1600);
+    // Widen this whenever a tab is added.
+    tester.view.physicalSize = const Size(1700, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -108,6 +110,50 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('đã bị khấu trừ thuế chưa?'), findsOneWidget);
     expect(find.textContaining('KHÔNG. Đó là chuyển tiền'), findsOneWidget);
+  });
+
+  testWidgets('funds tab leads with runway and refuses to guess it',
+      (tester) async {
+    tester.view.physicalSize = const Size(1700, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(() => db.close());
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          databaseProvider.overrideWithValue(db),
+          taxProfileProvider
+              .overrideWith((ref) => Stream.value(const TaxProfile())),
+          taxRevenueProvider
+              .overrideWith((ref) => Stream.value(const <RevenueEntry>[])),
+          taxFundsProvider
+              .overrideWith((ref) => Stream.value(defaultFunds())),
+          taxFundTxnsProvider
+              .overrideWith((ref) => Stream.value(const <FundTxn>[])),
+        ],
+        child: const MaterialApp(home: Scaffold(body: TaxScreen())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Quỹ'));
+    await tester.pumpAndSettle();
+
+    // With no living costs entered, a runway number would be a lie — so the
+    // card says so instead of printing a confident zero.
+    expect(find.textContaining('Sống được bao lâu'), findsOneWidget);
+    expect(find.text('Chưa biết'), findsOneWidget);
+    expect(find.textContaining('Chi phí sống mỗi tháng'), findsWidgets);
+
+    // The starter envelopes are there, tax first.
+    expect(find.text('Quỹ thuế'), findsWidgets);
+    expect(find.text('Quỹ đệm thu nhập'), findsOneWidget);
+    expect(find.text('Quỹ khẩn cấp'), findsOneWidget);
+    expect(find.textContaining('Tiền vừa về — chia ngay'), findsOneWidget);
   });
 
   testWidgets('penalties state exact thresholds and cite their source',

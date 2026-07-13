@@ -12,6 +12,7 @@ import 'tax_models.dart';
 import 'tax_repository.dart';
 import 'tax_roadmap.dart';
 import 'tax_roblox.dart';
+import 'tax_savings.dart';
 
 /// Offline Tax hub, tuned for a Vietnamese 3D artist selling models to Roblox
 /// studios and paid in USD (PayPal) or Robux (DevEx).
@@ -32,6 +33,7 @@ enum _Tab {
   roadmap,
   calculator,
   revenue,
+  funds,
   roblox,
   banking,
   risk,
@@ -154,6 +156,11 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
                   label: Text('Doanh thu'),
                 ),
                 ButtonSegment(
+                  value: _Tab.funds,
+                  icon: Icon(Icons.account_balance_wallet_outlined),
+                  label: Text('Quỹ'),
+                ),
+                ButtonSegment(
                   value: _Tab.roblox,
                   icon: Icon(Icons.sports_esports_outlined),
                   label: Text('Roblox'),
@@ -210,6 +217,7 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
                   onProfile: _update,
                 ),
               _Tab.revenue => const _RevenueTab(),
+              _Tab.funds => const _FundsTab(),
               _Tab.roblox => const _RobloxTab(),
               _Tab.banking => const _BankingTab(),
               _Tab.risk => const _RiskTab(),
@@ -1822,6 +1830,1107 @@ class _ThresholdCard extends StatelessWidget {
                 ),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────── Savings funds ─────────────────────────────
+
+/// The envelope tab: where a payout goes the minute it lands.
+///
+/// It is deliberately ordered the way a cash-flow-literate freelancer thinks,
+/// not the way a bank app is laid out: first *how long can I survive without
+/// work* (runway), then *am I holding the tax office's money* (gap), then *what
+/// do I pay myself* (salary), and only then the envelopes themselves.
+class _FundsTab extends ConsumerStatefulWidget {
+  const _FundsTab();
+
+  @override
+  ConsumerState<_FundsTab> createState() => _FundsTabState();
+}
+
+class _FundsTabState extends ConsumerState<_FundsTab> {
+  final _spendCtrl = TextEditingController();
+  bool _seeded = false;
+
+  @override
+  void dispose() {
+    _spendCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final profile =
+        ref.watch(taxProfileProvider).valueOrNull ?? const TaxProfile();
+    if (!_seeded) {
+      _seeded = true;
+      if (profile.monthlySpend > 0) {
+        _spendCtrl.text = (profile.monthlySpend ~/ 1000000).toString();
+      }
+    }
+
+    final funds = ref.watch(taxFundsProvider).valueOrNull ?? defaultFunds();
+    final txns = ref.watch(taxFundTxnsProvider).valueOrNull ?? const <FundTxn>[];
+    final balances = ref.watch(taxFundBalancesProvider);
+    final revenue = ref.watch(taxRevenueProvider).valueOrNull ?? const [];
+
+    // The reserve rate is the one number the user does not get to choose: it
+    // falls out of the revenue they have already booked.
+    final thisYear = revenue.where((e) => e.year == now.year).toList();
+    final toDate = thisYear.fold<int>(0, (sum, e) => sum + e.amount);
+    final plan = planRemainingYear(
+      revenueToDate: toDate,
+      today: now,
+      line: profile.line,
+    );
+    final reserve = computeReserve(
+      revenueToDate: toDate,
+      projectedAnnualRevenue: plan.projectedYearEnd,
+      line: profile.line,
+    );
+
+    final health = computeHealth(
+      funds: funds,
+      balances: balances,
+      monthlySpend: profile.monthlySpend,
+      taxShouldHold: reserve.shouldHaveBanked,
+    );
+
+    // Net-of-fees income per month so far this year — the base for the salary.
+    final byMonth = <int, int>{};
+    for (final e in thisYear) {
+      byMonth[e.month] = (byMonth[e.month] ?? 0) + e.net;
+    }
+    final salary = planSelfSalary(
+      monthlyNet: byMonth.values.toList(),
+      monthsElapsed: now.month,
+      funds: funds,
+      bufferBalance: balances['buffer'] ?? 0,
+      monthlySpend: profile.monthlySpend,
+      reserveRate: reserve.reserveRate,
+    );
+
+    /// What each envelope receives in an average month — drives the "đầy sau N
+    /// tháng" estimate on the fund cards.
+    int monthlyInto(SavingsFund f) => f.kind == FundKind.tax
+        ? salary.taxCut
+        : ((salary.avgMonthlyNet - salary.taxCut) * f.sharePct / 100).round();
+
+    return ListView(
+      children: [
+        _RunwayCard(health: health, salary: salary),
+        const SizedBox(height: 12),
+        _SpendCard(
+          controller: _spendCtrl,
+          onChanged: (v) => ref
+              .read(taxRepositoryProvider)
+              .save(profile.copyWith(monthlySpend: v * 1000000)),
+        ),
+        const SizedBox(height: 12),
+        if (!health.taxOnTrack && health.taxShouldHold > 0) ...[
+          _TaxGapCard(health: health),
+          const SizedBox(height: 12),
+        ],
+        if (salary.avgMonthlyNet > 0) ...[
+          _SalaryCard(salary: salary),
+          const SizedBox(height: 12),
+        ],
+        _SplitCard(
+          funds: funds,
+          balances: balances,
+          monthlySpend: profile.monthlySpend,
+          reserveRate: reserve.reserveRate,
+          feePct: profile.payoutFeePct,
+          onAllocate: (plan) => _book(plan),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Các quỹ',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            TextButton.icon(
+              onPressed: () => _editFund(context, null),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Thêm quỹ'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        for (final f in funds)
+          _FundCard(
+            fund: f,
+            balance: balances[f.id] ?? 0,
+            monthlySpend: profile.monthlySpend,
+            monthlyInto: monthlyInto(f),
+            autoRate: f.kind == FundKind.tax ? reserve.reserveRate : null,
+            onMove: (sign) => _move(context, f, sign),
+            onEdit: () => _editFund(context, f),
+            onDelete: f.kind == FundKind.tax
+                ? null
+                : () => ref.read(taxRepositoryProvider).removeFund(f.id),
+          ),
+        if (txns.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          _LedgerCard(txns: txns.take(8).toList(), funds: funds),
+        ],
+        const SizedBox(height: 12),
+        const _DisclaimerCard(),
+      ],
+    );
+  }
+
+  /// Writes a whole split to the ledger in one go, so the books never show a
+  /// payout that was half-allocated.
+  Future<void> _book(AllocationPlan plan) async {
+    final stamp = DateTime.now();
+    final seed = stamp.microsecondsSinceEpoch;
+    await ref.read(taxRepositoryProvider).addFundTxns([
+      if (plan.taxCut > 0)
+        FundTxn(
+          id: 'tx-$seed-tax',
+          fundId: 'tax',
+          at: stamp,
+          amount: plan.taxCut,
+          kind: FundTxnKind.split,
+          note: 'Trích thuế ${(plan.reserveRate * 100).toStringAsFixed(1)}% '
+              'từ ${_vnd(plan.gross)}',
+        ),
+      for (final s in plan.slices)
+        FundTxn(
+          id: 'tx-$seed-${s.fund.id}',
+          fundId: s.fund.id,
+          at: stamp,
+          amount: s.amount,
+          kind: FundTxnKind.split,
+          note: 'Chia ${s.fund.sharePct.toStringAsFixed(0)}% '
+              'từ ${_vnd(plan.gross)}',
+        ),
+    ]);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã chia ${_vnd(plan.allocated)} vào các quỹ. '
+              'Còn ${_vnd(plan.spendable)} để tiêu.'),
+        ),
+      );
+    }
+  }
+
+  /// [sign] is +1 to pay in, -1 to take out.
+  Future<void> _move(BuildContext context, SavingsFund fund, int sign) async {
+    final amountCtrl = TextEditingController();
+    final noteCtrl = TextEditingController();
+    final isOut = sign < 0;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(isOut
+            ? 'Rút khỏi ${fund.name}'
+            : 'Nạp vào ${fund.name}'),
+        content: SizedBox(
+          width: 380,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: amountCtrl,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(
+                  labelText: 'Số tiền',
+                  suffixText: 'triệu ₫',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: noteCtrl,
+                decoration: InputDecoration(
+                  labelText: isOut ? 'Rút để làm gì?' : 'Ghi chú',
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              if (isOut) ...[
+                const SizedBox(height: 12),
+                Text(
+                  fund.kind == FundKind.tax
+                      ? 'Đây là tiền của cơ quan thuế đang giữ hộ. Rút ra nghĩa '
+                          'là đến kỳ nộp bạn sẽ phải bù từ chỗ khác.'
+                      : 'Mỗi lần rút, số tháng sống sót của bạn ngắn lại. Ghi rõ '
+                          'lý do — để lần sau đọc lại còn thấy nó có đáng không.',
+                  style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(ctx).colorScheme.onSurfaceVariant),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Hủy')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(isOut ? 'Rút' : 'Nạp')),
+        ],
+      ),
+    );
+
+    if (ok == true) {
+      final raw = int.tryParse(amountCtrl.text.trim()) ?? 0;
+      if (raw > 0) {
+        await ref.read(taxRepositoryProvider).addFundTxns([
+          FundTxn(
+            id: 'tx-${DateTime.now().microsecondsSinceEpoch}',
+            fundId: fund.id,
+            at: DateTime.now(),
+            amount: sign * raw * 1000000,
+            kind: isOut ? FundTxnKind.withdraw : FundTxnKind.deposit,
+            note: noteCtrl.text.trim(),
+          ),
+        ]);
+      }
+    }
+    amountCtrl.dispose();
+    noteCtrl.dispose();
+  }
+
+  /// Creates a new envelope, or edits an existing one. [fund] null = new.
+  Future<void> _editFund(BuildContext context, SavingsFund? fund) async {
+    final nameCtrl = TextEditingController(text: fund?.name ?? '');
+    final shareCtrl =
+        TextEditingController(text: (fund?.sharePct ?? 10).toStringAsFixed(0));
+    final targetCtrl = TextEditingController(
+        text: (fund?.targetVnd ?? 0) > 0
+            ? (fund!.targetVnd ~/ 1000000).toString()
+            : '');
+    final monthsCtrl = TextEditingController(
+        text: (fund?.targetMonths ?? 0) > 0
+            ? fund!.targetMonths.toString()
+            : '');
+    var kind = fund?.kind ?? FundKind.goal;
+    final isTax = fund?.kind == FundKind.tax;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: Text(fund == null ? 'Quỹ mới' : 'Sửa ${fund.name}'),
+          content: SizedBox(
+            width: 420,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: nameCtrl,
+                    autofocus: fund == null,
+                    decoration: const InputDecoration(
+                        labelText: 'Tên quỹ', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<FundKind>(
+                    initialValue: kind,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                        labelText: 'Loại quỹ', border: OutlineInputBorder()),
+                    items: [
+                      for (final k in FundKind.values)
+                        if (k != FundKind.tax || isTax)
+                          DropdownMenuItem(
+                              value: k, child: Text('${k.icon}  ${k.label}')),
+                    ],
+                    onChanged:
+                        isTax ? null : (k) => setLocal(() => kind = k ?? kind),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: shareCtrl,
+                    enabled: !isTax,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: InputDecoration(
+                      labelText: 'Trích mỗi lần tiền về',
+                      suffixText: '% (sau thuế)',
+                      helperText: isTax
+                          ? 'Quỹ thuế tự tính theo doanh thu — không chỉnh tay.'
+                          : null,
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: monthsCtrl,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(
+                      labelText: 'Mục tiêu theo số tháng chi phí sống',
+                      suffixText: 'tháng',
+                      helperText:
+                          'Hợp cho quỹ đệm & khẩn cấp — tự co giãn theo mức sống.',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: targetCtrl,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(
+                      labelText: 'Hoặc mục tiêu cố định',
+                      suffixText: 'triệu ₫',
+                      helperText: 'Bỏ trống cả hai = quỹ không có trần.',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Hủy')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Lưu')),
+          ],
+        ),
+      ),
+    );
+
+    if (ok == true) {
+      final name = nameCtrl.text.trim();
+      if (name.isNotEmpty) {
+        final next = SavingsFund(
+          id: fund?.id ??
+              'f${DateTime.now().microsecondsSinceEpoch}',
+          name: name,
+          kind: kind,
+          sharePct: isTax
+              ? 0
+              : (double.tryParse(shareCtrl.text.trim()) ?? 0).clamp(0, 100),
+          targetVnd: (int.tryParse(targetCtrl.text.trim()) ?? 0) * 1000000,
+          targetMonths: int.tryParse(monthsCtrl.text.trim()) ?? 0,
+          note: fund?.note ?? '',
+        );
+        await ref.read(taxRepositoryProvider).upsertFund(next);
+      }
+    }
+    for (final c in [nameCtrl, shareCtrl, targetCtrl, monthsCtrl]) {
+      c.dispose();
+    }
+  }
+}
+
+/// The headline: months of life your savings buy you. Everything else on the
+/// tab is in service of this one number.
+class _RunwayCard extends StatelessWidget {
+  const _RunwayCard({required this.health, required this.salary});
+
+  final SavingsHealth health;
+  final SelfSalaryPlan salary;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = switch (health.level) {
+      RunwayLevel.critical => theme.colorScheme.error,
+      RunwayLevel.thin => const Color(0xFFD9A521),
+      RunwayLevel.ok => theme.colorScheme.primary,
+      RunwayLevel.solid => const Color(0xFF2E9E6B),
+    };
+
+    // Six months is the goal line for anyone with no employer behind them.
+    final frac = (health.runwayMonths / 6).clamp(0.0, 1.0);
+
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: color, width: 2),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text('Sống được bao lâu nếu không có đồng nào về',
+                      style: theme.textTheme.labelMedium
+                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                ),
+                if (!health.needsSpend)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(health.level.label,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                            color: color, fontWeight: FontWeight.w800)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (health.needsSpend)
+              Text('Chưa biết',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: theme.colorScheme.onSurfaceVariant))
+            else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(health.runwayMonths.toStringAsFixed(1),
+                      style: theme.textTheme.displaySmall
+                          ?.copyWith(fontWeight: FontWeight.w800, color: color)),
+                  const SizedBox(width: 6),
+                  Text('tháng',
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(color: color, fontWeight: FontWeight.w700)),
+                ],
+              ),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: frac,
+                minHeight: 10,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                valueColor: AlwaysStoppedAnimation(color),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text('Đích: 6 tháng chi phí sống',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 10),
+            Text(
+              health.needsSpend
+                  ? 'Nhập chi phí sống mỗi tháng ở ngay dưới — không có con số '
+                      'đó thì "tiết kiệm được nhiều" chẳng nói lên điều gì: '
+                      '100 triệu là 10 tháng tự do với người này, và 2 tháng '
+                      'với người kia.'
+                  : health.level.advice,
+              style: theme.textTheme.bodyMedium,
+            ),
+            const Divider(height: 24),
+            _Row('Tiền mặt sống được (đệm + khẩn cấp)', _vnd(health.liquid)),
+            _Row('Tổng tài sản trong quỹ (của bạn)', _vnd(health.yours)),
+            _Row('Đang giữ hộ cơ quan thuế', _vnd(health.taxHeld)),
+            if (salary.avgMonthlyNet > 0)
+              _Row('Thực nhận trung bình/tháng', _vnd(salary.avgMonthlyNet)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Living costs. One field, and every other number on the tab depends on it.
+class _SpendCard extends StatelessWidget {
+  const _SpendCard({required this.controller, required this.onChanged});
+
+  final TextEditingController controller;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Chi phí sống mỗi tháng',
+                style: theme.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
+            Text(
+              'Mức tối thiểu để tồn tại một tháng mà không kiếm được đồng nào: '
+              'nhà, ăn, điện nước, internet, bảo hiểm. Đừng tính vé máy bay và '
+              'card đồ hoạ vào đây — quỹ khác lo.',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              onChanged: (v) => onChanged(int.tryParse(v.trim()) ?? 0),
+              decoration: const InputDecoration(
+                labelText: 'Chi phí sống',
+                suffixText: 'triệu ₫/tháng',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// You have already earned the tax; you just haven't set it aside. This is the
+/// single most common way a freelancer ends up borrowing money in April.
+class _TaxGapCard extends StatelessWidget {
+  const _TaxGapCard({required this.health});
+  final SavingsHealth health;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      color: theme.colorScheme.errorContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.warning_amber_rounded,
+                    color: theme.colorScheme.onErrorContainer),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Quỹ thuế đang thiếu ${_vnd(health.taxGap)}',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: theme.colorScheme.onErrorContainer,
+                      )),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Theo doanh thu đã ghi nhận, lẽ ra quỹ thuế phải có '
+              '${_vnd(health.taxShouldHold)} — hiện chỉ có '
+              '${_vnd(health.taxHeld)}. Khoản chênh này bạn đã tiêu rồi, nhưng '
+              'nó vẫn phải nộp. Bù dần ngay từ những lần tiền về tới, đừng đợi '
+              'tới hạn khai thuế.',
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.onErrorContainer),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The move that turns freelancing into a job you can plan a life around:
+/// stop spending what arrives, start paying yourself a wage out of the buffer.
+class _SalaryCard extends StatelessWidget {
+  const _SalaryCard({required this.salary});
+  final SelfSalaryPlan salary;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final ok = salary.sustainable;
+    final color = salary.monthlySpend <= 0
+        ? theme.colorScheme.primary
+        : ok
+            ? const Color(0xFF2E9E6B)
+            : theme.colorScheme.error;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('💵', style: TextStyle(fontSize: 20)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Lương tự trả mỗi tháng',
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(_vnd(salary.salary),
+                style: theme.textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.w800, color: color)),
+            const SizedBox(height: 4),
+            Text(
+              'Rút đúng bằng này từ quỹ đệm vào một ngày cố định hằng tháng — '
+              'tháng nhiều tiền cũng vậy, tháng không có job cũng vậy. Đó là '
+              'toàn bộ bí quyết biến thu nhập giật cục thành thu nhập đều.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const Divider(height: 24),
+            _Row('Thực nhận TB/tháng (sau phí)', _vnd(salary.avgMonthlyNet)),
+            _Row('− Trích quỹ thuế', _vnd(salary.taxCut)),
+            _Row('− Trích các quỹ khác', _vnd(salary.savingsCut)),
+            _Row('= Lương tự trả', _vnd(salary.salary)),
+            if (salary.monthlySpend > 0)
+              _Row(
+                ok ? 'Dư ra mỗi tháng' : 'Hụt mỗi tháng',
+                _vnd(salary.surplus.abs()),
+              ),
+            _Row('Quỹ đệm trả được lương trong',
+                '${salary.bufferCover.toStringAsFixed(1)} tháng'),
+            const SizedBox(height: 8),
+            Text(
+              salary.monthlySpend <= 0
+                  ? 'Nhập chi phí sống để biết mức lương này có đủ sống không.'
+                  : ok
+                      ? 'Lương tự trả vẫn cao hơn chi phí sống — phần dư nên đẩy '
+                          'vào quỹ tự do tài chính, đừng để nó nằm trong tài '
+                          'khoản tiêu dùng rồi lặng lẽ bốc hơi.'
+                      : 'Lương tự trả đang thấp hơn chi phí sống '
+                          '${_vnd(salary.monthlySpend)}. Hai lối ra, không có '
+                          'lối thứ ba: tăng giá / nhận thêm việc, hoặc hạ mức '
+                          'sống. Hạ tỷ lệ trích quỹ chỉ là vay của chính mình.',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The split calculator: paste in a payout, see exactly where every đồng goes
+/// *before* it touches your spending account.
+class _SplitCard extends StatefulWidget {
+  const _SplitCard({
+    required this.funds,
+    required this.balances,
+    required this.monthlySpend,
+    required this.reserveRate,
+    required this.feePct,
+    required this.onAllocate,
+  });
+
+  final List<SavingsFund> funds;
+  final Map<String, int> balances;
+  final int monthlySpend;
+  final double reserveRate;
+  final double feePct;
+  final ValueChanged<AllocationPlan> onAllocate;
+
+  @override
+  State<_SplitCard> createState() => _SplitCardState();
+}
+
+class _SplitCardState extends State<_SplitCard> {
+  final _ctrl = TextEditingController();
+  bool _deductFees = true;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final gross = (int.tryParse(_ctrl.text.trim()) ?? 0) * 1000000;
+    final fees =
+        _deductFees ? (gross * widget.feePct.clamp(0, 100) / 100).round() : 0;
+    final plan = allocatePayout(
+      gross: gross,
+      funds: widget.funds,
+      balances: widget.balances,
+      fees: fees,
+      reserveRate: widget.reserveRate,
+      monthlySpend: widget.monthlySpend,
+    );
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('✂️', style: TextStyle(fontSize: 20)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Tiền vừa về — chia ngay',
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Chia trước, tiêu sau. Thứ tự này không đổi được: thuế trước (vốn '
+              'không phải tiền của bạn), rồi tới các quỹ theo tỷ lệ — quỹ nào '
+              'đầy thì phần của nó chảy sang quỹ kế tiếp. Cái còn lại cuối cùng '
+              'mới là tiền được phép tiêu.',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _ctrl,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Doanh thu vừa nhận',
+                suffixText: 'triệu ₫',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+            CheckboxListTile(
+              value: _deductFees,
+              onChanged: (v) => setState(() => _deductFees = v ?? true),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text(
+                'Trừ phí PayPal/quy đổi (${widget.feePct.toStringAsFixed(1)}%)',
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
+            if (gross > 0) ...[
+              const Divider(height: 20),
+              if (fees > 0)
+                _SplitRow(
+                  icon: '💸',
+                  label: 'Phí (không về tới bạn, vẫn bị tính thuế)',
+                  amount: -fees,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              _SplitRow(
+                icon: '🏦',
+                label:
+                    'Quỹ thuế (${(plan.reserveRate * 100).toStringAsFixed(1)}%)',
+                amount: plan.taxCut,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              for (final s in plan.slices)
+                _SplitRow(
+                  icon: s.fund.kind.icon,
+                  label: s.filled
+                      ? '${s.fund.name} — đầy sau lần này ✓'
+                      : '${s.fund.name} (${s.fund.sharePct.toStringAsFixed(0)}%)',
+                  amount: s.amount,
+                  color: theme.colorScheme.primary,
+                ),
+              const Divider(height: 20),
+              _SplitRow(
+                icon: '🛒',
+                label: 'Được phép tiêu',
+                amount: plan.spendable,
+                color: theme.colorScheme.onSurface,
+                bold: true,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Để dành ${(plan.savingsRate * 100).toStringAsFixed(0)}% số tiền '
+                'thực về.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: plan.allocated <= 0
+                      ? null
+                      : () {
+                          widget.onAllocate(plan);
+                          _ctrl.clear();
+                          setState(() {});
+                        },
+                  icon: const Icon(Icons.call_split, size: 18),
+                  label: const Text('Ghi vào các quỹ'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SplitRow extends StatelessWidget {
+  const _SplitRow({
+    required this.icon,
+    required this.label,
+    required this.amount,
+    required this.color,
+    this.bold = false,
+  });
+
+  final String icon;
+  final String label;
+  final int amount;
+  final Color color;
+  final bool bold;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 14)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: bold ? FontWeight.w700 : FontWeight.w400)),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '${amount < 0 ? '−' : ''}${_vnd(amount.abs())}',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One envelope: what's in it, where it stops, and when it gets there.
+class _FundCard extends StatelessWidget {
+  const _FundCard({
+    required this.fund,
+    required this.balance,
+    required this.monthlySpend,
+    required this.monthlyInto,
+    required this.onMove,
+    required this.onEdit,
+    this.autoRate,
+    this.onDelete,
+  });
+
+  final SavingsFund fund;
+  final int balance;
+  final int monthlySpend;
+
+  /// Đồng flowing into this envelope in an average month.
+  final int monthlyInto;
+
+  /// For the tax envelope, the computed rate replaces the user's share%.
+  final double? autoRate;
+
+  final ValueChanged<int> onMove;
+  final VoidCallback onEdit;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final target = fund.targetFor(monthlySpend);
+    final full = target > 0 && balance >= target;
+    final eta = monthsToTarget(
+      fund: fund,
+      balance: balance,
+      monthlySpend: monthlySpend,
+      monthlyContribution: monthlyInto,
+    );
+
+    final share = autoRate != null
+        ? '${(autoRate! * 100).toStringAsFixed(1)}% (tự tính)'
+        : '${fund.sharePct.toStringAsFixed(0)}%';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(fund.kind.icon, style: const TextStyle(fontSize: 20)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(fund.name,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyLarge
+                                    ?.copyWith(fontWeight: FontWeight.w700)),
+                          ),
+                          if (full) ...[
+                            const SizedBox(width: 6),
+                            Icon(Icons.check_circle,
+                                size: 16, color: theme.colorScheme.primary),
+                          ],
+                        ],
+                      ),
+                      Text(
+                        'Trích $share mỗi lần tiền về',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(_vnd(balance),
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w800)),
+                PopupMenuButton<String>(
+                  tooltip: 'Tùy chọn',
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(value: 'in', child: Text('Nạp tiền')),
+                    const PopupMenuItem(value: 'out', child: Text('Rút tiền')),
+                    const PopupMenuItem(value: 'edit', child: Text('Sửa quỹ')),
+                    if (onDelete != null)
+                      const PopupMenuItem(value: 'del', child: Text('Xóa quỹ')),
+                  ],
+                  onSelected: (v) => switch (v) {
+                    'in' => onMove(1),
+                    'out' => onMove(-1),
+                    'edit' => onEdit(),
+                    _ => onDelete?.call(),
+                  },
+                ),
+              ],
+            ),
+            if (target > 0) ...[
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(5),
+                child: LinearProgressIndicator(
+                  value: (balance / target).clamp(0.0, 1.0),
+                  minHeight: 8,
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                  valueColor: AlwaysStoppedAnimation(full
+                      ? const Color(0xFF2E9E6B)
+                      : theme.colorScheme.primary),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                [
+                  'Mục tiêu ${_vnd(target)}',
+                  if (fund.targetMonths > 0)
+                    '${fund.targetMonths} tháng chi phí sống',
+                  if (full)
+                    'Đã đầy'
+                  else if (eta != null)
+                    'Đầy sau ~${eta.ceil()} tháng'
+                  else if (monthlyInto <= 0)
+                    'Chưa có dòng tiền vào — sẽ không bao giờ đầy',
+                ].join(' · '),
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ] else ...[
+              const SizedBox(height: 8),
+              Text('Không có trần — cứ góp là lớn.',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            ],
+            if (fund.note.isNotEmpty || fund.kind.why.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(fund.note.isNotEmpty ? fund.note : fund.kind.why,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontStyle: FontStyle.italic)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The ledger every balance is derived from — so no number here is unexplained.
+class _LedgerCard extends StatelessWidget {
+  const _LedgerCard({required this.txns, required this.funds});
+
+  final List<FundTxn> txns;
+  final List<SavingsFund> funds;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    String nameOf(String id) => funds
+        .firstWhere(
+          (f) => f.id == id,
+          orElse: () => SavingsFund(id: id, name: id, kind: FundKind.goal),
+        )
+        .name;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Sổ quỹ gần đây',
+                style: theme.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 10),
+            for (final t in txns)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${nameOf(t.fundId)} · ${t.kind.label}',
+                              style: theme.textTheme.bodyMedium),
+                          Text(
+                            [_date(t.at), if (t.note.isNotEmpty) t.note]
+                                .join(' — '),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      '${t.amount < 0 ? '−' : '+'}${_vnd(t.amount.abs())}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: t.amount < 0
+                            ? theme.colorScheme.error
+                            : theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),

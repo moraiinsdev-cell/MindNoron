@@ -33,6 +33,8 @@ class SettingsRepository {
   static const _kCatalystApiKey = 'catalystApiKey';
   static const _kTaxProfile = 'taxProfileV1';
   static const _kTaxRevenue = 'taxRevenueV1';
+  static const _kTaxFunds = 'taxFundsV1';
+  static const _kTaxFundTxns = 'taxFundTxnsV1';
 
   Future<void> _set(String key, String value) {
     return _db.into(_db.settings).insertOnConflictUpdate(
@@ -220,6 +222,17 @@ class SettingsRepository {
   Stream<String?> watchTaxRevenue() => _watch(_kTaxRevenue);
   Future<String?> getTaxRevenue() async => readValue(_kTaxRevenue);
   Future<void> setTaxRevenue(String json) => _set(_kTaxRevenue, json);
+
+  /// Savings envelopes — their policy (share, target), not their balance (JSON).
+  Stream<String?> watchTaxFunds() => _watch(_kTaxFunds);
+  Future<String?> getTaxFunds() async => readValue(_kTaxFunds);
+  Future<void> setTaxFunds(String json) => _set(_kTaxFunds, json);
+
+  /// The envelope ledger. Balances are derived from it, never stored — so every
+  /// figure on screen can be traced back to the entries that produced it (JSON).
+  Stream<String?> watchTaxFundTxns() => _watch(_kTaxFundTxns);
+  Future<String?> getTaxFundTxns() async => readValue(_kTaxFundTxns);
+  Future<void> setTaxFundTxns(String json) => _set(_kTaxFundTxns, json);
 
   // --- Noron-space animated backdrop --------------------------------------
 

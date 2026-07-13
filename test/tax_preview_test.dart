@@ -13,6 +13,7 @@ import 'package:mind_noron/core/providers/app_providers.dart';
 import 'package:mind_noron/data/database/app_database.dart';
 import 'package:mind_noron/features/tax/tax_models.dart';
 import 'package:mind_noron/features/tax/tax_repository.dart';
+import 'package:mind_noron/features/tax/tax_savings.dart';
 import 'package:mind_noron/features/tax/tax_screen.dart';
 
 Future<void> _capture(WidgetTester tester, Key key, String name) async {
@@ -54,7 +55,53 @@ void main() {
               dependents: 2,
               expenseRatioPct: 35,
               line: BusinessLine.exportedServices,
+              monthlySpend: 20000000,
             )),
+          ),
+          // Envelopes part-way filled: the buffer is short, gear is nearly
+          // there, and the tax fund is behind what the revenue implies — so the
+          // Quỹ tab renders every state it can be in.
+          taxFundTxnsProvider.overrideWith(
+            (ref) => Stream.value([
+              FundTxn(
+                  id: 't1',
+                  fundId: 'buffer',
+                  at: DateTime.now().subtract(const Duration(days: 40)),
+                  amount: 28000000,
+                  kind: FundTxnKind.split,
+                  note: 'Chia 15% từ 80.000.000 ₫'),
+              FundTxn(
+                  id: 't2',
+                  fundId: 'emergency',
+                  at: DateTime.now().subtract(const Duration(days: 40)),
+                  amount: 21000000,
+                  kind: FundTxnKind.split),
+              FundTxn(
+                  id: 't3',
+                  fundId: 'gear',
+                  at: DateTime.now().subtract(const Duration(days: 12)),
+                  amount: 31000000,
+                  kind: FundTxnKind.split),
+              FundTxn(
+                  id: 't4',
+                  fundId: 'freedom',
+                  at: DateTime.now().subtract(const Duration(days: 12)),
+                  amount: 14000000,
+                  kind: FundTxnKind.split),
+              FundTxn(
+                  id: 't5',
+                  fundId: 'tax',
+                  at: DateTime.now().subtract(const Duration(days: 12)),
+                  amount: 2000000,
+                  kind: FundTxnKind.split),
+              FundTxn(
+                  id: 't6',
+                  fundId: 'buffer',
+                  at: DateTime.now().subtract(const Duration(days: 3)),
+                  amount: -6000000,
+                  kind: FundTxnKind.withdraw,
+                  note: 'Lương tháng này'),
+            ]),
           ),
           taxRevenueProvider.overrideWith(
             (ref) => Stream.value([
@@ -117,6 +164,7 @@ void main() {
 
     for (final (label, name) in [
       ('Doanh thu', '3_revenue'),
+      ('Quỹ', '3b_funds'),
       ('Roblox', '4_roblox'),
       ('Ngân hàng', '5_banking'),
       ('Rủi ro', '6_risk'),
