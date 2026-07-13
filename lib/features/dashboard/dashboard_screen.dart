@@ -16,6 +16,7 @@ import '../../presentation/widgets/common/section_scaffold.dart';
 import '../capture/capture_dialog.dart';
 import '../motivation/quotes.dart';
 import '../tasks/task_urgency.dart';
+import '../tax/tax_overview.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -84,6 +85,11 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ],
           ),
+          const SizedBox(height: 16),
+          // Runway and the tax gap: the two money facts worth knowing before
+          // you decide what to work on today. Hides itself until there is
+          // something to say.
+          const MoneyStrip(),
           const SizedBox(height: 24),
           _FocusEnergyCard(focusMinutes: focus),
           const SizedBox(height: 20),

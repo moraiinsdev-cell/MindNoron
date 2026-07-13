@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1370,7 +1373,15 @@ class _RevenueTab extends ConsumerWidget {
                 style: theme.textTheme.titleSmall
                     ?.copyWith(fontWeight: FontWeight.w700)),
             FilledButton.tonalIcon(
-              onPressed: () => _showAddDialog(context, ref, now, profile),
+              onPressed: () => _showAddDialog(
+                context,
+                ref,
+                now,
+                profile,
+                funds: ref.watch(taxFundsProvider).valueOrNull ?? defaultFunds(),
+                balances: ref.watch(taxFundBalancesProvider),
+                reserveRate: reserve.reserveRate,
+              ),
               icon: const Icon(Icons.add, size: 18),
               label: const Text('Thêm khoản'),
             ),
@@ -1397,10 +1408,22 @@ class _RevenueTab extends ConsumerWidget {
     );
   }
 
-  Future<void> _showAddDialog(BuildContext context, WidgetRef ref, DateTime now,
-      TaxProfile profile) async {
+  /// Booking a payout and splitting it into envelopes are the same event, so
+  /// they are one action. Keeping them apart is how the tax envelope quietly
+  /// falls behind: you always remember to record the money, and you do not
+  /// always remember to carve it up.
+  Future<void> _showAddDialog(
+    BuildContext context,
+    WidgetRef ref,
+    DateTime now,
+    TaxProfile profile, {
+    required List<SavingsFund> funds,
+    required Map<String, int> balances,
+    required double reserveRate,
+  }) async {
     var month = now.month;
     var source = PayoutSource.devex;
+    var split = true;
     final amountCtrl = TextEditingController();
     final noteCtrl = TextEditingController();
 
@@ -1429,11 +1452,23 @@ class _RevenueTab extends ConsumerWidget {
       };
     }
 
+    /// The same waterfall the Quỹ tab uses, previewed on the money about to be
+    /// booked.
+    AllocationPlan planFor(PayoutBreakdown p) => allocatePayout(
+          gross: p.vndGross,
+          funds: funds,
+          balances: balances,
+          fees: p.vndFee,
+          reserveRate: reserveRate,
+          monthlySpend: profile.monthlySpend,
+        );
+
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) {
           final p = preview();
+          final alloc = planFor(p);
           final unit = switch (source) {
             PayoutSource.devex => 'Robux',
             PayoutSource.domestic => 'triệu ₫',
@@ -1443,7 +1478,8 @@ class _RevenueTab extends ConsumerWidget {
             title: const Text('Ghi nhận tiền về'),
             content: SizedBox(
               width: 420,
-              child: Column(
+              child: SingleChildScrollView(
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1522,9 +1558,53 @@ class _RevenueTab extends ConsumerWidget {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 6),
+                    CheckboxListTile(
+                      value: split,
+                      onChanged: (v) => setLocal(() => split = v ?? false),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: Text('Chia luôn vào các quỹ',
+                          style: Theme.of(ctx).textTheme.bodyMedium),
+                      subtitle: Text(
+                        'Trích thuế và các quỹ ngay lúc ghi nhận — đừng để '
+                        'đến cuối tháng mới nhớ.',
+                        style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                            color:
+                                Theme.of(ctx).colorScheme.onSurfaceVariant),
+                      ),
+                    ),
+                    if (split) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                              color: Theme.of(ctx).colorScheme.outlineVariant),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          children: [
+                            if (alloc.taxCut > 0)
+                              _Row(
+                                  '🏦 Quỹ thuế '
+                                      '(${(reserveRate * 100).toStringAsFixed(1)}%)',
+                                  _vnd(alloc.taxCut)),
+                            for (final s in alloc.slices)
+                              _Row('${s.fund.kind.icon} ${s.fund.name}'
+                                  '${s.filled ? ' (đầy)' : ''}',
+                                  _vnd(s.amount)),
+                            const Divider(height: 16),
+                            _Row('🛒 Được phép tiêu', _vnd(alloc.spendable)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ],
               ),
+            ),
             ),
             actions: [
               TextButton(
@@ -1557,6 +1637,35 @@ class _RevenueTab extends ConsumerWidget {
               feeVnd: p.vndFee,
               fxRate: profile.usdVndRate,
             ));
+
+        if (split) {
+          final alloc = planFor(p);
+          final at = DateTime.now();
+          final seed = at.microsecondsSinceEpoch;
+          final label = noteCtrl.text.trim().isEmpty
+              ? _vnd(p.vndGross)
+              : '${noteCtrl.text.trim()} (${_vnd(p.vndGross)})';
+          await ref.read(taxRepositoryProvider).addFundTxns([
+            if (alloc.taxCut > 0)
+              FundTxn(
+                id: 'tx-$seed-tax',
+                fundId: 'tax',
+                at: at,
+                amount: alloc.taxCut,
+                kind: FundTxnKind.split,
+                note: 'Trích thuế từ $label',
+              ),
+            for (final s in alloc.slices)
+              FundTxn(
+                id: 'tx-$seed-${s.fund.id}',
+                fundId: s.fund.id,
+                at: at,
+                amount: s.amount,
+                kind: FundTxnKind.split,
+                note: 'Chia từ $label',
+              ),
+          ]);
+        }
       }
     }
     amountCtrl.dispose();
@@ -1947,7 +2056,10 @@ class _FundsTabState extends ConsumerState<_FundsTab> {
           const SizedBox(height: 12),
         ],
         if (salary.avgMonthlyNet > 0) ...[
-          _SalaryCard(salary: salary),
+          _SalaryCard(
+            salary: salary,
+            onSchedule: () => _schedulePayday(context, salary),
+          ),
           const SizedBox(height: 12),
         ],
         _SplitCard(
@@ -1990,7 +2102,11 @@ class _FundsTabState extends ConsumerState<_FundsTab> {
           ),
         if (txns.isNotEmpty) ...[
           const SizedBox(height: 8),
-          _LedgerCard(txns: txns.take(8).toList(), funds: funds),
+          _LedgerCard(
+            txns: txns.take(8).toList(),
+            funds: funds,
+            onExport: () => _exportLedger(context, txns, funds),
+          ),
         ],
         const SizedBox(height: 12),
         const _DisclaimerCard(),
@@ -2148,6 +2264,139 @@ class _FundsTabState extends ConsumerState<_FundsTab> {
     }
     amountCtrl.dispose();
     noteCtrl.dispose();
+  }
+
+  /// Puts payday in the calendar. A salary you have to *remember* to pay
+  /// yourself isn't a salary — it's just withdrawing money when you feel like
+  /// it, which is the habit the buffer exists to break.
+  Future<void> _schedulePayday(
+      BuildContext context, SelfSalaryPlan salary) async {
+    final messenger = ScaffoldMessenger.of(context);
+    var day = 1;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text('Đặt lịch trả lương cho chính mình'),
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Mỗi tháng, đúng ngày này, chuyển ${_vnd(salary.salary)} từ '
+                  'quỹ đệm sang tài khoản chi tiêu. Không nhiều hơn vào tháng '
+                  'đắt khách, không ít hơn vào tháng ế.',
+                  style: Theme.of(ctx).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<int>(
+                  initialValue: day,
+                  decoration: const InputDecoration(
+                      labelText: 'Ngày trả lương hằng tháng',
+                      border: OutlineInputBorder()),
+                  items: [
+                    for (var d = 1; d <= 28; d++)
+                      DropdownMenuItem(value: d, child: Text('Ngày $d')),
+                  ],
+                  onChanged: (d) => setLocal(() => day = d ?? day),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Chỉ tới ngày 28 — để tháng 2 cũng có ngày đó.',
+                  style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(ctx).colorScheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Hủy')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Đặt lịch')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+
+    final now = DateTime.now();
+    final repo = ref.read(eventRepositoryProvider);
+
+    // Idempotent, like the tax deadlines: adding twice would double the noise
+    // and teach the user to ignore the reminder.
+    final existing = await repo
+        .watchBetween(DateTime(now.year), DateTime(now.year, 12, 31, 23, 59))
+        .first;
+    if (existing.any((e) => e.title.startsWith('[Lương]'))) {
+      messenger.showSnackBar(const SnackBar(
+          content: Text('Đã có lịch trả lương trong Calendar năm nay')));
+      return;
+    }
+
+    var added = 0;
+    for (var m = now.month; m <= 12; m++) {
+      final date = DateTime(now.year, m, day, 9);
+      if (date.isBefore(now)) continue; // don't schedule a payday in the past
+      await repo.create(
+        title: '[Lương] Tự trả lương ${_vnd(salary.salary)}',
+        startTime: date,
+        endTime: date.add(const Duration(minutes: 30)),
+        description: 'Chuyển ${_vnd(salary.salary)} từ quỹ đệm sang tài khoản '
+            'chi tiêu. Mức này tính từ thu nhập trung bình sau thuế và sau '
+            'trích quỹ — giữ nguyên kể cả tháng nhiều tiền.',
+        isAllDay: true,
+        colorTag: 'green',
+        reminderMinutes: 0,
+      );
+      added++;
+    }
+    messenger.showSnackBar(SnackBar(
+        content: Text('Đã đặt $added kỳ trả lương vào Calendar (ngày $day)')));
+  }
+
+  /// Exports the ledger so it can be reconciled against a bank statement —
+  /// the check that turns a set of numbers in an app into money you can trust.
+  Future<void> _exportLedger(BuildContext context, List<FundTxn> txns,
+      List<SavingsFund> funds) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final path = await FilePicker.platform.saveFile(
+      dialogTitle: 'Xuất sổ quỹ',
+      fileName: 'so-quy-${DateTime.now().year}.csv',
+      type: FileType.custom,
+      allowedExtensions: ['csv'],
+    );
+    if (path == null) return;
+
+    String nameOf(String id) => funds
+        .firstWhere((f) => f.id == id,
+            orElse: () => SavingsFund(id: id, name: id, kind: FundKind.goal))
+        .name;
+
+    // Quote every field: notes carry commas, and a stray one would shift a
+    // column and make the whole export quietly wrong.
+    String cell(String s) => '"${s.replaceAll('"', '""')}"';
+
+    final rows = <String>[
+      'Ngày,Quỹ,Loại,Số tiền (₫),Ghi chú',
+      for (final t in [...txns]..sort((a, b) => a.at.compareTo(b.at)))
+        [
+          cell(_date(t.at)),
+          cell(nameOf(t.fundId)),
+          cell(t.kind.label),
+          '${t.amount}',
+          cell(t.note),
+        ].join(','),
+    ];
+
+    // BOM so Excel opens the Vietnamese text as UTF-8 rather than mojibake.
+    await File(path).writeAsString('﻿${rows.join('\r\n')}\r\n');
+    messenger.showSnackBar(
+        SnackBar(content: Text('Đã xuất ${txns.length} dòng sổ quỹ → $path')));
   }
 
   /// Money out of these envelopes buys a thing, so it is an expense. Tax money
@@ -2580,8 +2829,9 @@ class _TaxGapCard extends StatelessWidget {
 /// The move that turns freelancing into a job you can plan a life around:
 /// stop spending what arrives, start paying yourself a wage out of the buffer.
 class _SalaryCard extends StatelessWidget {
-  const _SalaryCard({required this.salary});
+  const _SalaryCard({required this.salary, required this.onSchedule});
   final SelfSalaryPlan salary;
+  final VoidCallback onSchedule;
 
   @override
   Widget build(BuildContext context) {
@@ -2607,6 +2857,11 @@ class _SalaryCard extends StatelessWidget {
                   child: Text('Lương tự trả mỗi tháng',
                       style: theme.textTheme.titleSmall
                           ?.copyWith(fontWeight: FontWeight.w800)),
+                ),
+                TextButton.icon(
+                  onPressed: salary.salary <= 0 ? null : onSchedule,
+                  icon: const Icon(Icons.event_repeat, size: 18),
+                  label: const Text('Đặt lịch'),
                 ),
               ],
             ),
@@ -3012,10 +3267,15 @@ class _FundCard extends StatelessWidget {
 
 /// The ledger every balance is derived from — so no number here is unexplained.
 class _LedgerCard extends StatelessWidget {
-  const _LedgerCard({required this.txns, required this.funds});
+  const _LedgerCard({
+    required this.txns,
+    required this.funds,
+    required this.onExport,
+  });
 
   final List<FundTxn> txns;
   final List<SavingsFund> funds;
+  final VoidCallback onExport;
 
   @override
   Widget build(BuildContext context) {
@@ -3033,9 +3293,24 @@ class _LedgerCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Sổ quỹ gần đây',
-                style: theme.textTheme.titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w800)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Sổ quỹ gần đây',
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w800)),
+                TextButton.icon(
+                  onPressed: onExport,
+                  icon: const Icon(Icons.download_outlined, size: 18),
+                  label: const Text('Xuất CSV'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text('Xuất ra để đối chiếu với sao kê ngân hàng — số dư chỉ đáng '
+                'tin khi đã soi lại một lần.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
             const SizedBox(height: 10),
             for (final t in txns)
               Padding(

@@ -59,11 +59,12 @@ void main() {
               monthlySpend: 20000000,
             )),
           ),
-          // The expense log says living costs are 22tr/month — more than the
-          // 20tr the user typed, so the Quỹ tab offers the real figure.
+          // The expense log says living costs are 26tr/month while the user
+          // typed 20tr — far enough apart that the tab speaks up and offers the
+          // real figure, and warns that the runway on screen is flattering.
           livingCostProvider.overrideWith(
             (ref) => Stream.value(LivingCostEstimate(
-              essentialMonthly: 22000000,
+              essentialMonthly: 26000000,
               totalMonthly: 27000000,
               monthsCovered: 3,
               from: DateTime(DateTime.now().year, DateTime.now().month - 3),
