@@ -132,6 +132,7 @@ class _TaxScreenState extends ConsumerState<TaxScreen> {
     ref.watch(taxProfileProvider).whenData(_seed);
 
     return SectionScaffold(
+      icon: Icons.receipt_long_rounded,
       title: 'Thuế',
       subtitle:
           'Trợ lý thuế cho 3D artist freelance làm cho studio Roblox — Robux '
