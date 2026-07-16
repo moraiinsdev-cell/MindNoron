@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/constants/app_constants.dart';
+import '../../core/theme/app_theme.dart';
 import '../../data/repositories/inbox_repository.dart';
 import '../../data/repositories/task_repository.dart';
 import '../../features/calendar/event_reminder.dart';
@@ -78,14 +80,20 @@ class AppShell extends ConsumerWidget {
                 onDestinationSelected: (i) => context.go(_routes[i]),
                 labelType: NavigationRailLabelType.all,
                 leading: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: FloatingActionButton(
-                    heroTag: 'capture',
-                    tooltip: l10n.quickCapture,
-                    elevation: 0,
-                    onPressed: () =>
-                        showCaptureDialog(context, source: 'manual'),
-                    child: const Icon(Icons.add),
+                  padding: const EdgeInsets.only(top: 14, bottom: 6),
+                  child: Column(
+                    children: [
+                      const _RailBrand(),
+                      const SizedBox(height: 16),
+                      FloatingActionButton(
+                        heroTag: 'capture',
+                        tooltip: l10n.quickCapture,
+                        elevation: 0,
+                        onPressed: () =>
+                            showCaptureDialog(context, source: 'manual'),
+                        child: const Icon(Icons.add),
+                      ),
+                    ],
                   ),
                 ),
                 destinations: [
@@ -186,6 +194,40 @@ class AppShell extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Brand mark pinned to the top of the navigation rail — a gradient neuron
+/// glyph that doubles as a subtle identity anchor for the whole shell.
+class _RailBrand extends StatelessWidget {
+  const _RailBrand();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: AppConstants.appName,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [AppTheme.seed, AppTheme.accentBlue],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.seed.withValues(alpha: 0.35),
+              blurRadius: 12,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Icon(Icons.hub_rounded, size: 22, color: cs.surface),
       ),
     );
   }
