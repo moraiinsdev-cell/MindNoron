@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/enums.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/utils/greeting.dart';
 import '../../data/database/app_database.dart';
 import '../../data/repositories/daily_log_repository.dart';
@@ -13,6 +14,7 @@ import '../../l10n/app_localizations.dart';
 import '../../presentation/navigation/app_router.dart';
 import '../../presentation/widgets/common/copy_button.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
+import '../../presentation/widgets/common/ui_kit.dart';
 import '../capture/capture_dialog.dart';
 import '../motivation/quotes.dart';
 import '../tasks/task_urgency.dart';
@@ -41,10 +43,12 @@ class DashboardScreen extends ConsumerWidget {
         if (bd != null) return 1;
         return a.createdAt.compareTo(b.createdAt);
       });
-    final visibleTopTasks = topTasks.take(5);
+    final visibleTopTasks = topTasks.take(5).toList();
     final quote = ref.watch(randomQuoteProvider);
 
+    final cs = Theme.of(context).colorScheme;
     return SectionScaffold(
+      icon: Icons.dashboard_rounded,
       title: personalizedGreetingFor(l10n, now: now, userName: userName),
       subtitle: '${now.month}/${now.day}/${now.year}',
       actions: [
@@ -56,31 +60,26 @@ class DashboardScreen extends ConsumerWidget {
       ],
       child: ListView(
         children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 20),
-            child: Text(
-              '"${quote.text}" - ${quote.author}',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontStyle: FontStyle.italic,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-          ),
+          _QuoteBanner(text: quote.text, author: quote.author),
+          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
-                child: _StatCard(
+                child: StatTile(
                   icon: Icons.timer_outlined,
                   label: l10n.focusToday,
                   value: l10n.minutesShort(focus),
+                  onTap: () => context.go(Routes.timer),
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _StatCard(
+                child: StatTile(
                   icon: Icons.check_circle_outline,
                   label: l10n.tasksDoneToday,
                   value: '$doneToday',
+                  accent: AppTheme.accentBlue,
+                  onTap: () => context.go(Routes.tasks),
                 ),
               ),
             ],
@@ -95,37 +94,136 @@ class DashboardScreen extends ConsumerWidget {
           const SizedBox(height: 20),
           const _EnergyCheckInCard(),
           const SizedBox(height: 28),
-          Text(l10n.topPriorities,
-              style: Theme.of(context).textTheme.titleMedium),
+          SectionHeader(
+            title: l10n.topPriorities,
+            icon: Icons.flag_outlined,
+            trailing: topTasks.isEmpty
+                ? null
+                : TextButton(
+                    onPressed: () => context.go(Routes.tasks),
+                    child: Text(l10n.navTasks),
+                  ),
+          ),
           const SizedBox(height: 12),
           if (topTasks.isEmpty)
             const SizedBox(
-              height: 140,
+              height: 160,
               child: ComingSoon(
-                  label: 'No open tasks — capture something to get going'),
+                icon: Icons.task_alt_outlined,
+                label: 'No open tasks — capture something to get going',
+              ),
             )
           else
             Card(
               child: Column(
                 children: [
-                  for (final t in visibleTopTasks)
-                    ListTile(
-                      leading: Icon(Icons.circle,
-                          size: 12,
-                          color: Priority.color(
-                              t.priority, Theme.of(context).colorScheme)),
-                      title: Text(t.title),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CopyIconButton(text: t.title),
-                          Text(Priority.label(t.priority)),
-                        ],
+                  for (var i = 0; i < visibleTopTasks.length; i++) ...[
+                    if (i > 0)
+                      Divider(
+                        height: 1,
+                        indent: 16,
+                        endIndent: 16,
+                        color: cs.outlineVariant.withValues(alpha: 0.5),
                       ),
-                    ),
+                    _PriorityTile(task: visibleTopTasks[i]),
+                  ],
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A single row in the "top priorities" list: an urgency dot, the title, a
+/// copy affordance and a coloured priority pill.
+class _PriorityTile extends StatelessWidget {
+  const _PriorityTile({required this.task});
+
+  final Task task;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final color = Priority.color(task.priority, cs);
+    return ListTile(
+      leading: Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color,
+          boxShadow: [
+            BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 6),
+          ],
+        ),
+      ),
+      title: Text(task.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CopyIconButton(text: task.title),
+          const SizedBox(width: 4),
+          InfoPill(label: Priority.label(task.priority), color: color),
+        ],
+      ),
+    );
+  }
+}
+
+/// A calm, editorial quote banner with a vertical accent bar.
+class _QuoteBanner extends StatelessWidget {
+  const _QuoteBanner({required this.text, required this.author});
+
+  final String text;
+  final String author;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        border: Border.all(color: cs.outlineVariant),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            width: 3,
+            decoration: BoxDecoration(
+              color: cs.primary,
+              borderRadius: BorderRadius.circular(AppRadii.pill),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  text,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontStyle: FontStyle.italic,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '— $author',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -377,47 +475,6 @@ class _EnergySegment extends StatelessWidget {
                   decoration: BoxDecoration(color: cs.primary),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: theme.colorScheme.secondaryContainer,
-              child: Icon(icon, color: theme.colorScheme.onSecondaryContainer),
-            ),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(value, style: theme.textTheme.headlineSmall),
-                Text(label,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-              ],
             ),
           ],
         ),
