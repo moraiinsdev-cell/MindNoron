@@ -54,6 +54,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     final rangeLabel = _formatRangeLabel(_period, _anchor);
 
     return SectionScaffold(
+      icon: Icons.account_balance_wallet_rounded,
       title: 'Expenses',
       subtitle: rangeLabel,
       actions: [

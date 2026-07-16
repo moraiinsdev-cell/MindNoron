@@ -58,6 +58,7 @@ class InboxScreen extends ConsumerWidget {
     final itemsAsync = ref.watch(unprocessedInboxProvider);
 
     return SectionScaffold(
+      icon: Icons.inbox_rounded,
       title: l10n.navInbox,
       actions: [
         FilledButton.icon(

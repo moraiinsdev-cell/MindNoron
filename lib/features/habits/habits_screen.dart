@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_date_utils.dart';
 import '../../data/database/app_database.dart';
 import '../../data/repositories/habit_repository.dart';
@@ -45,6 +46,8 @@ class _HabitsScreenState extends ConsumerState<HabitsScreen> {
     }
 
     return SectionScaffold(
+      icon: Icons.local_fire_department_rounded,
+      accent: AppTheme.accentAmber,
       title: l10n.navHabits,
       child: Column(
         children: [

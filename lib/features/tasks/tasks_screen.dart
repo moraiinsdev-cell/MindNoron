@@ -44,6 +44,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     final l10n = AppLocalizations.of(context);
 
     return SectionScaffold(
+      icon: Icons.task_alt_rounded,
       title: l10n.navTasks,
       actions: [
         SegmentedButton<_TaskView>(

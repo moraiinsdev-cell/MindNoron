@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../data/repositories/activity_repository.dart';
 import '../../data/repositories/habit_repository.dart'
     show computeStreak, computeLongestStreak;
@@ -37,6 +38,8 @@ class _ActivityScreenState extends ConsumerState<ActivityScreen> {
     final years = [for (var y = thisYear; y >= thisYear - 3; y--) y];
 
     return SectionScaffold(
+      icon: Icons.insights_rounded,
+      accent: AppTheme.accentBlue,
       title: l10n.navActivity,
       actions: [
         DropdownButton<int>(

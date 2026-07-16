@@ -70,6 +70,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> {
     );
 
     return SectionScaffold(
+      icon: Icons.timer_rounded,
       title: l10n.navTimer,
       child: LayoutBuilder(
         builder: (context, constraints) {

@@ -23,6 +23,7 @@ class JournalScreen extends ConsumerWidget {
         .toList(growable: false);
 
     return SectionScaffold(
+      icon: Icons.auto_stories_rounded,
       title: 'Journal',
       subtitle: '${now.month}/${now.day}/${now.year}',
       child: ListView(

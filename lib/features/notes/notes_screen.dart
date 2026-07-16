@@ -43,6 +43,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
     final notesAsync = ref.watch(allNotesProvider);
 
     return SectionScaffold(
+      icon: Icons.sticky_note_2_rounded,
       title: l10n.navNotes,
       actions: [
         FilledButton.icon(

@@ -108,6 +108,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final userName = ref.watch(userNameProvider).valueOrNull;
 
     return SectionScaffold(
+      icon: Icons.settings_rounded,
       title: l10n.navSettings,
       child: ListView(
         children: [

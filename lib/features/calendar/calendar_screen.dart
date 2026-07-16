@@ -103,6 +103,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final items = CalendarUtils.expand(events, tasks, range, cs);
 
     return SectionScaffold(
+      icon: Icons.calendar_month_rounded,
       title: 'Calendar',
       actions: [
         SegmentedButton<_CalView>(
