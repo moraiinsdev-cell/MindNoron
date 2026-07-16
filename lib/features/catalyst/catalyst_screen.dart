@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../../presentation/navigation/app_router.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
+import '../../presentation/widgets/common/ui_kit.dart';
 import 'catalyst_idea.dart';
 import 'catalyst_repository.dart';
 import 'catalyst_service.dart';
@@ -104,6 +106,8 @@ class _CatalystScreenState extends ConsumerState<CatalystScreen> {
       });
 
     return SectionScaffold(
+      icon: Icons.auto_awesome_rounded,
+      accent: AppTheme.accentAmber,
       title: 'Idea Catalyst',
       subtitle:
           'Nhập một brief → 3 ý tưởng đột phá cho hackathon (Radical Innovation Engine).',
@@ -171,27 +175,51 @@ class _InputBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        TextField(
-          controller: controller,
-          minLines: 2,
-          maxLines: 5,
-          textInputAction: TextInputAction.newline,
-          decoration: const InputDecoration(
-            hintText:
-                'Ví dụ: công nghệ giảm ô nhiễm không khí đô thị bằng tảo...',
-            border: OutlineInputBorder(),
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: cs.panel(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.auto_awesome,
+                  size: 18, color: AppTheme.accentAmber),
+              const SizedBox(width: 8),
+              Text('Brief ý tưởng',
+                  style: theme.textTheme.titleSmall),
+              const Spacer(),
+              Text(
+                'Radical Innovation Engine',
+                style: theme.textTheme.labelSmall
+                    ?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 10),
-        FilledButton.icon(
-          onPressed: loading ? null : onGenerate,
-          icon: const Icon(Icons.bolt),
-          label: const Text('Tạo Ý Tưởng Đột Phá'),
-        ),
-      ],
+          const SizedBox(height: 12),
+          TextField(
+            controller: controller,
+            minLines: 3,
+            maxLines: 6,
+            textInputAction: TextInputAction.newline,
+            decoration: const InputDecoration(
+              hintText:
+                  'Ví dụ: công nghệ giảm ô nhiễm không khí đô thị bằng tảo...',
+            ),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: loading ? null : onGenerate,
+              icon: const Icon(Icons.bolt),
+              label: const Text('Tạo Ý Tưởng Đột Phá'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -227,19 +255,18 @@ class _UsageLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
       children: [
-        Icon(Icons.data_usage,
-            size: 15, color: theme.colorScheme.onSurfaceVariant),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            'Lượt gần nhất: ${last.outputTokens} tokens ra · '
-            '${last.inputTokens} vào   •   Phiên này: $sessionTotal tokens',
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-          ),
+        InfoPill(
+          icon: Icons.bolt_outlined,
+          label: 'Lượt này: ${last.outputTokens} ra · ${last.inputTokens} vào',
+          color: AppTheme.accentAmber,
+        ),
+        InfoPill(
+          icon: Icons.data_usage,
+          label: 'Phiên: $sessionTotal tokens',
         ),
       ],
     );
@@ -259,8 +286,9 @@ class _MissingKeyBanner extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(10),
+          color: theme.colorScheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          border: Border.all(color: theme.colorScheme.outlineVariant),
         ),
         child: Row(
           children: [
@@ -294,7 +322,7 @@ class _ErrorBanner extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: theme.colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadii.md),
       ),
       child: Row(
         children: [
@@ -323,17 +351,29 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('⚡', style: TextStyle(fontSize: 36)),
-          const SizedBox(height: 10),
+          Container(
+            width: 84,
+            height: 84,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: cs.heroGradient(AppTheme.accentAmber),
+              border:
+                  Border.all(color: AppTheme.accentAmber.withValues(alpha: 0.3)),
+            ),
+            child: const Icon(Icons.auto_awesome,
+                size: 38, color: AppTheme.accentAmber),
+          ),
+          const SizedBox(height: 16),
           Text(
             'Chưa có ý tưởng nào.\nNhập một brief ở trên và bấm “Tạo Ý Tưởng Đột Phá”.',
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: theme.textTheme.bodyLarge
+                ?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
       ),
