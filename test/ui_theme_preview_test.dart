@@ -1,6 +1,10 @@
 // Renders the premium theme + shared UI kit to PNGs under build/ui_preview/ so
 // the design system can be reviewed without launching the desktop app. Doubles
 // as a smoke test that the theme and every shared component lay out cleanly.
+//
+// This is a layout gallery: const-spamming the sample tree hurts readability,
+// so the const lint is intentionally relaxed for the demo widgets below.
+// ignore_for_file: prefer_const_constructors
 import 'dart:io';
 import 'dart:ui' as ui;
 
