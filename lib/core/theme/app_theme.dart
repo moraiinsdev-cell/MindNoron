@@ -3,9 +3,10 @@ import 'package:flutter/services.dart';
 
 /// Premium, calm theme for MindNoron (dark-first, light available).
 ///
-/// Design language: a controlled deep teal-charcoal palette, hairline-bordered
-/// surfaces that lift subtly above the background, soft radii and refined
-/// typography. Inspired by Linear / Notion — quiet, dense, professional.
+/// Design language: Apple-minimal. A controlled deep teal-charcoal palette,
+/// frosted-glass surfaces floating over a soft ambient backdrop, continuous
+/// rounded corners, and buttery motion (see [AppMotion]). Typography is Inter
+/// (the open cousin of SF Pro) with the tighter InterDisplay cut on headings.
 ///
 /// The whole app is styled from here: overriding [ColorScheme] surface ramps
 /// and the component themes propagates the look to every screen without
@@ -19,6 +20,10 @@ class AppTheme {
   static const Color accentBlue = Color(0xFF38BDF8); // sky-400
   static const Color accentViolet = Color(0xFF8B5CF6); // violet-500
   static const Color accentAmber = Color(0xFFF6B35A); // warm amber
+
+  /// Ambient backdrop hues — the soft "aurora" wash the glass surfaces float
+  /// above (painted by the shell / [SectionScaffold]-style backdrops).
+  static const List<Color> aurora = [seed, accentBlue, accentViolet];
 
   static ThemeData get dark => _build(Brightness.dark);
   static ThemeData get light => _build(Brightness.light);
@@ -111,6 +116,16 @@ class AppTheme {
 
     return baseTheme.copyWith(
       textTheme: textTheme,
+      // Buttery route changes: a quiet fade + 8px rise, macOS-style.
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.windows: _GentleRisePageTransitionsBuilder(),
+          TargetPlatform.macOS: _GentleRisePageTransitionsBuilder(),
+          TargetPlatform.linux: _GentleRisePageTransitionsBuilder(),
+          TargetPlatform.android: _GentleRisePageTransitionsBuilder(),
+          TargetPlatform.iOS: _GentleRisePageTransitionsBuilder(),
+        },
+      ),
       // Subtle: shadows in dark are near-invisible; borders carry the depth.
       shadowColor: isDark ? Colors.black : const Color(0x33334B45),
       cardTheme: CardThemeData(
@@ -339,26 +354,31 @@ class AppTheme {
   }
 
   static TextTheme _textTheme(TextTheme base, ColorScheme cs) {
-    // Tighten headings, relax body — a quiet, editorial rhythm.
+    // Tighten headings (InterDisplay — the optical cut for large sizes),
+    // relax body — a quiet, editorial rhythm.
     return base.copyWith(
       displaySmall: base.displaySmall?.copyWith(
+        fontFamily: 'InterDisplay',
         fontWeight: FontWeight.w700,
-        letterSpacing: -0.5,
+        letterSpacing: -0.8,
         color: cs.onSurface,
       ),
       headlineMedium: base.headlineMedium?.copyWith(
+        fontFamily: 'InterDisplay',
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.7,
+        color: cs.onSurface,
+      ),
+      headlineSmall: base.headlineSmall?.copyWith(
+        fontFamily: 'InterDisplay',
         fontWeight: FontWeight.w700,
         letterSpacing: -0.5,
         color: cs.onSurface,
       ),
-      headlineSmall: base.headlineSmall?.copyWith(
-        fontWeight: FontWeight.w700,
-        letterSpacing: -0.4,
-        color: cs.onSurface,
-      ),
       titleLarge: base.titleLarge?.copyWith(
-        fontWeight: FontWeight.w700,
-        letterSpacing: -0.3,
+        fontFamily: 'InterDisplay',
+        fontWeight: FontWeight.w600,
+        letterSpacing: -0.4,
         color: cs.onSurface,
       ),
       titleMedium: base.titleMedium?.copyWith(
@@ -413,6 +433,38 @@ abstract final class AppSpace {
   static const double xxl = 28;
 }
 
+/// Motion tokens — one fluid, Apple-like timing language for the whole app.
+/// Use these instead of ad-hoc durations so every animation feels related.
+abstract final class AppMotion {
+  /// Hover feedback, small state flips.
+  static const Duration fast = Duration(milliseconds: 160);
+
+  /// Default transitions: selection, colour, reveal.
+  static const Duration base = Duration(milliseconds: 260);
+
+  /// Route changes, larger movements.
+  static const Duration gentle = Duration(milliseconds: 380);
+
+  /// Page/section entrances.
+  static const Duration entrance = Duration(milliseconds: 520);
+
+  /// The workhorse ease — fast start, long soft landing.
+  static const Curve ease = Curves.easeOutCubic;
+
+  /// Extra-soft landing for entrances (quintic).
+  static const Curve easeOutQuint = Cubic(0.22, 1, 0.36, 1);
+
+  /// A whisper of spring for scale-ins — never bouncy, just alive.
+  static const Curve spring = Cubic(0.34, 1.3, 0.64, 1);
+}
+
+/// Frosted-glass tuning shared by [PremiumSurface.glass] and the glass
+/// widgets in ui_kit. One place to tune the whole material.
+abstract final class AppGlass {
+  /// Backdrop blur sigma for true frosted surfaces (rail, dialogs, pips).
+  static const double blur = 24;
+}
+
 /// Reusable premium surface helpers used by feature screens for accent panels
 /// and soft-elevated containers that go beyond the default [Card].
 extension PremiumSurface on ColorScheme {
@@ -424,6 +476,47 @@ extension PremiumSurface on ColorScheme {
       border: Border.all(color: outlineVariant),
     );
   }
+
+  /// Translucent glass-panel decoration (no blur — cheap, use anywhere).
+  /// Over the ambient aurora backdrop this reads as vibrancy; pair with a
+  /// BackdropFilter (see ui_kit `GlassSurface`) where content scrolls behind.
+  BoxDecoration glass({
+    double radius = AppRadii.card,
+    double opacity = 1,
+  }) {
+    final dark = brightness == Brightness.dark;
+    return BoxDecoration(
+      color: dark
+          ? Colors.white.withValues(alpha: 0.055 * opacity)
+          : Colors.white.withValues(alpha: 0.58 * opacity),
+      borderRadius: BorderRadius.circular(radius),
+      border: Border.all(
+        color: dark
+            ? Colors.white.withValues(alpha: 0.09)
+            : Colors.white.withValues(alpha: 0.85),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: dark ? 0.22 : 0.06),
+          blurRadius: 24,
+          offset: const Offset(0, 8),
+        ),
+      ],
+    );
+  }
+
+  /// The faint top-edge light catch that sells the glass — layer above a
+  /// [glass] fill.
+  Gradient get glassSheen => LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Colors.white.withValues(
+              alpha: brightness == Brightness.dark ? 0.045 : 0.35),
+          Colors.white.withValues(alpha: 0),
+        ],
+        stops: const [0, 0.45],
+      );
 
   /// A subtle tinted accent panel (e.g. hero cards, callouts).
   BoxDecoration accentPanel(Color accent,
@@ -444,4 +537,35 @@ extension PremiumSurface on ColorScheme {
           accent.withValues(alpha: 0.02),
         ],
       );
+}
+
+/// Quiet fade + 8px rise for route changes — the macOS feel: no sliding
+/// panes, just content settling into place.
+class _GentleRisePageTransitionsBuilder extends PageTransitionsBuilder {
+  const _GentleRisePageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: AppMotion.easeOutQuint,
+      reverseCurve: Curves.easeInCubic,
+    );
+    return FadeTransition(
+      opacity: curved,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.012),
+          end: Offset.zero,
+        ).animate(curved),
+        child: child,
+      ),
+    );
+  }
 }
