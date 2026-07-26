@@ -15,6 +15,8 @@ import '../../presentation/navigation/app_router.dart';
 import '../../presentation/widgets/common/copy_button.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
 import '../../presentation/widgets/common/ui_kit.dart';
+import '../bible/bible_repository.dart';
+import '../bible/bible_verse.dart';
 import '../capture/capture_dialog.dart';
 import '../motivation/quotes.dart';
 import '../tasks/task_urgency.dart';
@@ -89,6 +91,8 @@ class DashboardScreen extends ConsumerWidget {
           // you decide what to work on today. Hides itself until there is
           // something to say.
           const MoneyStrip(),
+          const SizedBox(height: 16),
+          const _DailyVerseCard(),
           const SizedBox(height: 24),
           _FocusEnergyCard(focusMinutes: focus),
           const SizedBox(height: 20),
@@ -167,6 +171,83 @@ class _PriorityTile extends StatelessWidget {
           const SizedBox(width: 4),
           InfoPill(label: Priority.label(task.priority), color: color),
         ],
+      ),
+    );
+  }
+}
+
+/// "Lời Chúa hôm nay" — the deterministic daily Bible verse, surfaced on the
+/// dashboard so the Word greets the reader every day. Tapping opens the full
+/// Kinh Thánh hub. Respects the reader's Vietnamese/English preference.
+class _DailyVerseCard extends ConsumerWidget {
+  const _DailyVerseCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final verse = verseOfDay();
+    final english = ref.watch(bibleEnglishProvider).valueOrNull ?? false;
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        onTap: () => context.go(Routes.bible),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: cs.heroGradient(kBibleGold),
+            borderRadius: BorderRadius.circular(AppRadii.card),
+            border: Border.all(color: kBibleGold.withValues(alpha: 0.24)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.menu_book_rounded,
+                        size: 18, color: kBibleGold),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Lời Chúa hôm nay',
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    const Spacer(),
+                    InfoPill(
+                      label: '${verse.topic.emoji} ${verse.topic.label}',
+                      color: kBibleGold,
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(Icons.chevron_right,
+                        size: 20, color: cs.onSurfaceVariant),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  verse.textFor(english: english),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontStyle: FontStyle.italic,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '— ${verse.refFor(english: english)} · ${english ? 'KJV' : 'BTT'}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

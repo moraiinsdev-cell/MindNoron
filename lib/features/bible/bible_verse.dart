@@ -12,6 +12,11 @@ import 'package:flutter/material.dart';
 /// calendar day, so "câu của Chúa mỗi ngày" is stable through the day and moves
 /// on tomorrow. See [verseOfDay].
 
+/// Warm, liturgical gold — the identity colour of the Holy Bible hub, kept
+/// distinct from Catalyst's amber and the app's teal primary. Lives here so both
+/// the Bible screen and the dashboard's daily-verse card can share it.
+const Color kBibleGold = Color(0xFFD9B24C);
+
 /// The devotional theme a verse belongs to. Labels are Vietnamese; the glyph is
 /// used on chips and topic cards.
 enum BibleTopic {

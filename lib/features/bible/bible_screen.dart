@@ -11,10 +11,6 @@ import '../../presentation/widgets/common/ui_kit.dart';
 import 'bible_repository.dart';
 import 'bible_verse.dart';
 
-/// Warm, liturgical gold — the identity colour of the Holy Bible hub, kept
-/// distinct from Catalyst's amber and the app's teal primary.
-const Color kBibleGold = Color(0xFFD9B24C);
-
 /// Offline "Kinh Thánh" hub — a verse of God for every day.
 ///
 /// No network, no LLM. The Today tab features the deterministic daily verse
