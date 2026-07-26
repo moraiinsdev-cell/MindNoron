@@ -24,16 +24,16 @@ class CatalystIdea {
   /// The brief/sentence the player entered that produced this idea.
   final String brief;
 
-  /// Tên Concept Dị Biệt — the punchy, differentiated concept name.
+  /// Concept name — the punchy, differentiated concept name.
   final String conceptName;
 
-  /// Paradigm Shift — the blind spot 99% of teams miss.
+  /// Paradigm shift — the blind spot 99% of teams miss.
   final String paradigmShift;
 
-  /// Cơ chế cốt lõi — how the existing tech stack is wired off-label.
+  /// Core mechanism — how the existing tech stack is wired off-label.
   final String coreMechanism;
 
-  /// Lợi thế bất đối xứng — why traditional solutions become obsolete.
+  /// Asymmetric advantage — why traditional solutions become obsolete.
   final String asymmetricAdvantage;
 
   final DateTime createdAt;

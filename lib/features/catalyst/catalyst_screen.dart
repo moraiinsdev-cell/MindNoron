@@ -59,40 +59,40 @@ class _CatalystScreenState extends ConsumerState<CatalystScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _errorMsg = _viMessage(e.kind);
+        _errorMsg = _errorMessage(e.kind);
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _errorMsg = 'Có lỗi không mong muốn. Thử lại.';
+        _errorMsg = 'Something went wrong. Please try again.';
       });
     }
   }
 
-  static String _viMessage(CatalystError kind) => switch (kind) {
+  static String _errorMessage(CatalystError kind) => switch (kind) {
         CatalystError.missingKey =>
-          'Chưa có API key. Thêm trong Cài đặt để tạo ý tưởng.',
+          'No API key yet. Add one in Settings to generate ideas.',
         CatalystError.unauthorized =>
-          'API key bị từ chối. Kiểm tra lại trong Cài đặt.',
+          'API key rejected. Check it in Settings.',
         CatalystError.rateLimited =>
-          'Bị giới hạn tốc độ. Chờ một lát rồi thử lại.',
+          'Rate limited. Wait a moment and try again.',
         CatalystError.refused =>
-          'Mô hình từ chối brief này. Thử diễn đạt lại.',
+          'The model declined this brief. Try rephrasing it.',
         CatalystError.network =>
-          'Lỗi mạng hoặc hết thời gian chờ. Kiểm tra kết nối và thử lại.',
-        CatalystError.badResponse => 'Phản hồi không dùng được. Thử lại.',
+          'Network error or timeout. Check your connection and try again.',
+        CatalystError.badResponse => 'Unusable response. Please try again.',
       };
 
   Future<void> _copy(CatalystIdea idea) async {
     final text = '${idea.conceptName}\n\n'
-        'Cú lật góc nhìn: ${idea.paradigmShift}\n\n'
-        'Cơ chế cốt lõi: ${idea.coreMechanism}\n\n'
-        'Lợi thế bất đối xứng: ${idea.asymmetricAdvantage}';
+        'Paradigm shift: ${idea.paradigmShift}\n\n'
+        'Core mechanism: ${idea.coreMechanism}\n\n'
+        'Asymmetric advantage: ${idea.asymmetricAdvantage}';
     await Clipboard.setData(ClipboardData(text: text));
     if (!mounted) return;
     ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Đã sao chép')));
+        .showSnackBar(const SnackBar(content: Text('Copied')));
   }
 
   @override
@@ -110,7 +110,7 @@ class _CatalystScreenState extends ConsumerState<CatalystScreen> {
       accent: AppTheme.accentAmber,
       title: 'Idea Catalyst',
       subtitle:
-          'Nhập một brief → 3 ý tưởng đột phá cho hackathon (Radical Innovation Engine).',
+          'Enter a brief → 3 breakthrough hackathon ideas (Radical Innovation Engine).',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -188,7 +188,7 @@ class _InputBar extends StatelessWidget {
               const Icon(Icons.auto_awesome,
                   size: 18, color: AppTheme.accentAmber),
               const SizedBox(width: 8),
-              Text('Brief ý tưởng',
+              Text('Idea brief',
                   style: theme.textTheme.titleSmall),
               const Spacer(),
               Text(
@@ -205,8 +205,7 @@ class _InputBar extends StatelessWidget {
             maxLines: 6,
             textInputAction: TextInputAction.newline,
             decoration: const InputDecoration(
-              hintText:
-                  'Ví dụ: công nghệ giảm ô nhiễm không khí đô thị bằng tảo...',
+              hintText: 'e.g. cut urban air pollution using algae...',
             ),
           ),
           const SizedBox(height: 12),
@@ -215,7 +214,7 @@ class _InputBar extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: loading ? null : onGenerate,
               icon: const Icon(Icons.bolt),
-              label: const Text('Tạo Ý Tưởng Đột Phá'),
+              label: const Text('Generate Breakthrough Ideas'),
             ),
           ),
         ],
@@ -236,7 +235,7 @@ class _LoadingBar extends StatelessWidget {
         const LinearProgressIndicator(),
         const SizedBox(height: 6),
         Text(
-          'Đang kiến tạo ý tưởng… (có thể mất 10–30 giây)',
+          'Forging ideas… (this can take 10–30 seconds)',
           style: theme.textTheme.bodySmall
               ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
@@ -261,12 +260,12 @@ class _UsageLine extends StatelessWidget {
       children: [
         InfoPill(
           icon: Icons.bolt_outlined,
-          label: 'Lượt này: ${last.outputTokens} ra · ${last.inputTokens} vào',
+          label: 'This round: ${last.outputTokens} out · ${last.inputTokens} in',
           color: AppTheme.accentAmber,
         ),
         InfoPill(
           icon: Icons.data_usage,
-          label: 'Phiên: $sessionTotal tokens',
+          label: 'Session: $sessionTotal tokens',
         ),
       ],
     );
@@ -295,11 +294,11 @@ class _MissingKeyBanner extends StatelessWidget {
             Icon(Icons.key_off_outlined, color: theme.colorScheme.outline),
             const SizedBox(width: 10),
             const Expanded(
-              child: Text('Chưa cấu hình Anthropic API key.'),
+              child: Text('Anthropic API key not configured.'),
             ),
             TextButton(
               onPressed: onOpenSettings,
-              child: const Text('Mở Cài đặt'),
+              child: const Text('Open Settings'),
             ),
           ],
         ),
@@ -337,7 +336,7 @@ class _ErrorBanner extends StatelessWidget {
           if (isKey)
             TextButton(
               onPressed: onOpenSettings,
-              child: const Text('Mở Cài đặt'),
+              child: const Text('Open Settings'),
             ),
         ],
       ),
@@ -370,7 +369,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Chưa có ý tưởng nào.\nNhập một brief ở trên và bấm “Tạo Ý Tưởng Đột Phá”.',
+            'No ideas yet.\nEnter a brief above and tap “Generate Breakthrough Ideas”.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyLarge
                 ?.copyWith(color: cs.onSurfaceVariant),
@@ -420,7 +419,7 @@ class _CatalystCard extends StatelessWidget {
               : Padding(
                   padding: const EdgeInsets.only(top: 2),
                   child: Text(
-                    'từ: ${idea.brief}',
+                    'from: ${idea.brief}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall
@@ -429,15 +428,15 @@ class _CatalystCard extends StatelessWidget {
                 ),
           children: [
             _Section(
-              label: '🔭 Cú lật góc nhìn',
+              label: '🔭 Paradigm shift',
               body: idea.paradigmShift,
             ),
             _Section(
-              label: '⚙️ Cơ chế cốt lõi',
+              label: '⚙️ Core mechanism',
               body: idea.coreMechanism,
             ),
             _Section(
-              label: '⚡ Lợi thế bất đối xứng',
+              label: '⚡ Asymmetric advantage',
               body: idea.asymmetricAdvantage,
             ),
             const SizedBox(height: 6),
@@ -450,12 +449,12 @@ class _CatalystCard extends StatelessWidget {
                     size: 18,
                     color: idea.starred ? const Color(0xFFD9A521) : null,
                   ),
-                  label: Text(idea.starred ? 'Đã lưu' : 'Lưu'),
+                  label: Text(idea.starred ? 'Saved' : 'Save'),
                 ),
                 TextButton.icon(
                   onPressed: onCopy,
                   icon: const Icon(Icons.copy_outlined, size: 18),
-                  label: const Text('Sao chép'),
+                  label: const Text('Copy'),
                 ),
                 const Spacer(),
                 TextButton.icon(
@@ -463,7 +462,7 @@ class _CatalystCard extends StatelessWidget {
                       foregroundColor: theme.colorScheme.outline),
                   onPressed: onDismiss,
                   icon: const Icon(Icons.close, size: 18),
-                  label: const Text('Bỏ'),
+                  label: const Text('Dismiss'),
                 ),
               ],
             ),
