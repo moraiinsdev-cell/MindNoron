@@ -17,6 +17,8 @@ import 'package:mind_noron/features/tax/tax_repository.dart';
 import 'package:mind_noron/features/tax/tax_savings.dart';
 import 'package:mind_noron/features/tax/tax_screen.dart';
 
+import 'support/load_fonts.dart';
+
 Future<void> _capture(WidgetTester tester, Key key, String name) async {
   final boundary =
       tester.renderObject(find.byKey(key)) as RenderRepaintBoundary;
@@ -30,10 +32,13 @@ Future<void> _capture(WidgetTester tester, Key key, String name) async {
 }
 
 void main() {
+  setUpAll(loadAppFonts);
+
   testWidgets('tax hub tabs render to preview PNGs', (tester) async {
     // Wide enough for all nine tab segments — a narrower view scrolls the later
-    // ones off-screen and taps on them silently miss.
-    tester.view.physicalSize = const Size(1700, 1500);
+    // ones off-screen and taps on them silently miss. (Inter renders wider
+    // than the old test font, hence the extra room.)
+    tester.view.physicalSize = const Size(1960, 1500);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);

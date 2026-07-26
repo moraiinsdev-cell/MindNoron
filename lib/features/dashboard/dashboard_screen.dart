@@ -62,78 +62,105 @@ class DashboardScreen extends ConsumerWidget {
       ],
       child: ListView(
         children: [
-          _QuoteBanner(text: quote.text, author: quote.author),
+          // Sections cascade in with a gentle stagger — one motion, one page.
+          Entrance(
+            child: _QuoteBanner(text: quote.text, author: quote.author),
+          ),
           const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: StatTile(
-                  icon: Icons.timer_outlined,
-                  label: l10n.focusToday,
-                  value: l10n.minutesShort(focus),
-                  onTap: () => context.go(Routes.timer),
+          Entrance(
+            delay: const Duration(milliseconds: 50),
+            child: Row(
+              children: [
+                Expanded(
+                  child: StatTile(
+                    icon: Icons.timer_outlined,
+                    label: l10n.focusToday,
+                    value: l10n.minutesShort(focus),
+                    onTap: () => context.go(Routes.timer),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: StatTile(
-                  icon: Icons.check_circle_outline,
-                  label: l10n.tasksDoneToday,
-                  value: '$doneToday',
-                  accent: AppTheme.accentBlue,
-                  onTap: () => context.go(Routes.tasks),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: StatTile(
+                    icon: Icons.check_circle_outline,
+                    label: l10n.tasksDoneToday,
+                    value: '$doneToday',
+                    accent: AppTheme.accentBlue,
+                    onTap: () => context.go(Routes.tasks),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           // Runway and the tax gap: the two money facts worth knowing before
           // you decide what to work on today. Hides itself until there is
           // something to say.
-          const MoneyStrip(),
-          const SizedBox(height: 16),
-          const _DailyVerseCard(),
-          const SizedBox(height: 24),
-          _FocusEnergyCard(focusMinutes: focus),
-          const SizedBox(height: 20),
-          const _EnergyCheckInCard(),
-          const SizedBox(height: 28),
-          SectionHeader(
-            title: l10n.topPriorities,
-            icon: Icons.flag_outlined,
-            trailing: topTasks.isEmpty
-                ? null
-                : TextButton(
-                    onPressed: () => context.go(Routes.tasks),
-                    child: Text(l10n.navTasks),
-                  ),
+          const Entrance(
+            delay: Duration(milliseconds: 100),
+            child: MoneyStrip(),
           ),
-          const SizedBox(height: 12),
-          if (topTasks.isEmpty)
-            const SizedBox(
-              height: 160,
-              child: ComingSoon(
-                icon: Icons.task_alt_outlined,
-                label: 'No open tasks — capture something to get going',
-              ),
-            )
-          else
-            Card(
-              child: Column(
-                children: [
-                  for (var i = 0; i < visibleTopTasks.length; i++) ...[
-                    if (i > 0)
-                      Divider(
-                        height: 1,
-                        indent: 16,
-                        endIndent: 16,
-                        color: cs.outlineVariant.withValues(alpha: 0.5),
-                      ),
-                    _PriorityTile(task: visibleTopTasks[i]),
-                  ],
-                ],
-              ),
+          const SizedBox(height: 16),
+          const Entrance(
+            delay: Duration(milliseconds: 140),
+            child: _DailyVerseCard(),
+          ),
+          const SizedBox(height: 24),
+          Entrance(
+            delay: const Duration(milliseconds: 180),
+            child: _FocusEnergyCard(focusMinutes: focus),
+          ),
+          const SizedBox(height: 20),
+          const Entrance(
+            delay: Duration(milliseconds: 220),
+            child: _EnergyCheckInCard(),
+          ),
+          const SizedBox(height: 28),
+          Entrance(
+            delay: const Duration(milliseconds: 260),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SectionHeader(
+                  title: l10n.topPriorities,
+                  icon: Icons.flag_outlined,
+                  trailing: topTasks.isEmpty
+                      ? null
+                      : TextButton(
+                          onPressed: () => context.go(Routes.tasks),
+                          child: Text(l10n.navTasks),
+                        ),
+                ),
+                const SizedBox(height: 12),
+                if (topTasks.isEmpty)
+                  const SizedBox(
+                    height: 160,
+                    child: ComingSoon(
+                      icon: Icons.task_alt_outlined,
+                      label: 'No open tasks — capture something to get going',
+                    ),
+                  )
+                else
+                  Card(
+                    child: Column(
+                      children: [
+                        for (var i = 0; i < visibleTopTasks.length; i++) ...[
+                          if (i > 0)
+                            Divider(
+                              height: 1,
+                              indent: 16,
+                              endIndent: 16,
+                              color:
+                                  cs.outlineVariant.withValues(alpha: 0.5),
+                            ),
+                          _PriorityTile(task: visibleTopTasks[i]),
+                        ],
+                      ],
+                    ),
+                  ),
+              ],
             ),
+          ),
         ],
       ),
     );
@@ -264,13 +291,8 @@ class _QuoteBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    return Container(
+    return GlassSurface(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(AppRadii.card),
-        border: Border.all(color: cs.outlineVariant),
-      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -390,7 +412,7 @@ class _FocusEnergyCard extends StatelessWidget {
               children: [
                 for (var i = 0; i < 5; i++) ...[
                   Expanded(
-                    child: _EnergySegment(
+                    child: MeterBar(
                       value:
                           ((focusMinutes - (i * _unitMinutes)) / _unitMinutes)
                               .clamp(0.0, 1.0),
@@ -498,7 +520,9 @@ class _EnergyPick extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: onTap,
-      child: Container(
+      child: AnimatedContainer(
+        duration: AppMotion.base,
+        curve: AppMotion.ease,
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
@@ -507,6 +531,14 @@ class _EnergyPick extends StatelessWidget {
             color: selected ? cs.primary : Colors.transparent,
             width: 1.5,
           ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: cs.primary.withValues(alpha: 0.25),
+                    blurRadius: 12,
+                  ),
+                ]
+              : const [],
         ),
         child: Column(
           children: [
@@ -529,37 +561,3 @@ class _EnergyPick extends StatelessWidget {
   }
 }
 
-class _EnergySegment extends StatelessWidget {
-  const _EnergySegment({required this.value});
-
-  final double value;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return SizedBox(
-      height: 10,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(999),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            DecoratedBox(
-              decoration: BoxDecoration(color: cs.surfaceContainerHighest),
-            ),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: FractionallySizedBox(
-                widthFactor: value,
-                heightFactor: 1,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(color: cs.primary),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

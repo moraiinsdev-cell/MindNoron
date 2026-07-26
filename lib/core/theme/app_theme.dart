@@ -130,13 +130,19 @@ class AppTheme {
       shadowColor: isDark ? Colors.black : const Color(0x33334B45),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: colorScheme.surfaceContainerLow,
+        // Glass: translucent fill + light-catch border so every Card in the
+        // app floats over the aurora backdrop without per-screen changes.
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.white.withValues(alpha: 0.62),
         surfaceTintColor: Colors.transparent,
         shadowColor: baseTheme.shadowColor,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.card),
           side: BorderSide(
-            color: colorScheme.outlineVariant.withValues(alpha: isDark ? 0.7 : 1),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.085)
+                : Colors.white.withValues(alpha: 0.9),
           ),
         ),
         margin: EdgeInsets.zero,

@@ -14,6 +14,8 @@ import 'package:mind_noron/features/catalyst/catalyst_idea.dart';
 import 'package:mind_noron/features/catalyst/catalyst_repository.dart';
 import 'package:mind_noron/features/catalyst/catalyst_screen.dart';
 
+import 'support/load_fonts.dart';
+
 Future<void> _capture(WidgetTester tester, Key key, String name) async {
   final boundary =
       tester.renderObject(find.byKey(key)) as RenderRepaintBoundary;
@@ -27,6 +29,8 @@ Future<void> _capture(WidgetTester tester, Key key, String name) async {
 }
 
 void main() {
+  setUpAll(loadAppFonts);
+
   testWidgets('catalyst screen renders to preview PNG', (tester) async {
     tester.view.physicalSize = const Size(1040, 1180);
     tester.view.devicePixelRatio = 1.0;

@@ -16,6 +16,8 @@ import 'package:mind_noron/data/database/app_database.dart';
 import 'package:mind_noron/features/bible/bible_repository.dart';
 import 'package:mind_noron/features/bible/bible_screen.dart';
 
+import 'support/load_fonts.dart';
+
 Future<void> _capture(WidgetTester tester, Key key, String name) async {
   final boundary =
       tester.renderObject(find.byKey(key)) as RenderRepaintBoundary;
@@ -54,6 +56,8 @@ Widget _app(AppDatabase db, {bool? english}) {
 }
 
 void main() {
+  setUpAll(loadAppFonts);
+
   testWidgets('bible hub tabs render to preview PNGs', (tester) async {
     tester.view.physicalSize = const Size(1200, 1500);
     tester.view.devicePixelRatio = 1.0;
