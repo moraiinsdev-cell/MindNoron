@@ -63,33 +63,33 @@ void main() {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(() => db.close());
 
-    // ── Vietnamese ────────────────────────────────────────────────────────
-    await tester.pumpWidget(_app(db));
+    // ── English (default) ─────────────────────────────────────────────────
+    await tester.pumpWidget(_app(db, english: true));
     await tester.pumpAndSettle();
 
     // Today is the landing tab: the daily verse + its reflection.
-    expect(find.text('Suy niệm hôm nay'), findsOneWidget);
-    await _capture(tester, _key, '1_today_vi');
+    expect(find.text("Today's reflection"), findsOneWidget);
+    await _capture(tester, _key, '1_today_en');
 
-    await tester.tap(find.text('Chủ đề'));
+    await tester.tap(find.text('Topics'));
     await tester.pumpAndSettle();
-    expect(find.text('Tất cả'), findsOneWidget);
-    await _capture(tester, _key, '2_topics_vi');
+    expect(find.text('All'), findsOneWidget);
+    await _capture(tester, _key, '2_topics_en');
 
-    await tester.tap(find.text('Yêu thích'));
+    await tester.tap(find.text('Favorites'));
     await tester.pumpAndSettle();
-    expect(find.text('Giăng 3:16'), findsOneWidget);
-    await _capture(tester, _key, '3_favorites_vi');
+    expect(find.text('John 3:16'), findsOneWidget);
+    await _capture(tester, _key, '3_favorites_en');
 
-    // ── English (KJV) ─────────────────────────────────────────────────────
+    // ── Vietnamese (Bản Truyền Thống) ─────────────────────────────────────
     // Fully tear down first so the screen rebuilds fresh on the Today tab
     // (the keyed RepaintBoundary would otherwise preserve tab state).
     await tester.pumpWidget(const SizedBox());
     await tester.pumpAndSettle();
-    await tester.pumpWidget(_app(db, english: true));
+    await tester.pumpWidget(_app(db, english: false));
     await tester.pumpAndSettle();
-    expect(find.text('Suy niệm hôm nay'), findsOneWidget);
-    await _capture(tester, _key, '4_today_en');
+    expect(find.text("Today's reflection"), findsOneWidget);
+    await _capture(tester, _key, '4_today_vi');
 
     // Cleanly flush any pending stream-close timers before the test ends.
     await tester.pumpWidget(const SizedBox());

@@ -11,12 +11,12 @@ import '../../presentation/widgets/common/ui_kit.dart';
 import 'bible_repository.dart';
 import 'bible_verse.dart';
 
-/// Offline "Kinh Thánh" hub — a verse of God for every day.
+/// Offline Bible hub — a verse of God for every day.
 ///
 /// No network, no LLM. The Today tab features the deterministic daily verse
-/// with a short reflection; Chủ đề browses the library by theme; Yêu thích
-/// keeps the verses the reader saved. A Vietnamese/English toggle switches
-/// between the Bản Truyền Thống and KJV wording throughout.
+/// with a short reflection; Topics browses the library by theme; Favorites
+/// keeps the verses the reader saved. An English/Vietnamese toggle switches
+/// between the KJV and Bản Truyền Thống wording throughout (English default).
 class BibleScreen extends ConsumerStatefulWidget {
   const BibleScreen({super.key});
 
@@ -42,13 +42,13 @@ class _BibleScreenState extends ConsumerState<BibleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final english = ref.watch(bibleEnglishProvider).valueOrNull ?? false;
+    final english = ref.watch(bibleEnglishProvider).valueOrNull ?? true;
 
     return SectionScaffold(
       icon: Icons.menu_book_rounded,
       accent: kBibleGold,
-      title: 'Kinh Thánh',
-      subtitle: 'Lời của Chúa cho mỗi ngày — song ngữ, hoàn toàn offline.',
+      title: 'Bible',
+      subtitle: "God's word for every day — bilingual, fully offline.",
       actions: [
         _LanguageToggle(
           english: english,
@@ -64,17 +64,17 @@ class _BibleScreenState extends ConsumerState<BibleScreen> {
               ButtonSegment(
                 value: _Tab.today,
                 icon: Icon(Icons.wb_sunny_outlined),
-                label: Text('Hôm nay'),
+                label: Text('Today'),
               ),
               ButtonSegment(
                 value: _Tab.topics,
                 icon: Icon(Icons.grid_view_outlined),
-                label: Text('Chủ đề'),
+                label: Text('Topics'),
               ),
               ButtonSegment(
                 value: _Tab.favorites,
                 icon: Icon(Icons.favorite_outline),
-                label: Text('Yêu thích'),
+                label: Text('Favorites'),
               ),
             ],
             selected: {_tab},
@@ -114,8 +114,8 @@ class _LanguageToggle extends StatelessWidget {
         visualDensity: VisualDensity.compact,
       ),
       segments: const [
-        ButtonSegment(value: false, label: Text('Tiếng Việt')),
         ButtonSegment(value: true, label: Text('English')),
+        ButtonSegment(value: false, label: Text('Vietnamese')),
       ],
       selected: {english},
       onSelectionChanged: (s) => onChanged(s.first),
@@ -142,7 +142,7 @@ class _TodayTab extends ConsumerWidget {
         const SizedBox(height: 16),
         _HeroVerse(verse: verse, english: english, isDaily: isDaily),
         const SizedBox(height: 14),
-        _ReflectionCard(verse: verse),
+        _ReflectionCard(verse: verse, english: english),
         const SizedBox(height: 14),
         _VerseActions(verse: verse, english: english),
         const SizedBox(height: 16),
@@ -164,8 +164,8 @@ class _StreakStrip extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final streakLabel = streak <= 1
-        ? 'Bắt đầu hành trình cùng Lời Chúa hôm nay'
-        : '$streak ngày liên tiếp bên Lời Chúa';
+        ? 'Begin your journey in the Word today'
+        : '$streak days in the Word in a row';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -182,7 +182,7 @@ class _StreakStrip extends StatelessWidget {
             ),
           ),
           InfoPill(
-            label: '$verseCount câu',
+            label: '$verseCount verses',
             icon: Icons.auto_stories_outlined,
             color: kBibleGold,
           ),
@@ -218,7 +218,7 @@ class _HeroVerse extends StatelessWidget {
           Row(
             children: [
               InfoPill(
-                label: isDaily ? 'Câu của ngày' : 'Câu bạn chọn',
+                label: isDaily ? 'Verse of the day' : 'Your pick',
                 icon: isDaily ? Icons.wb_sunny_outlined : Icons.casino_outlined,
                 color: kBibleGold,
                 filled: true,
@@ -284,9 +284,10 @@ class _HeroVerse extends StatelessWidget {
 }
 
 class _ReflectionCard extends StatelessWidget {
-  const _ReflectionCard({required this.verse});
+  const _ReflectionCard({required this.verse, required this.english});
 
   final BibleVerse verse;
+  final bool english;
 
   @override
   Widget build(BuildContext context) {
@@ -306,13 +307,13 @@ class _ReflectionCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Suy niệm hôm nay',
+                    "Today's reflection",
                     style: theme.textTheme.titleSmall
                         ?.copyWith(fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    verse.reflection,
+                    verse.reflectionFor(english: english),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       height: 1.5,
                       color: cs.onSurface,
@@ -348,7 +349,7 @@ class _VerseActions extends ConsumerWidget {
         FilledButton.tonalIcon(
           onPressed: () => _copy(context, verse, english),
           icon: const Icon(Icons.copy_all_outlined, size: 18),
-          label: const Text('Sao chép'),
+          label: const Text('Copy'),
         ),
         OutlinedButton.icon(
           onPressed: () =>
@@ -358,17 +359,17 @@ class _VerseActions extends ConsumerWidget {
             size: 18,
             color: isFav ? cs(context).error : null,
           ),
-          label: Text(isFav ? 'Đã lưu' : 'Yêu thích'),
+          label: Text(isFav ? 'Saved' : 'Favorite'),
         ),
         OutlinedButton.icon(
           onPressed: () => _drawAnother(ref, verse),
           icon: const Icon(Icons.casino_outlined, size: 18),
-          label: const Text('Câu khác'),
+          label: const Text('Another verse'),
         ),
         OutlinedButton.icon(
           onPressed: () => _saveToJournal(context, ref, verse, english),
           icon: const Icon(Icons.auto_stories_outlined, size: 18),
-          label: const Text('Lưu vào Nhật ký'),
+          label: const Text('Save to Journal'),
         ),
       ],
     );
@@ -380,8 +381,8 @@ class _VerseActions extends ConsumerWidget {
       BuildContext context, BibleVerse v, bool english) async {
     await Clipboard.setData(ClipboardData(text: shareTextFor(v, english)));
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã sao chép câu Kinh Thánh')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Verse copied')));
   }
 
   void _drawAnother(WidgetRef ref, BibleVerse current) {
@@ -409,7 +410,7 @@ class _VerseActions extends ConsumerWidget {
     await repo.setNote(next);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã lưu câu vào Nhật ký hôm nay')));
+        const SnackBar(content: Text("Saved to today's journal")));
   }
 }
 
@@ -474,7 +475,7 @@ class _TopicsTab extends StatelessWidget {
           runSpacing: 8,
           children: [
             _TopicChip(
-              label: 'Tất cả',
+              label: 'All',
               selected: filter == null,
               onTap: () => onFilter(null),
             ),
@@ -590,12 +591,12 @@ class _FavoritesEmpty extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Chưa có câu nào được lưu',
+            'No saved verses yet',
             style: theme.textTheme.titleMedium,
           ),
           const SizedBox(height: 6),
           Text(
-            'Chạm ♥ trên bất kỳ câu nào để giữ lại ở đây, đọc lại bất cứ lúc nào.',
+            'Tap ♥ on any verse to keep it here and read it anytime.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium
                 ?.copyWith(color: cs.onSurfaceVariant),
@@ -655,20 +656,20 @@ class _VerseCard extends ConsumerWidget {
                 const Spacer(),
                 IconButton(
                   visualDensity: VisualDensity.compact,
-                  tooltip: 'Sao chép',
+                  tooltip: 'Copy',
                   onPressed: () async {
                     await Clipboard.setData(
                         ClipboardData(text: shareTextFor(verse, english)));
                     if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Đã sao chép câu Kinh Thánh')));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Verse copied')));
                   },
                   icon: Icon(Icons.copy_all_outlined,
                       size: 20, color: cs.onSurfaceVariant),
                 ),
                 IconButton(
                   visualDensity: VisualDensity.compact,
-                  tooltip: isFav ? 'Bỏ lưu' : 'Yêu thích',
+                  tooltip: isFav ? 'Remove' : 'Favorite',
                   onPressed: () =>
                       ref.read(bibleRepositoryProvider).toggleFavorite(verse.id),
                   icon: Icon(

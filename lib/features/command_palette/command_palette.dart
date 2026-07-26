@@ -78,6 +78,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     final base = <_Command>[
       _nav(Icons.dashboard_outlined, 'Dashboard', Routes.dashboard),
       _nav(Icons.apartment_outlined, 'Office', Routes.office),
+      _nav(Icons.bolt_outlined, 'Catalyst', Routes.catalyst),
       _nav(Icons.check_circle_outline, 'Tasks', Routes.tasks),
       _nav(Icons.calendar_month_outlined, 'Calendar', Routes.calendar),
       _nav(Icons.timer_outlined, 'Focus', Routes.timer),
@@ -87,6 +88,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
       _nav(Icons.local_fire_department_outlined, 'Habits', Routes.habits),
       _nav(Icons.account_balance_wallet_outlined, 'Expenses', Routes.expenses),
       _nav(Icons.receipt_long_outlined, 'Thuế / Tax', Routes.tax),
+      _nav(Icons.menu_book_outlined, 'Bible', Routes.bible),
       _nav(Icons.insights_outlined, 'Activity', Routes.activity),
       _nav(Icons.settings_outlined, 'Settings', Routes.settings),
       _Command(Icons.add, 'Quick capture...', () {

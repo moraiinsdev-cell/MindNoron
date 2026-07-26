@@ -55,8 +55,9 @@ class BibleRepository {
 
   // ── Language preference (Vietnamese default) ────────────────────────────
 
+  // English is the default; only an explicit 'vi' choice shows Vietnamese.
   Stream<bool> watchEnglish() =>
-      _settings.watchValue(_kLang).map((v) => v == 'en');
+      _settings.watchValue(_kLang).map((v) => v != 'vi');
 
   Future<void> setEnglish(bool english) =>
       _settings.setValue(_kLang, english ? 'en' : 'vi');
@@ -123,7 +124,7 @@ final bibleStreakProvider = StreamProvider<int>((ref) {
 });
 
 /// Optional override for the "today" hero when the reader draws another verse
-/// ("Câu khác"). Holds a verse id; null means show [verseOfDay].
+/// ("Another verse"). Holds a verse id; null means show [verseOfDay].
 final bibleShuffleProvider = StateProvider<String?>((ref) => null);
 
 /// The verse currently featured on the Today tab: an explicit draw if the

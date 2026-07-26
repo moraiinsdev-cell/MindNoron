@@ -176,9 +176,9 @@ class _PriorityTile extends StatelessWidget {
   }
 }
 
-/// "Lời Chúa hôm nay" — the deterministic daily Bible verse, surfaced on the
+/// "Today's verse" — the deterministic daily Bible verse, surfaced on the
 /// dashboard so the Word greets the reader every day. Tapping opens the full
-/// Kinh Thánh hub. Respects the reader's Vietnamese/English preference.
+/// Bible hub. Respects the reader's English/Vietnamese preference.
 class _DailyVerseCard extends ConsumerWidget {
   const _DailyVerseCard();
 
@@ -187,7 +187,7 @@ class _DailyVerseCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final verse = verseOfDay();
-    final english = ref.watch(bibleEnglishProvider).valueOrNull ?? false;
+    final english = ref.watch(bibleEnglishProvider).valueOrNull ?? true;
 
     return Material(
       color: Colors.transparent,
@@ -212,7 +212,7 @@ class _DailyVerseCard extends ConsumerWidget {
                         size: 18, color: kBibleGold),
                     const SizedBox(width: 8),
                     Text(
-                      'Lời Chúa hôm nay',
+                      "Today's verse",
                       style: theme.textTheme.titleSmall
                           ?.copyWith(fontWeight: FontWeight.w800),
                     ),

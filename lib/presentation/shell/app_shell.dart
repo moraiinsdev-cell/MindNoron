@@ -121,7 +121,7 @@ class AppShell extends ConsumerWidget {
                   const NavigationRailDestination(
                     icon: Icon(Icons.menu_book_outlined),
                     selectedIcon: Icon(Icons.menu_book),
-                    label: Text('Kinh Thánh'),
+                    label: Text('Bible'),
                   ),
                   NavigationRailDestination(
                     icon: _BadgedRailIcon(
