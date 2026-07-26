@@ -15,6 +15,8 @@ import 'package:mind_noron/core/theme/app_theme.dart';
 import 'package:mind_noron/presentation/widgets/common/section_scaffold.dart';
 import 'package:mind_noron/presentation/widgets/common/ui_kit.dart';
 
+import 'support/load_fonts.dart';
+
 Future<void> _capture(WidgetTester tester, Key key, String name) async {
   final boundary =
       tester.renderObject(find.byKey(key)) as RenderRepaintBoundary;
@@ -147,6 +149,8 @@ Widget _gallery() {
 }
 
 void main() {
+  setUpAll(loadAppFonts);
+
   testWidgets('theme + UI kit render to preview PNGs (dark & light)',
       (tester) async {
     tester.view.physicalSize = const Size(1040, 1180);

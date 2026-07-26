@@ -102,7 +102,7 @@ class AppTheme {
       colorScheme: colorScheme,
       brightness: brightness,
       visualDensity: VisualDensity.standard,
-      fontFamily: 'Segoe UI',
+      fontFamily: 'Inter',
       splashFactory: InkSparkle.splashFactory,
       scaffoldBackgroundColor: colorScheme.surface,
     );

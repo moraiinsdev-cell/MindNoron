@@ -64,3 +64,27 @@ flutter:
   assets:
     - assets/images/
     - assets/sounds/
+
+  # Inter — the open-source cousin of Apple's SF Pro. Bundled so the app looks
+  # identical on every machine (and so widget-test previews render real text).
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Italic.ttf
+          weight: 400
+          style: italic
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+    # Tighter optical cut for large headings and hero numbers.
+    - family: InterDisplay
+      fonts:
+        - asset: assets/fonts/InterDisplay-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/InterDisplay-Bold.ttf
+          weight: 700
