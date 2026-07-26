@@ -169,7 +169,14 @@ void main() {
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: theme,
-            home: Scaffold(body: _gallery()),
+            home: Scaffold(
+              body: Stack(
+                children: [
+                  const Positioned.fill(child: AuroraBackdrop()),
+                  _gallery(),
+                ],
+              ),
+            ),
           ),
         ),
       );

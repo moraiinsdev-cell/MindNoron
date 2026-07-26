@@ -67,6 +67,51 @@ class GlassSurface extends StatelessWidget {
   }
 }
 
+/// The soft ambient wash the glass surfaces float above: two or three huge
+/// radial glows in the brand hues over the scaffold background. Static and
+/// gradient-only — no blur, no repaint cost. Painted once by the app shell
+/// behind everything (and by preview harnesses).
+class AuroraBackdrop extends StatelessWidget {
+  const AuroraBackdrop({super.key, this.intensity = 1});
+
+  /// Scales the glow strength (1 = default, already subtle).
+  final double intensity;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final dark = cs.brightness == Brightness.dark;
+    final a = (dark ? 0.14 : 0.18) * intensity;
+
+    Widget glow(AlignmentGeometry center, Color c, double alpha) {
+      return Positioned.fill(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: center as Alignment,
+              radius: 1.15,
+              colors: [c.withValues(alpha: alpha), c.withValues(alpha: 0)],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return IgnorePointer(
+      child: DecoratedBox(
+        decoration: BoxDecoration(color: cs.surface),
+        child: Stack(
+          children: [
+            glow(const Alignment(-1.1, -1.3), AppTheme.seed, a),
+            glow(const Alignment(1.35, -0.5), AppTheme.accentBlue, a * 0.75),
+            glow(const Alignment(0.5, 1.45), AppTheme.accentViolet, a * 0.6),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Desktop hover feedback: the child rises 2px with a soft ease — the quiet
 /// "this is alive" cue every pointer-driven surface should give.
 class HoverLift extends StatefulWidget {

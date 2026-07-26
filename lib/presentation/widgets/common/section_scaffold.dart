@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
+import 'ui_kit.dart';
 
 /// Standard padded page with a header row, used by every top-level screen.
 ///
@@ -63,10 +64,24 @@ class SectionScaffold extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(AppRadii.md),
-                  color: accentColor.withValues(alpha: 0.14),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      accentColor.withValues(alpha: 0.26),
+                      accentColor.withValues(alpha: 0.08),
+                    ],
+                  ),
                   border: Border.all(
                     color: accentColor.withValues(alpha: 0.28),
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: accentColor.withValues(alpha: 0.18),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Icon(icon, color: accentColor, size: 24),
               ),
@@ -121,23 +136,7 @@ class SectionScaffold extends StatelessWidget {
             const SizedBox(height: 14),
             Divider(color: cs.outlineVariant.withValues(alpha: 0.5)),
             const SizedBox(height: 14),
-            Expanded(
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutCubic,
-                builder: (_, t, content) {
-                  return Opacity(
-                    opacity: t.clamp(0, 1),
-                    child: Transform.translate(
-                      offset: Offset(0, (1 - t) * 10),
-                      child: content,
-                    ),
-                  );
-                },
-                child: child,
-              ),
-            ),
+            Expanded(child: Entrance(child: child)),
           ],
         ),
       ),
