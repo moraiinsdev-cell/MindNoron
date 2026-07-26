@@ -176,7 +176,8 @@ class AppTheme {
         ),
       ),
       navigationRailTheme: NavigationRailThemeData(
-        backgroundColor: colorScheme.surfaceContainerLowest,
+        // Transparent: the shell wraps the rail in its own glass material.
+        backgroundColor: Colors.transparent,
         indicatorColor: colorScheme.primary.withValues(alpha: isDark ? 0.16 : 0.14),
         indicatorShape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),

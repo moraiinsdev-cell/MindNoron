@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../features/activity/activity_screen.dart';
 import '../../features/bible/bible_screen.dart';
 import '../../features/calendar/calendar_screen.dart';
@@ -142,25 +143,36 @@ Page<void> _welcomePage(GoRouterState state, Widget child) {
 }
 
 Page<void> _appPage(GoRouterState state, Widget child) {
+  // Fade-through with a soft rise: the old page slips away, the new one
+  // settles in on the quintic ease — the same motion language as the theme's
+  // page transitions (AppMotion).
   return CustomTransitionPage<void>(
     key: state.pageKey,
-    transitionDuration: const Duration(milliseconds: 360),
-    reverseTransitionDuration: const Duration(milliseconds: 240),
+    transitionDuration: AppMotion.gentle,
+    reverseTransitionDuration: AppMotion.base,
     child: child,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final curved = CurvedAnimation(
+      final enter = CurvedAnimation(
         parent: animation,
-        curve: Curves.easeOutCubic,
+        curve: AppMotion.easeOutQuint,
         reverseCurve: Curves.easeInCubic,
       );
+      final exit = CurvedAnimation(
+        parent: secondaryAnimation,
+        curve: Curves.easeInQuad,
+      );
       return FadeTransition(
-        opacity: curved,
-        child: SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0.018, 0),
-            end: Offset.zero,
-          ).animate(curved),
-          child: child,
+        // Fade this page out while another covers it (fade-through).
+        opacity: Tween<double>(begin: 1, end: 0).animate(exit),
+        child: FadeTransition(
+          opacity: enter,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.012),
+              end: Offset.zero,
+            ).animate(enter),
+            child: child,
+          ),
         ),
       );
     },

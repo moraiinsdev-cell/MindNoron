@@ -12,6 +12,7 @@ import '../../features/capture/capture_dialog.dart';
 import '../../features/command_palette/command_palette.dart';
 import '../../l10n/app_localizations.dart';
 import '../navigation/app_router.dart';
+import '../widgets/common/ui_kit.dart';
 
 /// Persistent desktop shell: a left navigation rail + the active screen.
 /// Ctrl+K opens the command palette from anywhere in the app.
@@ -66,11 +67,17 @@ class AppShell extends ConsumerWidget {
       child: Focus(
         autofocus: true,
         child: Scaffold(
-          body: Row(
+          body: Stack(
             children: [
-              // Let the rail scroll when the window is too short for all the
-              // destinations (otherwise the last items overflow vertically).
-              LayoutBuilder(
+              // The ambient wash every glass surface floats above.
+              const Positioned.fill(child: AuroraBackdrop()),
+              Row(
+            children: [
+              // Translucent glass rail over the aurora, sealed with a
+              // hairline edge. Let it scroll when the window is too short
+              // for all the destinations.
+              _RailGlass(
+                child: LayoutBuilder(
                 builder: (context, constraints) => SingleChildScrollView(
                   child: ConstrainedBox(
                     constraints:
@@ -86,13 +93,10 @@ class AppShell extends ConsumerWidget {
                     children: [
                       const _RailBrand(),
                       const SizedBox(height: 16),
-                      FloatingActionButton(
-                        heroTag: 'capture',
+                      _CaptureButton(
                         tooltip: l10n.quickCapture,
-                        elevation: 0,
                         onPressed: () =>
                             showCaptureDialog(context, source: 'manual'),
-                        child: const Icon(Icons.add),
                       ),
                     ],
                   ),
@@ -194,10 +198,85 @@ class AppShell extends ConsumerWidget {
                     ),
                   ),
                 ),
+                ),
               ),
-              const VerticalDivider(width: 1),
               Expanded(child: child),
             ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The frosted sidebar material: translucent fill over the aurora with a
+/// hairline right edge — the macOS sidebar feel.
+class _RailGlass extends StatelessWidget {
+  const _RailGlass({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final dark = cs.brightness == Brightness.dark;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: dark
+            ? Colors.white.withValues(alpha: 0.03)
+            : Colors.white.withValues(alpha: 0.42),
+        border: Border(
+          right: BorderSide(
+            color: cs.outlineVariant.withValues(alpha: dark ? 0.55 : 1),
+          ),
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Gradient quick-capture button — the one loud element on the quiet rail.
+class _CaptureButton extends StatelessWidget {
+  const _CaptureButton({required this.tooltip, required this.onPressed});
+
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return HoverLift(
+      child: Tooltip(
+        message: tooltip,
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadii.md + 2),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadii.md + 2),
+            onTap: onPressed,
+            child: Ink(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadii.md + 2),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppTheme.seed, AppTheme.accentBlue],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.seed.withValues(alpha: 0.35),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Icon(Icons.add_rounded, size: 26, color: cs.surface),
+            ),
           ),
         ),
       ),
