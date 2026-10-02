@@ -83,8 +83,8 @@ abstract final class Priority {
   static const int low = 4;
 
   static Color color(int p, ColorScheme cs) => switch (p) {
-        1 => const Color(0xFFEF4444), // red
-        2 => const Color(0xFFF59E0B), // amber
+        1 => const Color(0xFFFF453A), // Apple system red
+        2 => const Color(0xFFFF9F0A), // Apple system orange
         3 => cs.primary,
         _ => cs.outline,
       };
