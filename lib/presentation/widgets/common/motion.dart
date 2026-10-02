@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:ui' show ImageFilter;
+import 'dart:ui' show FontFeature, ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
@@ -331,6 +331,120 @@ class StaggeredColumn extends StatelessWidget {
             child: children[i],
           ),
       ],
+    );
+  }
+}
+
+/// A number that counts to its value on a spring — on first appearance it
+/// rolls up from [from]; later changes glide from the current value.
+/// Uses tabular figures so the width doesn't jitter while counting.
+class AnimatedNumber extends StatelessWidget {
+  const AnimatedNumber({
+    super.key,
+    required this.value,
+    required this.format,
+    this.from = 0,
+    this.style,
+  });
+
+  final double value;
+  final String Function(double v) format;
+  final double from;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    final base = style ?? DefaultTextStyle.of(context).style;
+    return SpringBuilder(
+      value: value,
+      from: from,
+      spring: AppSprings.gentle,
+      builder: (context, v, _) => Text(
+        format(v),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: base.copyWith(
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+      ),
+    );
+  }
+}
+
+/// Loading placeholder: a soft light band sweeping across [child] (usually
+/// grey blocks shaped like the content to come).
+class Shimmer extends StatefulWidget {
+  const Shimmer({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<Shimmer> createState() => _ShimmerState();
+}
+
+class _ShimmerState extends State<Shimmer> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1500),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (AppMotion.reduced(context)) {
+      _c.stop();
+    } else if (!_c.isAnimating) {
+      _c.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final hi = Colors.white.withValues(alpha: dark ? 0.16 : 0.7);
+    return AnimatedBuilder(
+      animation: _c,
+      child: widget.child,
+      builder: (context, child) => ShaderMask(
+        blendMode: BlendMode.srcATop,
+        shaderCallback: (rect) {
+          final x = -1.5 + _c.value * 3;
+          return LinearGradient(
+            begin: Alignment(x - 0.6, -0.3),
+            end: Alignment(x + 0.6, 0.3),
+            colors: [Colors.transparent, hi, Colors.transparent],
+          ).createShader(rect);
+        },
+        child: child,
+      ),
+    );
+  }
+}
+
+/// A rounded grey block for skeleton layouts inside [Shimmer].
+class SkeletonBox extends StatelessWidget {
+  const SkeletonBox({super.key, this.width, this.height = 14, this.radius = 7});
+
+  final double? width;
+  final double height;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: cs.onSurface.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(radius),
+      ),
     );
   }
 }

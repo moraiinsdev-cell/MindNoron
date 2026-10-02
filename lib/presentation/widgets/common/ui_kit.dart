@@ -107,9 +107,14 @@ class _GlassSurfaceState extends State<GlassSurface>
       foregroundPainter: painter,
       child: ColoredBox(
         color: fill,
-        child: widget.padding == null
-            ? widget.child
-            : Padding(padding: widget.padding!, child: widget.child),
+        // A transparent Material above the fill gives ink (ListTile, InkWell)
+        // something to paint on that isn't hidden by the glass colour.
+        child: Material(
+          type: MaterialType.transparency,
+          child: widget.padding == null
+              ? widget.child
+              : Padding(padding: widget.padding!, child: widget.child),
+        ),
       ),
     );
 
