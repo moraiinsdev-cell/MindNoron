@@ -83,7 +83,8 @@ class SoundService {
   /// Selection-id prefix marking an imported [CustomTrack] (vs a built-in name).
   static const customPrefix = 'custom:';
 
-  final SoLoud _soloud = SoLoud.instance;
+  // Lazy: the native engine loads on first playback, not on construction.
+  late final SoLoud _soloud = SoLoud.instance;
   Future<void>? _initFuture;
   final Map<String, AudioSource> _sources = {};
 
