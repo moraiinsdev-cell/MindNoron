@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart' show Ticker;
 
 /// A subtle, slowly drifting field of "neurons" (nodes) linked by faint synapse
 /// lines — the ambient backdrop of the noron space. Deterministic orbital
@@ -31,9 +32,17 @@ class _NoronBackdropState extends State<NoronBackdrop>
   // whole field visibly jump at the loop point. A clock that only ever counts
   // up keeps the orbital sin/cos motion seamless forever.
   final _seconds = ValueNotifier<double>(0);
-  late final _ticker = createTicker((elapsed) {
-    _seconds.value = elapsed.inMicroseconds / Duration.microsecondsPerSecond;
-  })..start();
+  late final Ticker _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    // Created eagerly: a lazy ticker would first be built in dispose(), where
+    // ancestor lookups are no longer allowed.
+    _ticker = createTicker((elapsed) {
+      _seconds.value = elapsed.inMicroseconds / Duration.microsecondsPerSecond;
+    })..start();
+  }
 
   // Angular speed, preserving the previous ~28s-per-revolution pace.
   static const _omega = 2 * pi / 28;

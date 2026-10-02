@@ -150,8 +150,7 @@ class DashboardScreen extends ConsumerWidget {
                               height: 1,
                               indent: 16,
                               endIndent: 16,
-                              color:
-                                  cs.outlineVariant.withValues(alpha: 0.5),
+                              color: cs.outlineVariant.withValues(alpha: 0.5),
                             ),
                           _PriorityTile(task: visibleTopTasks[i]),
                         ],
@@ -293,41 +292,44 @@ class _QuoteBanner extends StatelessWidget {
     final cs = theme.colorScheme;
     return GlassSurface(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            width: 3,
-            decoration: BoxDecoration(
-              color: cs.primary,
-              borderRadius: BorderRadius.circular(AppRadii.pill),
+      // IntrinsicHeight bounds the stretched accent bar inside the ListView.
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              width: 3,
+              decoration: BoxDecoration(
+                color: cs.primary,
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+              ),
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  text,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontStyle: FontStyle.italic,
-                    height: 1.5,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    text,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontStyle: FontStyle.italic,
+                      height: 1.5,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '— $author',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(height: 4),
+                  Text(
+                    '— $author',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -560,4 +562,3 @@ class _EnergyPick extends StatelessWidget {
     );
   }
 }
-
