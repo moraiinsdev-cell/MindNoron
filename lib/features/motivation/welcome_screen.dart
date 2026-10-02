@@ -4,13 +4,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/platform/platform_capabilities.dart';
+import '../../core/theme/app_theme.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../../presentation/navigation/app_router.dart';
 import '../../presentation/shell/window_bar.dart';
+import '../../presentation/widgets/common/living_backdrop.dart';
+import '../../presentation/widgets/common/ui_kit.dart';
 import '../settings/user_name_dialog.dart';
 import 'quotes.dart';
 
 /// Full-screen motivational splash shown every time the app opens.
+/// Deep dawn for the welcome stage: indigo night, violet, a warm horizon.
+const _welcomePalette = AuroraPalette(
+  AppleColors.indigo,
+  AppleColors.purple,
+  AppleColors.orange,
+  AppleColors.pink,
+);
+
 class WelcomeScreen extends ConsumerStatefulWidget {
   const WelcomeScreen({super.key});
 
@@ -72,13 +83,19 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
       ref.read(quoteDeckProvider.notifier).advance();
     }
 
-    // Frameless window: overlay the drag strip + window controls.
-    return Stack(
+    // A cinematic, always-dark stage: the living aurora in deep dawn hues
+    // behind the quote, with the frameless window's controls overlaid.
+    return Theme(
+      data: AppTheme.dark,
+      child: Stack(
       children: [
         Positioned.fill(
           child: Scaffold(
             backgroundColor: Colors.black,
-            body: Focus(
+            body: LivingBackdrop(
+              palette: _welcomePalette,
+              intensity: 0.7,
+              child: Focus(
               autofocus: true,
               onKeyEvent: (_, event) {
                 if (_nameDialogOpen) return KeyEventResult.ignored;
@@ -120,10 +137,27 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Container(
-                                    width: 48,
+                                SpringBuilder(
+                                  value: 48,
+                                  from: 0,
+                                  spring: AppSprings.gentle,
+                                  builder: (context, w, _) => Container(
+                                    width: w.clamp(0.0, 60.0),
                                     height: 3,
-                                    color: WelcomeScreen._gold),
+                                    decoration: BoxDecoration(
+                                      color: WelcomeScreen._gold,
+                                      borderRadius:
+                                          BorderRadius.circular(AppRadii.pill),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: WelcomeScreen._gold
+                                              .withValues(alpha: 0.6),
+                                          blurRadius: 12,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                                 const SizedBox(height: 40),
                                 AnimatedSwitcher(
                                   duration: const Duration(milliseconds: 560),
@@ -239,10 +273,12 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                 ),
               ),
             ),
+            ),
           ),
         ),
         const Positioned(top: 0, left: 0, right: 0, child: WindowBar()),
       ],
+      ),
     );
   }
 }
@@ -290,28 +326,51 @@ class _QuoteBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final words = '“${quote.text}”'.split(RegExp(r'\s+'));
+    final style = TextStyle(
+      fontFamily: 'Georgia',
+      fontSize: quoteFontSize,
+      height: 1.28,
+      fontWeight: FontWeight.w600,
+      color: Colors.white,
+      shadows: [
+        Shadow(
+          color: Colors.black.withValues(alpha: 0.35),
+          blurRadius: 24,
+        ),
+      ],
+    );
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          '"${quote.text}"',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: 'Georgia',
-            fontSize: quoteFontSize,
-            height: 1.28,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
+        // Each word materialises in turn — blur, rise, settle.
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: quoteFontSize * 0.26,
+          runSpacing: quoteFontSize * 0.08,
+          children: [
+            for (final (i, word) in words.indexed)
+              Entrance(
+                delay: Duration(milliseconds: 90 + 38 * i),
+                offset: 14,
+                blur: 10,
+                scale: 0.97,
+                child: Text(word, style: style),
+              ),
+          ],
         ),
         const SizedBox(height: 28),
-        Text(
-          '- ${quote.author}',
-          style: TextStyle(
-            fontFamily: 'Georgia',
-            fontSize: authorFontSize,
-            fontStyle: FontStyle.italic,
-            color: WelcomeScreen._gold,
+        Entrance(
+          delay: Duration(milliseconds: 260 + 38 * words.length),
+          blur: 6,
+          child: Text(
+            '— ${quote.author}',
+            style: TextStyle(
+              fontFamily: 'Georgia',
+              fontSize: authorFontSize,
+              fontStyle: FontStyle.italic,
+              color: WelcomeScreen._gold,
+            ),
           ),
         ),
       ],

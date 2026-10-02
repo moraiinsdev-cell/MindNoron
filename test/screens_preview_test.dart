@@ -57,9 +57,13 @@ void main() {
   setUpAll(loadAppFonts);
 
   final only = Platform.environment['SCREEN'];
-  for (final d in AppDestinations.all) {
-    if (d.route == nav.Routes.office) continue;
-    final slug = d.route.substring(1);
+  // Destinations + the welcome screen (outside the shell).
+  final pages = <(String, String)>[
+    for (final d in AppDestinations.all)
+      if (d.route != nav.Routes.office) (d.route, d.route.substring(1)),
+    (nav.Routes.welcome, 'welcome'),
+  ];
+  for (final (route, slug) in pages) {
     if (only != null && only != slug) continue;
     for (final (theme, tname) in [
       (AppTheme.dark, 'dark'),
@@ -75,13 +79,10 @@ void main() {
         addTearDown(() => db.close());
         await tester.runAsync(() => _seed(db));
 
-        // The app's real route table, starting on this destination.
-        final shell = nav.appRouter.configuration.routes
-            .whereType<ShellRoute>()
-            .first;
+        // The app's real route table, starting on this page.
         final router = GoRouter(
-          initialLocation: d.route,
-          routes: [shell],
+          initialLocation: route,
+          routes: nav.appRouter.configuration.routes,
         );
         final key = Key('$slug-$tname');
         await tester.pumpWidget(
@@ -127,7 +128,7 @@ void main() {
         await capture('${slug}_$tname');
 
         // The Focus screen's second face: a running session.
-        if (d.route == nav.Routes.timer) {
+        if (route == nav.Routes.timer) {
           await tester.tap(find.text('Start Focus'));
           for (var i = 0; i < 40; i++) {
             await tester.runAsync(

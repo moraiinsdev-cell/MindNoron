@@ -22,6 +22,25 @@ Future<void> loadAppFonts() async {
   await inter.load();
   await display.load();
 
+  // Georgia (the welcome screen's editorial serif) ships with Windows —
+  // load it from the system font folder when present.
+  final winFonts = '${Platform.environment['WINDIR'] ?? 'C:/Windows'}/Fonts';
+  final georgia = FontLoader('Georgia');
+  var anyGeorgia = false;
+  for (final f in const [
+    'georgia.ttf',
+    'georgiab.ttf',
+    'georgiai.ttf',
+    'georgiaz.ttf',
+  ]) {
+    final file = File('$winFonts/$f');
+    if (file.existsSync()) {
+      georgia.addFont(_read(file.path));
+      anyGeorgia = true;
+    }
+  }
+  if (anyGeorgia) await georgia.load();
+
   // Material Icons live in the Flutter SDK cache — load them too so preview
   // PNGs show real glyph icons instead of boxes. Best-effort: skip silently
   // if the SDK layout ever changes.
