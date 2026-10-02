@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../navigation/destinations.dart';
 import 'ui_kit.dart';
@@ -143,53 +144,76 @@ AppDestination? _destinationOf(BuildContext context) {
   return null;
 }
 
-/// Friendly placeholder for screens/features not yet built, or empty states.
+/// Empty state: the current destination's glyph tile floating in a soft
+/// halo of its colour, springing in with a little bounce, over a quiet
+/// caption — the iOS "nothing here yet" moment rather than a grey void.
 class ComingSoon extends StatelessWidget {
-  const ComingSoon({super.key, this.label, this.icon});
+  const ComingSoon({super.key, this.label, this.icon, this.color});
 
   final String? label;
   final IconData? icon;
+
+  /// Tint; defaults to the current destination's colour.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final l10n = AppLocalizations.of(context);
+    final dest = _destinationOf(context);
+    final c = color ?? dest?.color ?? cs.primary;
+    final dark = theme.brightness == Brightness.dark;
+
     return Center(
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 340),
-        curve: Curves.easeOutCubic,
-        builder: (_, t, child) => Opacity(
-          opacity: t.clamp(0, 1),
-          child: Transform.scale(
-            scale: 0.98 + t * 0.02,
-            child: child,
-          ),
-        ),
+      child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 76,
-              height: 76,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: cs.surfaceContainerHigh,
-                border: Border.all(color: cs.outlineVariant),
+            SpringBuilder(
+              value: 1,
+              from: 0.6,
+              spring: AppSprings.bouncy,
+              builder: (context, t, child) => Opacity(
+                opacity: ((t - 0.6) / 0.4).clamp(0.0, 1.0),
+                child: Transform.scale(scale: t, child: child),
               ),
-              child: Icon(
-                icon ?? Icons.auto_awesome_outlined,
-                size: 34,
-                color: cs.onSurfaceVariant,
+              child: SizedBox.square(
+                dimension: 120,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            c.withValues(alpha: dark ? 0.32 : 0.24),
+                            c.withValues(alpha: 0),
+                          ],
+                        ),
+                      ),
+                      child: const SizedBox.expand(),
+                    ),
+                    IconChip(
+                      icon: icon ?? dest?.icon ?? Icons.auto_awesome_rounded,
+                      color: c,
+                      size: 60,
+                      solid: true,
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              label ?? l10n.emptyComingSoon,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyLarge
-                  ?.copyWith(color: cs.onSurfaceVariant),
+            const SizedBox(height: 10),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 360),
+              child: Text(
+                label ?? l10n.emptyComingSoon,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyLarge
+                    ?.copyWith(color: cs.onSurfaceVariant, height: 1.4),
+              ),
             ),
           ],
         ),

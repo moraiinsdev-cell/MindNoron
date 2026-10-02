@@ -105,6 +105,11 @@ class AppTheme {
             onTertiary: Colors.white,
             error: AppleColors.red,
             onError: Colors.white,
+            // Tinted, not alarming: iOS-style red wash with a soft red label.
+            errorContainer: const Color(0xFF3A1A1D),
+            onErrorContainer: const Color(0xFFFF8F87),
+            tertiaryContainer: const Color(0xFF34203F),
+            onTertiaryContainer: const Color(0xFFE5B8FF),
             inverseSurface: const Color(0xFFF5F5F7),
             onInverseSurface: const Color(0xFF1D1D1F),
           )
@@ -133,6 +138,8 @@ class AppTheme {
             onTertiary: Colors.white,
             error: AppleColors.redLight,
             onError: Colors.white,
+            errorContainer: const Color(0xFFFFE6E4),
+            onErrorContainer: const Color(0xFFB3261E),
             inverseSurface: const Color(0xFF1D1D1F),
             onInverseSurface: const Color(0xFFF5F5F7),
           );

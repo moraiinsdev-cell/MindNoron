@@ -401,6 +401,7 @@ class _PrioritiesCard extends StatelessWidget {
               height: 150,
               child: ComingSoon(
                 icon: Icons.task_alt_rounded,
+                color: AppleColors.orange,
                 label: 'No open tasks — capture something to get going',
               ),
             )

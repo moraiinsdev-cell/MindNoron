@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../data/repositories/event_repository.dart';
 import '../../data/repositories/expense_repository.dart';
 import '../../presentation/widgets/common/app_dialog.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
+import '../../presentation/widgets/common/ui_kit.dart';
 import 'tax_banking.dart';
 import 'tax_dta.dart';
 import 'tax_engine.dart';
@@ -4077,22 +4079,20 @@ class _NextDeadlineCard extends StatelessWidget {
         .inDays;
     // Inside a month of a hard deadline, this stops being informational.
     final urgent = days <= 30;
-    final bg = urgent
-        ? theme.colorScheme.errorContainer
-        : theme.colorScheme.secondaryContainer;
-    final fg = urgent
-        ? theme.colorScheme.onErrorContainer
-        : theme.colorScheme.onSecondaryContainer;
+    final accent = urgent ? AppleColors.red : AppleColors.blue;
+    final fg = theme.colorScheme.onSurface;
 
-    return Container(
+    return GlassSurface(
+      tint: accent,
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-      ),
       child: Row(
         children: [
-          Icon(urgent ? Icons.alarm : Icons.event_outlined, color: fg),
+          IconChip(
+            icon: urgent ? Icons.alarm_rounded : Icons.event_rounded,
+            color: accent,
+            size: 38,
+            solid: true,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -4105,7 +4105,8 @@ class _NextDeadlineCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(step.title,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: fg)),
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
               ],
             ),
           ),
