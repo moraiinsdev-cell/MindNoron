@@ -128,14 +128,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           _SectionCard(
             title: 'Appearance',
-            child: SegmentedButton<ThemeMode>(
-              segments: const [
-                ButtonSegment(value: ThemeMode.system, label: Text('System')),
-                ButtonSegment(value: ThemeMode.light, label: Text('Light')),
-                ButtonSegment(value: ThemeMode.dark, label: Text('Dark')),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SegmentedButton<ThemeMode>(
+                  segments: const [
+                    ButtonSegment(
+                        value: ThemeMode.system, label: Text('System')),
+                    ButtonSegment(value: ThemeMode.light, label: Text('Light')),
+                    ButtonSegment(value: ThemeMode.dark, label: Text('Dark')),
+                  ],
+                  selected: {mode},
+                  onSelectionChanged: (s) => settings.setThemeMode(s.first),
+                ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Reduce motion'),
+                  subtitle: const Text(
+                      'Calm the springs, entrances and the living backdrop'),
+                  value: ref.watch(reduceMotionProvider).valueOrNull ?? false,
+                  onChanged: settings.setReduceMotion,
+                ),
               ],
-              selected: {mode},
-              onSelectionChanged: (s) => settings.setThemeMode(s.first),
             ),
           ),
           _SectionCard(

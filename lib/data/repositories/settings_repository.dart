@@ -25,6 +25,7 @@ class SettingsRepository {
   static const _kAmbientVolume = 'ambientVolume';
   static const _kAmbientAutostart = 'ambientAutostart';
   static const _kNeuronBackdrop = 'neuronBackdrop';
+  static const _kReduceMotion = 'reduceMotion';
   static const _kCustomTracks = 'customTracks';
   static const _kUserName = 'userName';
   static const _kUserNamePrompted = 'userNamePrompted';
@@ -240,6 +241,14 @@ class SettingsRepository {
       _watch(_kNeuronBackdrop).map((v) => v != 'false'); // default on
   Future<void> setNeuronBackdrop(bool v) => _set(_kNeuronBackdrop, '$v');
 
+  // --- Accessibility ------------------------------------------------------
+
+  /// In-app "Reduce motion": springs snap, entrances appear instantly and the
+  /// living backdrop holds still. Combined with the OS flag in the app root.
+  Stream<bool> watchReduceMotion() =>
+      _watch(_kReduceMotion).map((v) => v == 'true'); // default off
+  Future<void> setReduceMotion(bool v) => _set(_kReduceMotion, '$v');
+
   static ThemeMode _parseTheme(String? v) => switch (v) {
         'light' => ThemeMode.light,
         'system' => ThemeMode.system,
@@ -299,6 +308,10 @@ final ambientAutostartProvider = StreamProvider<bool>((ref) {
 
 final neuronBackdropProvider = StreamProvider<bool>((ref) {
   return ref.watch(settingsRepositoryProvider).watchNeuronBackdrop();
+});
+
+final reduceMotionProvider = StreamProvider<bool>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchReduceMotion();
 });
 
 final customTracksProvider = StreamProvider<List<CustomTrack>>((ref) {

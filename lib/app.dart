@@ -58,7 +58,18 @@ class _MindNoronAppState extends ConsumerState<MindNoronApp>
         return Consumer(
           builder: (context, ref, _) {
             final floating = ref.watch(floatingTimerProvider);
-            return floating ? const FocusPip() : (child ?? const SizedBox());
+            final reduce = ref.watch(reduceMotionProvider).valueOrNull ?? false;
+            final ui =
+                floating ? const FocusPip() : (child ?? const SizedBox());
+            // Fold the in-app "Reduce motion" setting into the OS flag so
+            // every motion widget only has to read MediaQuery.
+            final mq = MediaQuery.of(context);
+            return MediaQuery(
+              data: mq.copyWith(
+                disableAnimations: mq.disableAnimations || reduce,
+              ),
+              child: ui,
+            );
           },
         );
       },

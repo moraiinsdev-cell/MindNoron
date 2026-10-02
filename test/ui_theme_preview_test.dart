@@ -143,6 +143,49 @@ Widget _gallery() {
             Chip(label: Text('#roblox')),
           ],
         ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            for (final (icon, color) in const [
+              (Icons.timer_rounded, AppleColors.orange),
+              (Icons.check_rounded, AppleColors.green),
+              (Icons.calendar_month_rounded, AppleColors.red),
+              (Icons.auto_stories_rounded, AppleColors.indigo),
+              (Icons.bolt_rounded, AppleColors.yellow),
+              (Icons.favorite_rounded, AppleColors.pink),
+              (Icons.water_drop_rounded, AppleColors.cyan),
+            ]) ...[
+              IconChip(icon: icon, color: color, solid: true),
+              const SizedBox(width: 12),
+            ],
+            const SizedBox(width: 12),
+            Switch(value: true, onChanged: (_) {}),
+            const SizedBox(width: 8),
+            Switch(value: false, onChanged: (_) {}),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            SegmentedButton<int>(
+              segments: const [
+                ButtonSegment(value: 0, label: Text('Ngày')),
+                ButtonSegment(value: 1, label: Text('Tuần')),
+                ButtonSegment(value: 2, label: Text('Tháng')),
+              ],
+              selected: const {1},
+              onSelectionChanged: (_) {},
+            ),
+            const SizedBox(width: 16),
+            Expanded(child: Slider(value: 0.4, onChanged: (_) {})),
+          ],
+        ),
+        const SizedBox(height: 16),
+        GlassSurface(
+          frosted: true,
+          padding: const EdgeInsets.all(20),
+          child: const Text('Frosted Liquid Glass — blur + vibrancy'),
+        ),
       ],
     ),
   );
@@ -153,7 +196,7 @@ void main() {
 
   testWidgets('theme + UI kit render to preview PNGs (dark & light)',
       (tester) async {
-    tester.view.physicalSize = const Size(1040, 1180);
+    tester.view.physicalSize = const Size(1040, 1420);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);

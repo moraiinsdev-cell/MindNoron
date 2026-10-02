@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 import 'ui_kit.dart';
 
@@ -41,7 +40,7 @@ class SectionScaffold extends StatelessWidget {
     final titleText = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: theme.textTheme.headlineSmall),
+        Text(title, style: theme.textTheme.headlineMedium),
         if (subtitle != null) ...[
           const SizedBox(height: 4),
           Text(
@@ -59,32 +58,7 @@ class SectionScaffold extends StatelessWidget {
         : Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(AppRadii.md),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      accentColor.withValues(alpha: 0.26),
-                      accentColor.withValues(alpha: 0.08),
-                    ],
-                  ),
-                  border: Border.all(
-                    color: accentColor.withValues(alpha: 0.28),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: accentColor.withValues(alpha: 0.18),
-                      blurRadius: 14,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Icon(icon, color: accentColor, size: 24),
-              ),
+              IconChip(icon: icon!, color: accentColor, size: 44, solid: true),
               const SizedBox(width: 14),
               Flexible(child: titleText),
             ],
