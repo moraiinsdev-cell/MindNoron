@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/database/app_database.dart';
 import '../../data/repositories/event_repository.dart';
+import '../../presentation/widgets/common/app_dialog.dart';
 import 'event_color.dart';
 
 /// Open the add/edit event sheet. Pass [existing] to edit, or [initialStart]
@@ -13,7 +14,7 @@ Future<void> showEventEditor(
   DateTime? initialStart,
   bool allDay = false,
 }) {
-  return showDialog<void>(
+  return showAppDialog<void>(
     context: context,
     builder: (_) => _EventEditor(
       existing: existing,

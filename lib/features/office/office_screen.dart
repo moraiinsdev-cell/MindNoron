@@ -9,6 +9,7 @@ import '../../core/enums.dart';
 import '../../data/database/app_database.dart';
 import '../../data/repositories/notes_repository.dart';
 import '../../data/repositories/task_repository.dart';
+import '../../presentation/widgets/common/app_dialog.dart';
 import '../timer/timer_controller.dart';
 import 'office_camera.dart';
 import 'office_catalog.dart';
@@ -1262,7 +1263,7 @@ class _EmployeeProfileState extends ConsumerState<_EmployeeProfile> {
 
   Future<void> _confirmFire(BuildContext context) async {
     final spec = e.spec;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Let ${spec.name} go?'),

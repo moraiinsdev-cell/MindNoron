@@ -10,6 +10,7 @@ import '../../core/providers/app_providers.dart';
 import '../../data/backup/backup_service.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../../l10n/app_localizations.dart';
+import '../../presentation/widgets/common/app_dialog.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
 import 'user_name_dialog.dart';
 
@@ -71,7 +72,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _clearAll() async {
     final messenger = ScaffoldMessenger.of(context);
-    final ok = await showDialog<bool>(
+    final ok = await showAppDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Delete all data?'),

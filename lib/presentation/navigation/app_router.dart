@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -19,6 +21,7 @@ import '../../features/tasks/tasks_screen.dart';
 import '../../features/tax/tax_screen.dart';
 import '../../features/timer/timer_screen.dart';
 import '../shell/app_shell.dart';
+import 'destinations.dart';
 
 /// Root navigator key — lets background callbacks (global hotkey, tray) open
 /// dialogs/routes without a widget [BuildContext].
@@ -142,38 +145,75 @@ Page<void> _welcomePage(GoRouterState state, Widget child) {
   );
 }
 
+/// Direction of the current navigation along the sidebar order: +1 when
+/// moving down the list, -1 when moving up. Read by the transitions while
+/// they run, so both the entering and the leaving page agree on it.
+final _navDirection = ValueNotifier<double>(1);
+String? _lastLocation;
+
+void _trackDirection(String location) {
+  if (location == _lastLocation) return;
+  final all = AppDestinations.all;
+  int indexOf(String? l) =>
+      l == null ? -1 : all.indexWhere((d) => l.startsWith(d.route));
+  final from = indexOf(_lastLocation);
+  final to = indexOf(location);
+  if (from >= 0 && to >= 0 && from != to) {
+    _navDirection.value = to > from ? 1 : -1;
+  }
+  _lastLocation = location;
+}
+
 Page<void> _appPage(GoRouterState state, Widget child) {
-  // Fade-through with a soft rise: the old page slips away, the new one
-  // settles in on the quintic ease — the same motion language as the theme's
-  // page transitions (AppMotion).
+  _trackDirection(state.matchedLocation);
+  // Directional "materialise": the new page rises (or descends) into place
+  // from the side of the sidebar you moved toward, unblurring as it lands;
+  // the old page drifts the other way, blurs and fades — iOS 26-style depth
+  // rather than a flat crossfade.
   return CustomTransitionPage<void>(
     key: state.pageKey,
-    transitionDuration: AppMotion.gentle,
+    transitionDuration: const Duration(milliseconds: 480),
     reverseTransitionDuration: AppMotion.base,
     child: child,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final enter = CurvedAnimation(
-        parent: animation,
-        curve: AppMotion.easeOutQuint,
-        reverseCurve: Curves.easeInCubic,
-      );
-      final exit = CurvedAnimation(
-        parent: secondaryAnimation,
-        curve: Curves.easeInQuad,
-      );
-      return FadeTransition(
-        // Fade this page out while another covers it (fade-through).
-        opacity: Tween<double>(begin: 1, end: 0).animate(exit),
-        child: FadeTransition(
-          opacity: enter,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.012),
-              end: Offset.zero,
-            ).animate(enter),
+      if (AppMotion.reduced(context)) {
+        return FadeTransition(opacity: animation, child: child);
+      }
+      return AnimatedBuilder(
+        animation: Listenable.merge([animation, secondaryAnimation]),
+        child: child,
+        builder: (context, child) {
+          final dir = _navDirection.value;
+          final enter = AppMotion.easeOutQuint.transform(animation.value);
+          final exit = Curves.easeInCubic.transform(secondaryAnimation.value);
+          // Entering: opacity leads, movement settles long.
+          final opacity = (const Interval(0, 0.6, curve: Curves.easeOut)
+                      .transform(animation.value) *
+                  (1 -
+                      const Interval(0, 0.55)
+                          .transform(secondaryAnimation.value)))
+              .clamp(0.0, 1.0);
+          final dy = (1 - enter) * 26 * dir - exit * 14 * dir;
+          final scale = (0.985 + 0.015 * enter) * (1 - 0.01 * exit);
+          final blur = (1 - enter) * 8 + exit * 6;
+          Widget out = Transform(
+            alignment: Alignment.topCenter,
+            transform: Matrix4.translationValues(0, dy, 0)
+              ..scaleByDouble(scale, scale, 1, 1),
             child: child,
-          ),
-        ),
+          );
+          if (blur > 0.1) {
+            out = ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(
+                sigmaX: blur,
+                sigmaY: blur,
+                tileMode: TileMode.decal,
+              ),
+              child: out,
+            );
+          }
+          return Opacity(opacity: opacity, child: out);
+        },
       );
     },
   );

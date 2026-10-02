@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../navigation/destinations.dart';
 import 'ui_kit.dart';
 
 /// Standard padded page with a header row, used by every top-level screen.
@@ -35,7 +37,11 @@ class SectionScaffold extends StatelessWidget {
     final cs = theme.colorScheme;
     final width = MediaQuery.sizeOf(context).width;
     final horizontalPadding = width < 720 ? 18.0 : 28.0;
-    final accentColor = accent ?? cs.primary;
+    // Inside the shell the header chip mirrors the sidebar tile of the
+    // current destination, so the page and its nav entry read as one object.
+    final dest = _destinationOf(context);
+    final accentColor = dest?.color ?? accent ?? cs.primary;
+    final glyph = dest?.icon ?? icon;
 
     final titleText = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,12 +59,12 @@ class SectionScaffold extends StatelessWidget {
       ],
     );
 
-    final titleBlock = icon == null
+    final titleBlock = glyph == null
         ? titleText
         : Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              IconChip(icon: icon!, color: accentColor, size: 44, solid: true),
+              IconChip(icon: glyph, color: accentColor, size: 44, solid: true),
               const SizedBox(width: 14),
               Flexible(child: titleText),
             ],
@@ -107,15 +113,34 @@ class SectionScaffold extends StatelessWidget {
                     ),
                 ],
               ),
-            const SizedBox(height: 14),
-            Divider(color: cs.outlineVariant.withValues(alpha: 0.5)),
-            const SizedBox(height: 14),
-            Expanded(child: Entrance(child: child)),
+            const SizedBox(height: 22),
+            // The page transition already blurs the whole page in; the body
+            // follows the large title a beat later for a gentle cascade.
+            Expanded(
+              child: Entrance(
+                delay: const Duration(milliseconds: 70),
+                blur: 0,
+                offset: 12,
+                child: child,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+}
+
+AppDestination? _destinationOf(BuildContext context) {
+  try {
+    final location = GoRouterState.of(context).matchedLocation;
+    for (final d in AppDestinations.all) {
+      if (location.startsWith(d.route)) return d;
+    }
+  } catch (_) {
+    // Not under the router (previews, dialogs) — use the explicit props.
+  }
+  return null;
 }
 
 /// Friendly placeholder for screens/features not yet built, or empty states.

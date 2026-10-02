@@ -5,6 +5,7 @@ import '../../core/enums.dart';
 import '../../data/database/app_database.dart';
 import '../../data/repositories/settings_repository.dart';
 import '../../data/repositories/task_repository.dart';
+import '../../presentation/widgets/common/app_dialog.dart';
 
 /// Recurrence options stored as a simple RRULE-style string (PLAN.md §4.2).
 const _recurrenceOptions = <String?, String>{
@@ -18,7 +19,7 @@ const _recurrenceOptions = <String?, String>{
 /// inline list cannot: description, priority, due date + time, estimated time,
 /// context, tags, and recurrence.
 Future<void> showTaskEditor(BuildContext context, Task task) {
-  return showDialog<void>(
+  return showAppDialog<void>(
     context: context,
     builder: (_) => _TaskEditorDialog(task: task),
   );

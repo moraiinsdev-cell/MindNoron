@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/event_repository.dart';
 import '../../data/repositories/expense_repository.dart';
+import '../../presentation/widgets/common/app_dialog.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
 import 'tax_banking.dart';
 import 'tax_dta.dart';
@@ -1464,7 +1465,7 @@ class _RevenueTab extends ConsumerWidget {
           monthlySpend: profile.monthlySpend,
         );
 
-    final ok = await showDialog<bool>(
+    final ok = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) {
@@ -2165,7 +2166,7 @@ class _FundsTabState extends ConsumerState<_FundsTab> {
     // yourself, and the spending it funds gets logged as it happens.
     var logExpense = isOut && _expensable(fund.kind);
 
-    final ok = await showDialog<bool>(
+    final ok = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
@@ -2274,7 +2275,7 @@ class _FundsTabState extends ConsumerState<_FundsTab> {
       BuildContext context, SelfSalaryPlan salary) async {
     final messenger = ScaffoldMessenger.of(context);
     var day = 1;
-    final ok = await showDialog<bool>(
+    final ok = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
@@ -2428,7 +2429,7 @@ class _FundsTabState extends ConsumerState<_FundsTab> {
     var kind = fund?.kind ?? FundKind.goal;
     final isTax = fund?.kind == FundKind.tax;
 
-    final ok = await showDialog<bool>(
+    final ok = await showAppDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(

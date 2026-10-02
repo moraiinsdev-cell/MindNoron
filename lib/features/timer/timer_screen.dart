@@ -9,6 +9,7 @@ import '../../data/repositories/settings_repository.dart';
 import '../../data/repositories/task_repository.dart';
 import '../../data/repositories/timer_repository.dart';
 import '../../l10n/app_localizations.dart';
+import '../../presentation/widgets/common/app_dialog.dart';
 import '../../presentation/widgets/common/section_scaffold.dart';
 import 'ambient_control.dart';
 import 'floating_timer.dart';
@@ -278,7 +279,7 @@ class _ActiveTimerState extends ConsumerState<_ActiveTimer>
   Future<void> _confirmStop(TimerSnapshot snapshot) async {
     final controller = ref.read(timerControllerProvider.notifier);
     final isBreak = snapshot.type != SessionType.work;
-    final reason = await showDialog<String>(
+    final reason = await showAppDialog<String>(
       context: context,
       builder: (context) => _StopReasonDialog(isBreak: isBreak),
     );

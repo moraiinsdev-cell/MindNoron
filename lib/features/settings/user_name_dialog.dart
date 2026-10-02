@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../presentation/widgets/common/app_dialog.dart';
 
 Future<String?> showUserNameDialog(
   BuildContext context, {
   String? currentName,
   bool firstRun = false,
 }) {
-  return showDialog<String?>(
+  return showAppDialog<String?>(
     context: context,
     barrierDismissible: !firstRun,
     builder: (context) => _UserNameDialog(

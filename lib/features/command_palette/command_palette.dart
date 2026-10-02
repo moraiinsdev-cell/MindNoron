@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +13,7 @@ import '../../presentation/navigation/app_router.dart';
 import '../../presentation/navigation/destinations.dart';
 import '../../presentation/shell/sidebar.dart';
 import '../../presentation/shell/window_bar.dart';
+import '../../presentation/widgets/common/app_dialog.dart';
 import '../../presentation/widgets/common/ui_kit.dart';
 import '../capture/capture_dialog.dart';
 import '../timer/timer_controller.dart';
@@ -32,63 +31,13 @@ Future<void> showCommandPalette(BuildContext context) {
     barrierColor: Colors.transparent,
     transitionDuration: const Duration(milliseconds: 340),
     pageBuilder: (_, __, ___) => const CommandPalette(),
-    transitionBuilder: (context, animation, _, child) {
-      final reduced = AppMotion.reduced(context);
-      final dark = Theme.of(context).brightness == Brightness.dark;
-      final fade = CurvedAnimation(
-        parent: animation,
-        curve: Curves.easeOut,
-        reverseCurve: Curves.easeIn,
-      );
-      // A whisper of overshoot on the way in — the iOS "pop".
-      final pop = CurvedAnimation(
-        parent: animation,
-        curve: AppMotion.spring,
-        reverseCurve: Curves.easeInCubic,
-      );
-      return Stack(
-        children: [
-          // The app behind recedes: blur + dim, both animated.
-          Positioned.fill(
-            child: IgnorePointer(
-              child: AnimatedBuilder(
-                animation: fade,
-                builder: (context, _) {
-                  final t = fade.value;
-                  return BackdropFilter(
-                    filter: ImageFilter.blur(
-                      sigmaX: reduced ? 0 : 10 * t,
-                      sigmaY: reduced ? 0 : 10 * t,
-                    ),
-                    child: ColoredBox(
-                      color: Colors.black
-                          .withValues(alpha: (dark ? 0.40 : 0.18) * t),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          FadeTransition(
-            opacity: fade,
-            child: reduced
-                ? child
-                : AnimatedBuilder(
-                    animation: pop,
-                    child: child,
-                    builder: (context, child) => Transform(
-                      alignment: Alignment.topCenter,
-                      transform: Matrix4.translationValues(
-                          0, (1 - pop.value) * -10, 0)
-                        ..scaleByDouble(0.94 + 0.06 * pop.value,
-                            0.94 + 0.06 * pop.value, 1, 1),
-                      child: child,
-                    ),
-                  ),
-          ),
-        ],
-      );
-    },
+    transitionBuilder: (context, animation, _, child) => glassModalTransition(
+      context,
+      animation,
+      child,
+      origin: Alignment.topCenter,
+      fromScale: 0.94,
+    ),
   );
 }
 
@@ -231,7 +180,8 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         section: _Section.actions,
         icon: dark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
         color: AppleColors.gray,
-        label: dark ? 'Switch to light appearance' : 'Switch to dark appearance',
+        label:
+            dark ? 'Switch to light appearance' : 'Switch to dark appearance',
         keywords: 'theme mode appearance',
         run: () {
           ref
@@ -249,8 +199,8 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         hint: 'Ctrl \\',
         run: () {
           final n = ref.read(sidebarCollapsedProvider.notifier);
-          final wide = MediaQuery.sizeOf(context).width >=
-              kSidebarAutoExpandWidth;
+          final wide =
+              MediaQuery.sizeOf(context).width >= kSidebarAutoExpandWidth;
           final expanded = n.state == null ? wide : !n.state!;
           n.state = expanded;
           Navigator.of(context).pop();
@@ -296,8 +246,11 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
     }
 
     final tasks = ref.watch(openTasksProvider).valueOrNull ?? const <Task>[];
-    addContent(_Section.tasks, AppDestinations.tasks.icon,
-        AppDestinations.tasks.color, tasks.map((t) => (t.title, '')),
+    addContent(
+        _Section.tasks,
+        AppDestinations.tasks.icon,
+        AppDestinations.tasks.color,
+        tasks.map((t) => (t.title, '')),
         Routes.tasks);
     final notes = ref.watch(allNotesProvider).valueOrNull ?? const <Note>[];
     addContent(
@@ -308,8 +261,11 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         Routes.notes);
     final inbox =
         ref.watch(unprocessedInboxProvider).valueOrNull ?? const <InboxItem>[];
-    addContent(_Section.inbox, AppDestinations.inbox.icon,
-        AppDestinations.inbox.color, inbox.map((i) => (i.content, '')),
+    addContent(
+        _Section.inbox,
+        AppDestinations.inbox.icon,
+        AppDestinations.inbox.color,
+        inbox.map((i) => (i.content, '')),
         Routes.inbox);
 
     // Sections keep their order; best matches first within each.
@@ -474,8 +430,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
                       ),
                     ),
                     Divider(
-                        height: 1,
-                        color: cs.onSurface.withValues(alpha: 0.08)),
+                        height: 1, color: cs.onSurface.withValues(alpha: 0.08)),
                     // Results — the panel grows/shrinks with them.
                     Flexible(
                       child: AnimatedSize(
@@ -487,8 +442,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
                             : ListView(
                                 controller: _scroll,
                                 shrinkWrap: true,
-                                padding:
-                                    const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                                 children: [
                                   Stack(
                                     children: [
@@ -508,8 +462,7 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
                       ),
                     ),
                     Divider(
-                        height: 1,
-                        color: cs.onSurface.withValues(alpha: 0.08)),
+                        height: 1, color: cs.onSurface.withValues(alpha: 0.08)),
                     const _Footer(),
                   ],
                 ),
@@ -640,8 +593,8 @@ class _EmptyResults extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             'No results for “$query”',
-            style: theme.textTheme.bodyLarge
-                ?.copyWith(color: cs.onSurfaceVariant),
+            style:
+                theme.textTheme.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
       ),

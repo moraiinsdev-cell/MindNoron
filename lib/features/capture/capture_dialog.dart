@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/inbox_repository.dart';
 import '../../l10n/app_localizations.dart';
+import '../../presentation/widgets/common/app_dialog.dart';
 
 /// Opens the always-fast Quick Capture box. Used by the global hotkey, the tray
 /// menu, and the in-app capture button.
@@ -13,23 +14,11 @@ Future<void> showCaptureDialog(BuildContext context,
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Close quick capture',
-    barrierColor: Colors.black.withValues(alpha: 0.4),
-    transitionDuration: const Duration(milliseconds: 180),
+    barrierColor: Colors.transparent,
+    transitionDuration: const Duration(milliseconds: 340),
     pageBuilder: (_, __, ___) => CaptureDialog(source: source),
-    transitionBuilder: (_, animation, __, child) {
-      final curved = CurvedAnimation(
-        parent: animation,
-        curve: Curves.easeOutCubic,
-        reverseCurve: Curves.easeInCubic,
-      );
-      return FadeTransition(
-        opacity: curved,
-        child: ScaleTransition(
-          scale: Tween<double>(begin: 0.98, end: 1).animate(curved),
-          child: child,
-        ),
-      );
-    },
+    transitionBuilder: (context, animation, _, child) =>
+        glassModalTransition(context, animation, child),
   );
 }
 
