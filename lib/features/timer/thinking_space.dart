@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/enums.dart';
+import '../../core/theme/app_theme.dart';
 import '../../data/database/app_database.dart';
 import '../../data/repositories/thoughts_repository.dart';
 import '../../presentation/widgets/common/copy_button.dart';
+import '../../presentation/widgets/common/ui_kit.dart';
 
 /// The noron-space "thinking flow": jot a thought during a focus/break session
 /// and watch today's stream of thoughts build up. Captured thoughts are tagged
@@ -68,13 +70,8 @@ class _ThinkingSpaceState extends ConsumerState<ThinkingSpace> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToEnd());
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
-      ),
-      padding: const EdgeInsets.all(14),
+    return GlassSurface(
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -170,9 +167,9 @@ class _ThoughtBubble extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-      decoration: BoxDecoration(
-        color: cs.surface,
-        borderRadius: BorderRadius.circular(10),
+      decoration: ShapeDecoration(
+        color: cs.onSurface.withValues(alpha: 0.05),
+        shape: AppShapes.squircle(AppRadii.md),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

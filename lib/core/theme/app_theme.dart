@@ -48,7 +48,10 @@ class AppTheme {
   static const _darkSurfaceLow = Color(0xFF0E0E11);
   static const _darkSurface = Color(0xFF1C1C1E); // secondarySystemBackground
   static const _darkSurfaceHigh = Color(0xFF242427);
-  static const _darkSurfaceHighest = Color(0xFF2C2C2E); // tertiary
+  // Highest is used across the app as a *fill* (tracks, chips, idle tiles),
+  // so it is iOS's translucent tertiarySystemFill — it tints whatever glass
+  // or aurora it sits on instead of punching an opaque grey hole in it.
+  static const _darkSurfaceHighest = Color(0x3D767680);
   static const _darkOutline = Color(0xFF48484A); // systemGray3
   static const _darkOutlineVariant = Color(0xFF2E2E31); // separator
   static const _darkOnSurface = Color(0xFFF5F5F7);
@@ -60,7 +63,7 @@ class AppTheme {
   static const _lightSurfaceLow = Color(0xFFFFFFFF);
   static const _lightSurface = Color(0xFFF7F7FA);
   static const _lightSurfaceHigh = Color(0xFFEDEDF2);
-  static const _lightSurfaceHighest = Color(0xFFE5E5EA); // systemGray5
+  static const _lightSurfaceHighest = Color(0x1F767680);
   static const _lightOutline = Color(0xFFC7C7CC); // systemGray4
   static const _lightOutlineVariant = Color(0xFFDDDDE2);
   static const _lightOnSurface = Color(0xFF1D1D1F);
@@ -84,7 +87,7 @@ class AppTheme {
             surfaceContainerHigh: _darkSurfaceHigh,
             surfaceContainerHighest: _darkSurfaceHighest,
             surfaceDim: _darkBg,
-            surfaceBright: _darkSurfaceHighest,
+            surfaceBright: const Color(0xFF2C2C2E),
             onSurface: _darkOnSurface,
             onSurfaceVariant: _darkOnSurfaceVariant,
             outline: _darkOutline,
@@ -112,7 +115,7 @@ class AppTheme {
             surfaceContainer: _lightSurface,
             surfaceContainerHigh: _lightSurfaceHigh,
             surfaceContainerHighest: _lightSurfaceHighest,
-            surfaceDim: _lightSurfaceHighest,
+            surfaceDim: const Color(0xFFE5E5EA),
             surfaceBright: _lightSurfaceLowest,
             onSurface: _lightOnSurface,
             onSurfaceVariant: _lightOnSurfaceVariant,

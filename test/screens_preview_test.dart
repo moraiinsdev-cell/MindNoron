@@ -21,7 +21,6 @@ import 'package:mind_noron/data/repositories/timer_repository.dart';
 import 'package:mind_noron/l10n/app_localizations.dart';
 import 'package:mind_noron/presentation/navigation/app_router.dart' as nav;
 import 'package:mind_noron/presentation/navigation/destinations.dart';
-import 'package:mind_noron/presentation/shell/app_shell.dart';
 
 import 'support/load_fonts.dart';
 
@@ -112,16 +111,31 @@ void main() {
           await tester.pump(const Duration(milliseconds: 80));
         }
 
-        final boundary =
-            tester.renderObject(find.byKey(key)) as RenderRepaintBoundary;
-        await tester.runAsync(() async {
-          final image = await boundary.toImage();
-          final bytes =
-              await image.toByteData(format: ui.ImageByteFormat.png);
-          final file = File('build/screens_preview/${slug}_$tname.png');
-          file.parent.createSync(recursive: true);
-          file.writeAsBytesSync(bytes!.buffer.asUint8List());
-        });
+        Future<void> capture(String name) async {
+          final boundary =
+              tester.renderObject(find.byKey(key)) as RenderRepaintBoundary;
+          await tester.runAsync(() async {
+            final image = await boundary.toImage();
+            final bytes =
+                await image.toByteData(format: ui.ImageByteFormat.png);
+            final file = File('build/screens_preview/$name.png');
+            file.parent.createSync(recursive: true);
+            file.writeAsBytesSync(bytes!.buffer.asUint8List());
+          });
+        }
+
+        await capture('${slug}_$tname');
+
+        // The Focus screen's second face: a running session.
+        if (d.route == nav.Routes.timer) {
+          await tester.tap(find.text('Start Focus'));
+          for (var i = 0; i < 40; i++) {
+            await tester.runAsync(
+                () => Future<void>.delayed(const Duration(milliseconds: 5)));
+            await tester.pump(const Duration(milliseconds: 80));
+          }
+          await capture('${slug}_running_$tname');
+        }
 
         await tester.pumpWidget(const SizedBox());
         await tester.pump(const Duration(seconds: 1));

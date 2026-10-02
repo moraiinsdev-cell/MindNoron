@@ -448,3 +448,65 @@ class SkeletonBox extends StatelessWidget {
     );
   }
 }
+
+/// Text whose characters roll vertically when they change — iOS's numeric
+/// content transition. Unchanged characters stay perfectly still; each
+/// changed glyph slides in from below (or above when [down]) while the old
+/// one slides out and fades. Uses tabular figures so digits never shift.
+class RollingText extends StatelessWidget {
+  const RollingText(this.text, {super.key, this.style, this.down = false});
+
+  final String text;
+  final TextStyle? style;
+
+  /// Roll downward (for decreasing values, e.g. a countdown).
+  final bool down;
+
+  @override
+  Widget build(BuildContext context) {
+    final base = (style ?? DefaultTextStyle.of(context).style).copyWith(
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+    if (AppMotion.reduced(context)) return Text(text, style: base);
+    final chars = text.characters.toList();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < chars.length; i++)
+          ClipRect(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 420),
+              switchInCurve: AppMotion.easeOutQuint,
+              switchOutCurve: Curves.easeInCubic,
+              layoutBuilder: (current, previous) => Stack(
+                alignment: Alignment.center,
+                children: [...previous, if (current != null) current],
+              ),
+              transitionBuilder: (child, animation) {
+                final incoming =
+                    child.key == ValueKey('${chars.length - i}:${chars[i]}');
+                final dir = (down ? -1.0 : 1.0) * (incoming ? 1 : -1);
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: Offset(0, 0.55 * dir),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                );
+              },
+              // Keyed by position-from-the-right so digits keep their slot
+              // when the string length changes (9:59 → 10:00).
+              child: Text(
+                chars[i],
+                key: ValueKey('${chars.length - i}:${chars[i]}'),
+                style: base,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
