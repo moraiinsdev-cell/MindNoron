@@ -495,7 +495,8 @@ class IconChip extends StatelessWidget {
       child: Icon(
         icon,
         color: solid ? Colors.white : color,
-        size: size * 0.5,
+        // Small tiles need a relatively larger glyph to stay legible.
+        size: size * (size < 32 ? 0.6 : 0.5),
       ),
     );
     // Coloured glow, kept outside the shape so the tinted glass stays clean.

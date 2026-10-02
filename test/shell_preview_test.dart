@@ -118,10 +118,13 @@ void main() {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(() => db.close());
 
-    for (final (theme, name) in [
-      (AppTheme.dark, 'shell_dark'),
-      (AppTheme.light, 'shell_light'),
+    for (final (theme, name, size) in [
+      (AppTheme.dark, 'shell_dark', const Size(1500, 980)),
+      (AppTheme.light, 'shell_light', const Size(1500, 980)),
+      // Below the auto-expand width the sidebar collapses to icons.
+      (AppTheme.dark, 'shell_compact_dark', const Size(1100, 760)),
     ]) {
+      tester.view.physicalSize = size;
       final key = Key(name);
       // Fresh router per pump — GoRouter carries navigation state.
       final router = GoRouter(

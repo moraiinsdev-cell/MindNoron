@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
@@ -10,6 +12,8 @@ import 'data/repositories/settings_repository.dart';
 import 'features/timer/floating_timer.dart';
 import 'l10n/app_localizations.dart';
 import 'presentation/navigation/app_router.dart';
+
+final bool _underTest = Platform.environment.containsKey('FLUTTER_TEST');
 
 class MindNoronApp extends ConsumerStatefulWidget {
   const MindNoronApp({super.key});
@@ -59,8 +63,12 @@ class _MindNoronAppState extends ConsumerState<MindNoronApp>
           builder: (context, ref, _) {
             final floating = ref.watch(floatingTimerProvider);
             final reduce = ref.watch(reduceMotionProvider).valueOrNull ?? false;
-            final ui =
+            Widget ui =
                 floating ? const FocusPip() : (child ?? const SizedBox());
+            // Frameless window: resize from the edges in Flutter.
+            if (isDesktopPlatform && !floating && !_underTest) {
+              ui = DragToResizeArea(resizeEdgeSize: 6, child: ui);
+            }
             // Fold the in-app "Reduce motion" setting into the OS flag so
             // every motion widget only has to read MediaQuery.
             final mq = MediaQuery.of(context);

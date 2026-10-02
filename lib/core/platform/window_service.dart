@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -19,15 +20,27 @@ class WindowService {
       minimumSize: AppConstants.minWindowSize,
       center: true,
       title: AppConstants.appName,
-      titleBarStyle: TitleBarStyle.normal,
-      backgroundColor: null,
+      // Frameless: the app draws its own unified toolbar + window controls.
+      titleBarStyle: TitleBarStyle.hidden,
+      windowButtonVisibility: false,
+      backgroundColor: Colors.black,
     );
     await windowManager.waitUntilReadyToShow(options, () async {
+      await _applyFrameless();
       await windowManager.show();
       await windowManager.focus();
     });
     // Hide to tray instead of quitting when the user clicks the close button.
     await windowManager.setPreventClose(true);
+  }
+
+  /// True frameless window: the whole window is client area (no leftover
+  /// DWM caption strip), while a 1px DWM margin keeps the native Windows 11
+  /// shadow and rounded corners. Edge resizing is handled in Flutter by
+  /// `DragToResizeArea` (see app.dart).
+  static Future<void> _applyFrameless() async {
+    await windowManager.setAsFrameless();
+    await windowManager.setHasShadow(true);
   }
 
   static Future<void> showAndFocus() async {
@@ -59,16 +72,15 @@ class WindowService {
     await windowManager.setSize(_floatingSize);
     await windowManager.setAlignment(Alignment.topRight);
     await windowManager.setResizable(false);
-    await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
     await windowManager.setAlwaysOnTop(true);
     await windowManager.show();
   }
 
-  /// Restores the normal full-size, framed, non-pinned window.
+  /// Restores the normal full-size, non-pinned window (frameless, with the
+  /// app's own toolbar).
   static Future<void> exitFloating() async {
     if (!isDesktopPlatform) return;
     await windowManager.setAlwaysOnTop(false);
-    await windowManager.setTitleBarStyle(TitleBarStyle.normal);
     await windowManager.setResizable(true);
     await windowManager.setMinimumSize(AppConstants.minWindowSize);
     await windowManager.setSize(AppConstants.defaultWindowSize);

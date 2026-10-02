@@ -24,17 +24,18 @@ class AuroraPalette {
   static const focus = AuroraPalette(
       AppleColors.indigo, AppleColors.purple, AppleColors.blue, AppleColors.pink);
 
-  /// Warm sparks for ideas.
+  /// Warm sparks for ideas. (Warm hues only as secondary fields: dim orange
+  /// over near-black reads as brown, so pink leads.)
   static const spark = AuroraPalette(
-      AppleColors.orange, AppleColors.pink, AppleColors.purple, AppleColors.yellow);
+      AppleColors.pink, AppleColors.purple, AppleColors.orange, AppleColors.indigo);
 
   /// Fresh greens for money.
   static const money = AuroraPalette(
       AppleColors.green, AppleColors.teal, AppleColors.blue, AppleColors.mint);
 
-  /// Golden morning light for scripture.
+  /// Sunrise for scripture: an indigo sky with warm light on the horizon.
   static const dawn = AuroraPalette(
-      AppleColors.orange, AppleColors.indigo, AppleColors.pink, AppleColors.yellow);
+      AppleColors.indigo, AppleColors.purple, AppleColors.orange, AppleColors.pink);
 
   /// Soft, personal tones for reflection.
   static const reflect = AuroraPalette(
@@ -47,7 +48,7 @@ class AuroraPalette {
   static AuroraPalette forRoute(String location) {
     bool on(String r) => location.startsWith(r);
     if (on('/timer')) return focus;
-    if (on('/catalyst') || on('/office')) return spark;
+    if (on('/catalyst')) return spark;
     if (on('/tax') || on('/expenses')) return money;
     if (on('/bible')) return dawn;
     if (on('/journal') || on('/habits') || on('/notes')) return reflect;

@@ -78,7 +78,7 @@ class SectionScaffold extends StatelessWidget {
     return SafeArea(
       child: Padding(
         padding:
-            EdgeInsets.fromLTRB(horizontalPadding, 22, horizontalPadding, 14),
+            EdgeInsets.fromLTRB(horizontalPadding, 6, horizontalPadding, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

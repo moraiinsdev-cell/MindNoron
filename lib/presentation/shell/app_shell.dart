@@ -3,51 +3,40 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/constants/app_constants.dart';
-import '../../core/theme/app_theme.dart';
 import '../../data/repositories/inbox_repository.dart';
 import '../../data/repositories/task_repository.dart';
 import '../../features/calendar/event_reminder.dart';
 import '../../features/capture/capture_dialog.dart';
 import '../../features/command_palette/command_palette.dart';
-import '../../l10n/app_localizations.dart';
-import '../navigation/app_router.dart';
+import '../navigation/destinations.dart';
 import '../widgets/common/living_backdrop.dart';
-import '../widgets/common/ui_kit.dart';
+import 'sidebar.dart';
+import 'window_bar.dart';
 
-/// Persistent desktop shell: a left navigation rail + the active screen.
-/// Ctrl+K opens the command palette from anywhere in the app.
+/// Persistent desktop shell: a frameless window with a living aurora, a
+/// grouped glass sidebar and a unified toolbar over the active screen.
+///
+/// Shortcuts: Ctrl+K command palette · Ctrl+\ toggle sidebar ·
+/// Ctrl+1…9 jump to the first nine destinations.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.child});
 
   final Widget child;
 
-  static const _routes = [
-    Routes.dashboard,
-    Routes.office,
-    Routes.catalyst,
-    Routes.tax,
-    Routes.bible,
-    Routes.tasks,
-    Routes.calendar,
-    Routes.timer,
-    Routes.inbox,
-    Routes.notes,
-    Routes.journal,
-    Routes.habits,
-    Routes.expenses,
-    Routes.activity,
-    Routes.settings,
+  static const _digits = [
+    LogicalKeyboardKey.digit1,
+    LogicalKeyboardKey.digit2,
+    LogicalKeyboardKey.digit3,
+    LogicalKeyboardKey.digit4,
+    LogicalKeyboardKey.digit5,
+    LogicalKeyboardKey.digit6,
+    LogicalKeyboardKey.digit7,
+    LogicalKeyboardKey.digit8,
+    LogicalKeyboardKey.digit9,
   ];
-
-  int _selectedIndex(String location) {
-    final i = _routes.indexWhere((r) => location.startsWith(r));
-    return i < 0 ? 0 : i;
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
     final location = GoRouterState.of(context).matchedLocation;
     // Keep the event-reminder poller alive for the life of the app shell.
     ref.watch(eventReminderProvider);
@@ -60,10 +49,22 @@ class AppShell extends ConsumerWidget {
           orElse: () => 0,
         );
 
+    final wide =
+        MediaQuery.sizeOf(context).width >= kSidebarAutoExpandWidth;
+    final collapsedOverride = ref.watch(sidebarCollapsedProvider);
+    final expanded = collapsedOverride == null ? wide : !collapsedOverride;
+    void toggleSidebar() =>
+        ref.read(sidebarCollapsedProvider.notifier).state = expanded;
+
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyK, control: true): () =>
             showCommandPalette(context),
+        const SingleActivator(LogicalKeyboardKey.backslash, control: true):
+            toggleSidebar,
+        for (var i = 0; i < _digits.length; i++)
+          SingleActivator(_digits[i], control: true): () =>
+              context.go(AppDestinations.all[i].route),
       },
       child: Focus(
         autofocus: true,
@@ -73,320 +74,44 @@ class AppShell extends ConsumerWidget {
           body: LivingBackdrop(
             palette: AuroraPalette.forRoute(location),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Translucent glass rail over the aurora, sealed with a
-                // hairline edge. Let it scroll when the window is too short
-                // for all the destinations.
-                _RailGlass(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) => SingleChildScrollView(
-                      child: ConstrainedBox(
-                        constraints:
-                            BoxConstraints(minHeight: constraints.maxHeight),
-                        child: IntrinsicHeight(
-                          child: NavigationRail(
-                            selectedIndex: _selectedIndex(location),
-                            onDestinationSelected: (i) =>
-                                context.go(_routes[i]),
-                            labelType: NavigationRailLabelType.all,
-                            leading: Padding(
-                              padding:
-                                  const EdgeInsets.only(top: 14, bottom: 6),
-                              child: Column(
-                                children: [
-                                  const _RailBrand(),
-                                  const SizedBox(height: 16),
-                                  _CaptureButton(
-                                    tooltip: l10n.quickCapture,
-                                    onPressed: () => showCaptureDialog(context,
-                                        source: 'manual'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            destinations: [
-                              NavigationRailDestination(
-                                icon: const Icon(Icons.dashboard_outlined),
-                                selectedIcon: const Icon(Icons.dashboard),
-                                label: Text(l10n.navDashboard),
-                              ),
-                              NavigationRailDestination(
-                                icon: const Icon(Icons.apartment_outlined),
-                                selectedIcon: const Icon(Icons.apartment),
-                                label: Text(l10n.navOffice),
-                              ),
-                              const NavigationRailDestination(
-                                icon: Icon(Icons.bolt_outlined),
-                                selectedIcon: Icon(Icons.bolt),
-                                label: Text('Catalyst'),
-                              ),
-                              const NavigationRailDestination(
-                                icon: Icon(Icons.receipt_long_outlined),
-                                selectedIcon: Icon(Icons.receipt_long),
-                                label: Text('Thuế'),
-                              ),
-                              const NavigationRailDestination(
-                                icon: Icon(Icons.menu_book_outlined),
-                                selectedIcon: Icon(Icons.menu_book),
-                                label: Text('Bible'),
-                              ),
-                              NavigationRailDestination(
-                                icon: _BadgedRailIcon(
-                                  icon: Icons.check_circle_outline,
-                                  count: openTaskCount,
-                                  tooltip: '$openTaskCount open tasks',
-                                ),
-                                selectedIcon: _BadgedRailIcon(
-                                  icon: Icons.check_circle,
-                                  count: openTaskCount,
-                                  tooltip: '$openTaskCount open tasks',
-                                ),
-                                label: Text(l10n.navTasks),
-                              ),
-                              NavigationRailDestination(
-                                icon: const Icon(Icons.calendar_month_outlined),
-                                selectedIcon: const Icon(Icons.calendar_month),
-                                label: Text(l10n.navCalendar),
-                              ),
-                              NavigationRailDestination(
-                                icon: const Icon(Icons.timer_outlined),
-                                selectedIcon: const Icon(Icons.timer),
-                                label: Text(l10n.navTimer),
-                              ),
-                              NavigationRailDestination(
-                                icon: _BadgedRailIcon(
-                                  icon: Icons.inbox_outlined,
-                                  count: inboxUnreadCount,
-                                  tooltip:
-                                      '$inboxUnreadCount unread inbox items',
-                                ),
-                                selectedIcon: _BadgedRailIcon(
-                                  icon: Icons.inbox,
-                                  count: inboxUnreadCount,
-                                  tooltip:
-                                      '$inboxUnreadCount unread inbox items',
-                                ),
-                                label: Text(l10n.navInbox),
-                              ),
-                              NavigationRailDestination(
-                                icon: const Icon(Icons.sticky_note_2_outlined),
-                                selectedIcon: const Icon(Icons.sticky_note_2),
-                                label: Text(l10n.navNotes),
-                              ),
-                              NavigationRailDestination(
-                                icon: const Icon(Icons.auto_stories_outlined),
-                                selectedIcon: const Icon(Icons.auto_stories),
-                                label: Text(l10n.navJournal),
-                              ),
-                              NavigationRailDestination(
-                                icon: const Icon(
-                                    Icons.local_fire_department_outlined),
-                                selectedIcon:
-                                    const Icon(Icons.local_fire_department),
-                                label: Text(l10n.navHabits),
-                              ),
-                              NavigationRailDestination(
-                                icon: const Icon(
-                                    Icons.account_balance_wallet_outlined),
-                                selectedIcon:
-                                    const Icon(Icons.account_balance_wallet),
-                                label: Text(l10n.navExpenses),
-                              ),
-                              NavigationRailDestination(
-                                icon: const Icon(Icons.insights_outlined),
-                                selectedIcon: const Icon(Icons.insights),
-                                label: Text(l10n.navActivity),
-                              ),
-                              NavigationRailDestination(
-                                icon: const Icon(Icons.settings_outlined),
-                                selectedIcon: const Icon(Icons.settings),
-                                label: Text(l10n.navSettings),
-                              ),
-                            ],
-                          ),
+                Sidebar(
+                  location: location,
+                  expanded: expanded,
+                  onNavigate: (d) => context.go(d.route),
+                  onCapture: () =>
+                      showCaptureDialog(context, source: 'manual'),
+                  badges: {
+                    AppDestinations.tasks.route: openTaskCount,
+                    AppDestinations.inbox.route: inboxUnreadCount,
+                  },
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      WindowBar(
+                        leading: IconButton(
+                          tooltip: expanded
+                              ? 'Hide sidebar (Ctrl+\\)'
+                              : 'Show sidebar (Ctrl+\\)',
+                          iconSize: 20,
+                          visualDensity: VisualDensity.compact,
+                          onPressed: toggleSidebar,
+                          icon: const Icon(Icons.view_sidebar_outlined),
+                        ),
+                        center: SpotlightPill(
+                          onTap: () => showCommandPalette(context),
                         ),
                       ),
-                    ),
+                      Expanded(child: child),
+                    ],
                   ),
                 ),
-                Expanded(child: child),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The frosted sidebar material: translucent fill over the aurora with a
-/// hairline right edge — the macOS sidebar feel.
-class _RailGlass extends StatelessWidget {
-  const _RailGlass({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final dark = cs.brightness == Brightness.dark;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: dark
-            ? Colors.white.withValues(alpha: 0.03)
-            : Colors.white.withValues(alpha: 0.42),
-        border: Border(
-          right: BorderSide(
-            color: cs.outlineVariant.withValues(alpha: dark ? 0.55 : 1),
-          ),
-        ),
-      ),
-      child: child,
-    );
-  }
-}
-
-/// Gradient quick-capture button — the one loud element on the quiet rail.
-class _CaptureButton extends StatelessWidget {
-  const _CaptureButton({required this.tooltip, required this.onPressed});
-
-  final String tooltip;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return HoverLift(
-      child: Tooltip(
-        message: tooltip,
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadii.md + 2),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(AppRadii.md + 2),
-            onTap: onPressed,
-            child: Ink(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadii.md + 2),
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppTheme.seed, AppTheme.accentBlue],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.seed.withValues(alpha: 0.35),
-                    blurRadius: 14,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Icon(Icons.add_rounded, size: 26, color: cs.surface),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Brand mark pinned to the top of the navigation rail — a gradient neuron
-/// glyph that doubles as a subtle identity anchor for the whole shell.
-class _RailBrand extends StatelessWidget {
-  const _RailBrand();
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Tooltip(
-      message: AppConstants.appName,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppTheme.seed, AppTheme.accentBlue],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.seed.withValues(alpha: 0.35),
-              blurRadius: 12,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Icon(Icons.hub_rounded, size: 22, color: cs.surface),
-      ),
-    );
-  }
-}
-
-class _BadgedRailIcon extends StatelessWidget {
-  const _BadgedRailIcon({
-    required this.icon,
-    required this.count,
-    required this.tooltip,
-  });
-
-  final IconData icon;
-  final int count;
-  final String tooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final badgeLabel = count > 99 ? '99+' : '$count';
-
-    return Tooltip(
-      message: tooltip,
-      child: SizedBox(
-        width: 36,
-        height: 32,
-        child: Stack(
-          clipBehavior: Clip.none,
-          alignment: Alignment.center,
-          children: [
-            Icon(icon),
-            Positioned(
-              top: 0,
-              right: 0,
-              child: AnimatedScale(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOutCubic,
-                scale: count > 0 ? 1 : 0,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.error,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: theme.colorScheme.surface,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 1,
-                    ),
-                    child: Text(
-                      badgeLabel,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onError,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        height: 1,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
