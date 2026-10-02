@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/widgets.dart';
 import 'package:window_manager/window_manager.dart';
@@ -15,8 +17,8 @@ class WindowService {
   static Future<void> init() async {
     if (!isDesktopPlatform) return;
     await windowManager.ensureInitialized();
-    const options = WindowOptions(
-      size: AppConstants.defaultWindowSize,
+    final options = WindowOptions(
+      size: _fitToScreen(AppConstants.defaultWindowSize),
       minimumSize: AppConstants.minWindowSize,
       center: true,
       title: AppConstants.appName,
@@ -32,6 +34,23 @@ class WindowService {
     });
     // Hide to tray instead of quitting when the user clicks the close button.
     await windowManager.setPreventClose(true);
+  }
+
+  /// Shrinks [size] to fit the primary display's work area, so the window
+  /// (and its drag strip) never opens partly off-screen on small or
+  /// high-DPI laptop screens where the default is taller than the screen.
+  static Size _fitToScreen(Size size) {
+    final displays = WidgetsBinding.instance.platformDispatcher.displays;
+    if (displays.isEmpty) return size;
+    final d = displays.first;
+    final logical = d.size / d.devicePixelRatio;
+    // Leave room for the taskbar and a little breathing space.
+    final maxW = logical.width * 0.92;
+    final maxH = (logical.height - 48) * 0.94;
+    return Size(
+      math.max(AppConstants.minWindowSize.width, math.min(size.width, maxW)),
+      math.max(AppConstants.minWindowSize.height, math.min(size.height, maxH)),
+    );
   }
 
   /// True frameless window: the whole window is client area (no leftover
@@ -83,7 +102,7 @@ class WindowService {
     await windowManager.setAlwaysOnTop(false);
     await windowManager.setResizable(true);
     await windowManager.setMinimumSize(AppConstants.minWindowSize);
-    await windowManager.setSize(AppConstants.defaultWindowSize);
+    await windowManager.setSize(_fitToScreen(AppConstants.defaultWindowSize));
     await windowManager.center();
     await windowManager.show();
     await windowManager.focus();
