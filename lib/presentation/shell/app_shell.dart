@@ -12,6 +12,7 @@ import '../../features/capture/capture_dialog.dart';
 import '../../features/command_palette/command_palette.dart';
 import '../../l10n/app_localizations.dart';
 import '../navigation/app_router.dart';
+import '../widgets/common/living_backdrop.dart';
 import '../widgets/common/ui_kit.dart';
 
 /// Persistent desktop shell: a left navigation rail + the active screen.
@@ -67,143 +68,150 @@ class AppShell extends ConsumerWidget {
       child: Focus(
         autofocus: true,
         child: Scaffold(
-          body: Stack(
-            children: [
-              // The ambient wash every glass surface floats above.
-              const Positioned.fill(child: AuroraBackdrop()),
-              Row(
-            children: [
-              // Translucent glass rail over the aurora, sealed with a
-              // hairline edge. Let it scroll when the window is too short
-              // for all the destinations.
-              _RailGlass(
-                child: LayoutBuilder(
-                builder: (context, constraints) => SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints:
-                        BoxConstraints(minHeight: constraints.maxHeight),
-                    child: IntrinsicHeight(
-                      child: NavigationRail(
-                selectedIndex: _selectedIndex(location),
-                onDestinationSelected: (i) => context.go(_routes[i]),
-                labelType: NavigationRailLabelType.all,
-                leading: Padding(
-                  padding: const EdgeInsets.only(top: 14, bottom: 6),
-                  child: Column(
-                    children: [
-                      const _RailBrand(),
-                      const SizedBox(height: 16),
-                      _CaptureButton(
-                        tooltip: l10n.quickCapture,
-                        onPressed: () =>
-                            showCaptureDialog(context, source: 'manual'),
+          // The living aurora every glass surface floats above; each area
+          // of the app tints it with its own mood.
+          body: LivingBackdrop(
+            palette: AuroraPalette.forRoute(location),
+            child: Row(
+              children: [
+                // Translucent glass rail over the aurora, sealed with a
+                // hairline edge. Let it scroll when the window is too short
+                // for all the destinations.
+                _RailGlass(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => SingleChildScrollView(
+                      child: ConstrainedBox(
+                        constraints:
+                            BoxConstraints(minHeight: constraints.maxHeight),
+                        child: IntrinsicHeight(
+                          child: NavigationRail(
+                            selectedIndex: _selectedIndex(location),
+                            onDestinationSelected: (i) =>
+                                context.go(_routes[i]),
+                            labelType: NavigationRailLabelType.all,
+                            leading: Padding(
+                              padding:
+                                  const EdgeInsets.only(top: 14, bottom: 6),
+                              child: Column(
+                                children: [
+                                  const _RailBrand(),
+                                  const SizedBox(height: 16),
+                                  _CaptureButton(
+                                    tooltip: l10n.quickCapture,
+                                    onPressed: () => showCaptureDialog(context,
+                                        source: 'manual'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            destinations: [
+                              NavigationRailDestination(
+                                icon: const Icon(Icons.dashboard_outlined),
+                                selectedIcon: const Icon(Icons.dashboard),
+                                label: Text(l10n.navDashboard),
+                              ),
+                              NavigationRailDestination(
+                                icon: const Icon(Icons.apartment_outlined),
+                                selectedIcon: const Icon(Icons.apartment),
+                                label: Text(l10n.navOffice),
+                              ),
+                              const NavigationRailDestination(
+                                icon: Icon(Icons.bolt_outlined),
+                                selectedIcon: Icon(Icons.bolt),
+                                label: Text('Catalyst'),
+                              ),
+                              const NavigationRailDestination(
+                                icon: Icon(Icons.receipt_long_outlined),
+                                selectedIcon: Icon(Icons.receipt_long),
+                                label: Text('Thuế'),
+                              ),
+                              const NavigationRailDestination(
+                                icon: Icon(Icons.menu_book_outlined),
+                                selectedIcon: Icon(Icons.menu_book),
+                                label: Text('Bible'),
+                              ),
+                              NavigationRailDestination(
+                                icon: _BadgedRailIcon(
+                                  icon: Icons.check_circle_outline,
+                                  count: openTaskCount,
+                                  tooltip: '$openTaskCount open tasks',
+                                ),
+                                selectedIcon: _BadgedRailIcon(
+                                  icon: Icons.check_circle,
+                                  count: openTaskCount,
+                                  tooltip: '$openTaskCount open tasks',
+                                ),
+                                label: Text(l10n.navTasks),
+                              ),
+                              NavigationRailDestination(
+                                icon: const Icon(Icons.calendar_month_outlined),
+                                selectedIcon: const Icon(Icons.calendar_month),
+                                label: Text(l10n.navCalendar),
+                              ),
+                              NavigationRailDestination(
+                                icon: const Icon(Icons.timer_outlined),
+                                selectedIcon: const Icon(Icons.timer),
+                                label: Text(l10n.navTimer),
+                              ),
+                              NavigationRailDestination(
+                                icon: _BadgedRailIcon(
+                                  icon: Icons.inbox_outlined,
+                                  count: inboxUnreadCount,
+                                  tooltip:
+                                      '$inboxUnreadCount unread inbox items',
+                                ),
+                                selectedIcon: _BadgedRailIcon(
+                                  icon: Icons.inbox,
+                                  count: inboxUnreadCount,
+                                  tooltip:
+                                      '$inboxUnreadCount unread inbox items',
+                                ),
+                                label: Text(l10n.navInbox),
+                              ),
+                              NavigationRailDestination(
+                                icon: const Icon(Icons.sticky_note_2_outlined),
+                                selectedIcon: const Icon(Icons.sticky_note_2),
+                                label: Text(l10n.navNotes),
+                              ),
+                              NavigationRailDestination(
+                                icon: const Icon(Icons.auto_stories_outlined),
+                                selectedIcon: const Icon(Icons.auto_stories),
+                                label: Text(l10n.navJournal),
+                              ),
+                              NavigationRailDestination(
+                                icon: const Icon(
+                                    Icons.local_fire_department_outlined),
+                                selectedIcon:
+                                    const Icon(Icons.local_fire_department),
+                                label: Text(l10n.navHabits),
+                              ),
+                              NavigationRailDestination(
+                                icon: const Icon(
+                                    Icons.account_balance_wallet_outlined),
+                                selectedIcon:
+                                    const Icon(Icons.account_balance_wallet),
+                                label: Text(l10n.navExpenses),
+                              ),
+                              NavigationRailDestination(
+                                icon: const Icon(Icons.insights_outlined),
+                                selectedIcon: const Icon(Icons.insights),
+                                label: Text(l10n.navActivity),
+                              ),
+                              NavigationRailDestination(
+                                icon: const Icon(Icons.settings_outlined),
+                                selectedIcon: const Icon(Icons.settings),
+                                label: Text(l10n.navSettings),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ],
-                  ),
-                ),
-                destinations: [
-                  NavigationRailDestination(
-                    icon: const Icon(Icons.dashboard_outlined),
-                    selectedIcon: const Icon(Icons.dashboard),
-                    label: Text(l10n.navDashboard),
-                  ),
-                  NavigationRailDestination(
-                    icon: const Icon(Icons.apartment_outlined),
-                    selectedIcon: const Icon(Icons.apartment),
-                    label: Text(l10n.navOffice),
-                  ),
-                  const NavigationRailDestination(
-                    icon: Icon(Icons.bolt_outlined),
-                    selectedIcon: Icon(Icons.bolt),
-                    label: Text('Catalyst'),
-                  ),
-                  const NavigationRailDestination(
-                    icon: Icon(Icons.receipt_long_outlined),
-                    selectedIcon: Icon(Icons.receipt_long),
-                    label: Text('Thuế'),
-                  ),
-                  const NavigationRailDestination(
-                    icon: Icon(Icons.menu_book_outlined),
-                    selectedIcon: Icon(Icons.menu_book),
-                    label: Text('Bible'),
-                  ),
-                  NavigationRailDestination(
-                    icon: _BadgedRailIcon(
-                      icon: Icons.check_circle_outline,
-                      count: openTaskCount,
-                      tooltip: '$openTaskCount open tasks',
-                    ),
-                    selectedIcon: _BadgedRailIcon(
-                      icon: Icons.check_circle,
-                      count: openTaskCount,
-                      tooltip: '$openTaskCount open tasks',
-                    ),
-                    label: Text(l10n.navTasks),
-                  ),
-                  NavigationRailDestination(
-                    icon: const Icon(Icons.calendar_month_outlined),
-                    selectedIcon: const Icon(Icons.calendar_month),
-                    label: Text(l10n.navCalendar),
-                  ),
-                  NavigationRailDestination(
-                    icon: const Icon(Icons.timer_outlined),
-                    selectedIcon: const Icon(Icons.timer),
-                    label: Text(l10n.navTimer),
-                  ),
-                  NavigationRailDestination(
-                    icon: _BadgedRailIcon(
-                      icon: Icons.inbox_outlined,
-                      count: inboxUnreadCount,
-                      tooltip: '$inboxUnreadCount unread inbox items',
-                    ),
-                    selectedIcon: _BadgedRailIcon(
-                      icon: Icons.inbox,
-                      count: inboxUnreadCount,
-                      tooltip: '$inboxUnreadCount unread inbox items',
-                    ),
-                    label: Text(l10n.navInbox),
-                  ),
-                  NavigationRailDestination(
-                    icon: const Icon(Icons.sticky_note_2_outlined),
-                    selectedIcon: const Icon(Icons.sticky_note_2),
-                    label: Text(l10n.navNotes),
-                  ),
-                  NavigationRailDestination(
-                    icon: const Icon(Icons.auto_stories_outlined),
-                    selectedIcon: const Icon(Icons.auto_stories),
-                    label: Text(l10n.navJournal),
-                  ),
-                  NavigationRailDestination(
-                    icon: const Icon(Icons.local_fire_department_outlined),
-                    selectedIcon: const Icon(Icons.local_fire_department),
-                    label: Text(l10n.navHabits),
-                  ),
-                  NavigationRailDestination(
-                    icon: const Icon(Icons.account_balance_wallet_outlined),
-                    selectedIcon: const Icon(Icons.account_balance_wallet),
-                    label: Text(l10n.navExpenses),
-                  ),
-                  NavigationRailDestination(
-                    icon: const Icon(Icons.insights_outlined),
-                    selectedIcon: const Icon(Icons.insights),
-                    label: Text(l10n.navActivity),
-                  ),
-                  NavigationRailDestination(
-                    icon: const Icon(Icons.settings_outlined),
-                    selectedIcon: const Icon(Icons.settings),
-                    label: Text(l10n.navSettings),
-                  ),
-                ],
-                      ),
                     ),
                   ),
                 ),
-                ),
-              ),
-              Expanded(child: child),
-            ],
-              ),
-            ],
+                Expanded(child: child),
+              ],
+            ),
           ),
         ),
       ),

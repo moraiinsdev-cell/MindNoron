@@ -65,6 +65,10 @@ flutter:
     - assets/images/
     - assets/sounds/
 
+  # GPU fragment shaders (the living aurora behind the glass).
+  shaders:
+    - shaders/aurora.frag
+
   # Inter — the open-source cousin of Apple's SF Pro. Bundled so the app looks
   # identical on every machine (and so widget-test previews render real text).
   fonts:
